@@ -118,7 +118,7 @@ async function seedDatabase() {
     {
       name: "Paracetamol 500mg",
       description: "Analgésico e antitérmico indicado para o alívio temporário da dor leve a moderada associada a gripes e resfriados.",
-      price: "12.50",
+      price: "1250",
       imageUrl: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=500&auto=format&fit=crop&q=60",
       diseases: ["dor de cabeça", "febre", "gripe"],
       activeIngredient: "Paracetamol"
@@ -126,7 +126,7 @@ async function seedDatabase() {
     {
       name: "Ibuprofeno 750mg",
       description: "Anti-inflamatório não esteroide (AINE) indicado para alívio de dor, inflamação e febre.",
-      price: "18.90",
+      price: "1890",
       imageUrl: "https://images.unsplash.com/photo-1550572017-0d5ab1c572bb?w=500&auto=format&fit=crop&q=60",
       diseases: ["dor muscular", "inflamação", "febre"],
       activeIngredient: "Ibuprofeno"
@@ -134,7 +134,7 @@ async function seedDatabase() {
     {
       name: "Loratadina 400mg",
       description: "Anti-inflamatório, analgésico e antitérmico para o alívio das dores de cabeça, dores musculares e febre.",
-      price: "15.00",
+      price: "1500",
       imageUrl: "https://images.unsplash.com/photo-1585435557343-3b092031a831?w=500&auto=format&fit=crop&q=60",
       diseases: ["alergia", "rinite", "urticária"],
       activeIngredient: "Loratadina"
@@ -142,7 +142,7 @@ async function seedDatabase() {
     {
       name: "Amoxicilina 500mg",
       description: "Antibiótico utilizado no tratamento de diversas infecções bacterianas.",
-      price: "35.00",
+      price: "3500",
       imageUrl: "https://images.unsplash.com/photo-1512069772995-ec65ed45afd6?w=500&auto=format&fit=crop&q=60",
       diseases: ["infecção de garganta", "infecção urinária", "pneumonia"],
       activeIngredient: "Amoxicilina"

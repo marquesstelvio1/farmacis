@@ -56,7 +56,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
           <div className="flex flex-col">
             <span className="text-xs text-slate-400 font-medium">Preço</span>
             <span className="text-2xl font-extrabold text-blue-600">
-              R$ {Number(product.price).toFixed(2).replace('.', ',')}
+              {Number(product.price).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
             </span>
           </div>
 

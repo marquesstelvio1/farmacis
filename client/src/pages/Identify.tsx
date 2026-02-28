@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "framer-motion";
-import { UploadCloud, CheckCircle2, AlertCircle, RefreshCw, ChevronRight, PillBottle } from "lucide-react";
+import { UploadCloud, CheckCircle2, AlertCircle, RefreshCw, ChevronRight, PillBottle, MapPin } from "lucide-react";
 import { useIdentifyPill } from "@/hooks/use-ai";
 import { useProducts } from "@/hooks/use-products";
 import { ProductCard } from "@/components/ProductCard";
@@ -210,6 +210,30 @@ export default function Identify() {
                         <span key={d} className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium border border-blue-100">
                           {d}
                         </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-slate-100">
+                    <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                      <MapPin size={18} className="text-red-500" />
+                      Farmácias Próximas com Stock
+                    </h4>
+                    <div className="space-y-3">
+                      {[
+                        { name: "Farmácia de Luanda", distance: "0.8 km", status: "Em stock" },
+                        { name: "Farmácia Popular", distance: "1.5 km", status: "Poucas unidades" },
+                        { name: "Farmácia Central", distance: "2.3 km", status: "Em stock" }
+                      ].map((pharmacy, i) => (
+                        <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                          <div>
+                            <p className="text-sm font-bold text-slate-800">{pharmacy.name}</p>
+                            <p className="text-xs text-slate-500">{pharmacy.distance}</p>
+                          </div>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${pharmacy.status === 'Em stock' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                            {pharmacy.status}
+                          </span>
+                        </div>
                       ))}
                     </div>
                   </div>

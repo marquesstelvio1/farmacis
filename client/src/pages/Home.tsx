@@ -3,9 +3,11 @@ import { Link } from "wouter";
 import { Search, ChevronRight, Activity, ShieldCheck, Clock } from "lucide-react";
 import { useProducts } from "@/hooks/use-products";
 import { ProductCard } from "@/components/ProductCard";
+import { useState } from "react";
 
 export default function Home() {
-  const { data: products, isLoading, error } = useProducts();
+  const [filters, setFilters] = useState({ search: "" });
+  const { data: products, isLoading, error } = useProducts(filters);
 
   return (
     <div className="w-full">
@@ -121,8 +123,9 @@ export default function Home() {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
               <input 
                 type="text" 
-                placeholder="Buscar medicamentos..." 
+                placeholder="Buscar por nome ou doença..." 
                 className="w-full md:w-80 pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
               />
             </div>
           </div>

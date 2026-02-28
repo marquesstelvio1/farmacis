@@ -4,7 +4,7 @@ import {
   type Product,
   type InsertProduct
 } from "@shared/schema";
-import { eq, ilike } from "drizzle-orm";
+import { eq, ilike, sql } from "drizzle-orm";
 
 export interface IStorage {
   getProducts(search?: string): Promise<Product[]>;
@@ -16,7 +16,9 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   async getProducts(search?: string): Promise<Product[]> {
     if (search) {
-      return await db.select().from(products).where(ilike(products.name, `%${search}%`));
+      return await db.select().from(products).where(
+        sql`(${products.name} ILIKE ${`%${search}%`} OR ${products.diseases}::text ILIKE ${`%${search}%`})`
+      );
     }
     return await db.select().from(products);
   }
