@@ -8,13 +8,34 @@ export const products = pgTable("products", {
   description: text("description").notNull(),
   price: numeric("price").notNull(),
   imageUrl: text("image_url").notNull(),
-  diseases: text("diseases").array().notNull(), // e.g. ["headache", "fever"]
+  diseases: text("diseases").array().notNull(),
   activeIngredient: text("active_ingredient").notNull(),
 });
 
-export const insertProductSchema = createInsertSchema(products).omit({ id: true });
-export type Product = typeof products.$inferSelect;
-export type InsertProduct = z.infer<typeof insertProductSchema>;
+export const pharmacies = pgTable("pharmacies", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  address: text("address").notNull(),
+  lat: numeric("lat").notNull(),
+  lng: numeric("lng").notNull(),
+});
+
+export const orders = pgTable("orders", {
+  id: serial("id").primaryKey(),
+  pharmacyId: integer("pharmacy_id").notNull().references(() => pharmacies.id),
+  customerName: text("customer_name").notNull(),
+  total: numeric("total").notNull(),
+  status: text("status").notNull().default("pending"), // pending, accepted, rejected
+  items: text("items").notNull(), // JSON string of items
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPharmacySchema = createInsertSchema(pharmacies).omit({ id: true });
+export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true });
+
+export type Pharmacy = typeof pharmacies.$inferSelect;
+export type Order = typeof orders.$inferSelect;
+export type InsertOrder = z.infer<typeof insertOrderSchema>;
 
 // Request for Pill Identification
 export const pillIdentificationRequestSchema = z.object({

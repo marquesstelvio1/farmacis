@@ -41,6 +41,32 @@ export const api = {
       },
     },
   },
+  pharmacies: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/pharmacies' as const,
+      responses: {
+        200: z.array(z.custom<any>()),
+      },
+    },
+  },
+  orders: {
+    create: {
+      method: 'POST' as const,
+      path: '/api/orders' as const,
+      input: z.any(),
+      responses: {
+        201: z.any(),
+      },
+    },
+    status: {
+      method: 'GET' as const,
+      path: '/api/orders/:id' as const,
+      responses: {
+        200: z.any(),
+      },
+    },
+  },
 };
 
 export function buildUrl(path: string, params?: Record<string, string | number>): string {

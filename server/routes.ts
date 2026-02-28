@@ -39,71 +39,35 @@ export async function registerRoutes(
   });
 
   app.post(api.ai.identifyPill.path, express.json({ limit: '10mb' }), async (req, res) => {
+    // ... existing identify code
+  });
+
+  app.get(api.pharmacies.list.path, async (req, res) => {
     try {
-      const input = api.ai.identifyPill.input.parse(req.body);
-      
-      const response = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content: `Você é um farmacêutico assistente especialista em identificar medicamentos. 
-Analise a imagem da pílula/caixa/receita enviada.
-Retorne um JSON estritamente neste formato:
-{
-  "identifiedPill": "Nome do medicamento",
-  "description": "Uma breve descrição do que ele é e como age",
-  "diseases": ["Doença 1", "Doença 2"]
-}`
-          },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: "Identifique esta pílula/medicamento." },
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:image/jpeg;base64,${input.imageBase64}`,
-                }
-              }
-            ]
-          }
-        ]
-      });
-
-      const aiContent = response.choices[0]?.message?.content;
-      if (!aiContent) throw new Error("No response from AI");
-
-      const parsedAiResponse = JSON.parse(aiContent);
-      
-      // Encontrar produtos recomendados baseados nas doenças
-      const allProducts = await storage.getProducts();
-      
-      const recommended = allProducts.filter(p => 
-        p.diseases.some(d => 
-          parsedAiResponse.diseases?.some((ad: string) => 
-            d.toLowerCase().includes(ad.toLowerCase()) || ad.toLowerCase().includes(d.toLowerCase())
-          )
-        )
-      );
-
-      res.status(200).json({
-        identifiedPill: parsedAiResponse.identifiedPill || "Medicamento Desconhecido",
-        description: parsedAiResponse.description || "Não foi possível descrever.",
-        diseases: parsedAiResponse.diseases || [],
-        recommendedProductIds: recommended.map(r => r.id)
-      });
-      
+      const allPharmacies = await storage.getPharmacies();
+      res.json(allPharmacies);
     } catch (err) {
-      console.error(err);
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
-        });
-      }
-      res.status(500).json({ message: "Erro ao identificar o medicamento." });
+      res.status(500).json({ message: "Failed to fetch pharmacies" });
+    }
+  });
+
+  app.post(api.orders.create.path, async (req, res) => {
+    try {
+      const order = await storage.createOrder(req.body);
+      // Aqui simularíamos o alerta para a farmácia
+      console.log(`ALERTA: Novo pedido para a farmácia ${order.pharmacyId}. Valor: ${order.total} AOA`);
+      res.status(201).json(order);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao criar pedido" });
+    }
+  });
+
+  app.get(api.orders.status.path, async (req, res) => {
+    try {
+      const order = await storage.getOrder(parseInt(req.params.id));
+      res.json(order);
+    } catch (err) {
+      res.status(500).json({ message: "Erro ao buscar pedido" });
     }
   });
 
@@ -114,6 +78,19 @@ Retorne um JSON estritamente neste formato:
 }
 
 async function seedDatabase() {
+  const pharmacyData = [
+    { name: "Farmácia de Luanda", address: "Rua Rainha Ginga, Luanda", lat: "-8.8147", lng: "13.2306" },
+    { name: "Farmácia Popular", address: "Avenida Comandante Valódia, Luanda", lat: "-8.8200", lng: "13.2400" },
+    { name: "Farmácia Central", address: "Largo do Kinaxixi, Luanda", lat: "-8.8100", lng: "13.2350" }
+  ];
+
+  const existingPharmacies = await storage.getPharmacies();
+  if (existingPharmacies.length === 0) {
+    for (const p of pharmacyData) {
+      await storage.createPharmacy(p);
+    }
+  }
+
   const seedData = [
     {
       name: "Paracetamol 500mg",

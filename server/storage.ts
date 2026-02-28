@@ -1,8 +1,13 @@
 import { db } from "./db";
 import {
   products,
+  pharmacies,
+  orders,
   type Product,
-  type InsertProduct
+  type InsertProduct,
+  type Pharmacy,
+  type Order,
+  type InsertOrder
 } from "@shared/schema";
 import { eq, ilike, sql } from "drizzle-orm";
 
@@ -11,6 +16,15 @@ export interface IStorage {
   getProduct(id: number): Promise<Product | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
   seedProducts(products: InsertProduct[]): Promise<void>;
+  
+  // Pharmacy methods
+  getPharmacies(): Promise<Pharmacy[]>;
+  createPharmacy(pharmacy: any): Promise<Pharmacy>;
+  
+  // Order methods
+  createOrder(order: InsertOrder): Promise<Order>;
+  getOrder(id: number): Promise<Order | undefined>;
+  updateOrderStatus(id: number, status: string): Promise<Order>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -38,6 +52,33 @@ export class DatabaseStorage implements IStorage {
     if (existing.length === 0) {
       await db.insert(products).values(seedData);
     }
+  }
+
+  async getPharmacies(): Promise<Pharmacy[]> {
+    return await db.select().from(pharmacies);
+  }
+
+  async createPharmacy(pharmacy: any): Promise<Pharmacy> {
+    const [newPharmacy] = await db.insert(pharmacies).values(pharmacy).returning();
+    return newPharmacy;
+  }
+
+  async createOrder(order: InsertOrder): Promise<Order> {
+    const [newOrder] = await db.insert(orders).values(order).returning();
+    return newOrder;
+  }
+
+  async getOrder(id: number): Promise<Order | undefined> {
+    const [order] = await db.select().from(orders).where(eq(orders.id, id));
+    return order;
+  }
+
+  async updateOrderStatus(id: number, status: string): Promise<Order> {
+    const [updated] = await db.update(orders)
+      .set({ status })
+      .where(eq(orders.id, id))
+      .returning();
+    return updated;
   }
 }
 
