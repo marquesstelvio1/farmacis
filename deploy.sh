@@ -21,7 +21,7 @@ fi
 
 # Instalar dependências
 echo "📦 Instalando dependências..."
-npm ci --only=production
+npm install --omit=dev --no-optional
 
 # Executar migrações do banco
 echo "🗄️ Executando migrações do banco..."
