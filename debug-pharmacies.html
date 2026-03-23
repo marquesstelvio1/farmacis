@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Farmácias</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Debug Farmácias</h1>
+    
+    <div class="section">
+        <h2>Farmácias Disponíveis</h2>
+        <div id="pharmacies">Carregando...</div>
+    </div>
+    
+    <div class="section">
+        <h2>Administradores das Farmácias</h2>
+        <div id="admins">Carregando...</div>
+    </div>
+
+    <script>
+        async function fetchData() {
+            try {
+                // Buscar farmácias
+                const pharmaciesResponse = await fetch('http://localhost:5001/api/pharmacy/list');
+                const pharmacies = await pharmaciesResponse.json();
+                document.getElementById('pharmacies').innerHTML = '<pre>' + JSON.stringify(pharmacies, null, 2) + '</pre>';
+                
+                // Buscar admins
+                const adminsResponse = await fetch('http://localhost:5001/api/pharmacy/admins');
+                const admins = await adminsResponse.json();
+                document.getElementById('admins').innerHTML = '<pre>' + JSON.stringify(admins, null, 2) + '</pre>';
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('pharmacies').innerHTML = '<p>Erro ao carregar dados</p>';
+                document.getElementById('admins').innerHTML = '<p>Erro ao carregar dados</p>';
+            }
+        }
+        
+        fetchData();
+    </script>
+</body>
+</html>

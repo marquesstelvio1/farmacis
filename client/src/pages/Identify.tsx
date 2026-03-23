@@ -9,7 +9,7 @@ import { ProductCard } from "@/components/ProductCard";
 export default function Identify() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
-  
+
   const { mutate: identifyPill, isPending, data: result, error, reset } = useIdentifyPill();
   const { data: allProducts, isLoading: isProductsLoading } = useProducts();
 
@@ -55,14 +55,14 @@ export default function Identify() {
   };
 
   // Filter products based on recommendedProductIds from AI
-  const recommendedProducts = allProducts?.filter(p => 
+  const recommendedProducts = allProducts?.filter(p =>
     result?.recommendedProductIds.includes(p.id)
   ) || [];
 
   return (
     <div className="w-full min-h-[calc(100vh-80px)] bg-slate-50 py-12">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-12">
           <span className="inline-block py-1 px-3 rounded-full bg-blue-100 text-blue-700 font-semibold text-sm mb-4">
@@ -78,7 +78,7 @@ export default function Identify() {
 
         <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
           <div className="grid grid-cols-1 md:grid-cols-2">
-            
+
             {/* Left Side: Upload Area */}
             <div className="p-8 md:p-12 border-b md:border-b-0 md:border-r border-slate-100 bg-slate-50/50">
               <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
@@ -93,22 +93,25 @@ export default function Identify() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    {...getRootProps()}
-                    className={`
-                      relative border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300
-                      ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-white hover:border-blue-400 hover:bg-blue-50/50'}
-                    `}
                   >
-                    <input {...getInputProps()} />
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 mb-4 shadow-sm">
-                      <UploadCloud size={32} />
+                    <div
+                      {...getRootProps()}
+                      className={`
+                        relative border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300
+                        ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-white hover:border-blue-400 hover:bg-blue-50/50'}
+                      `}
+                    >
+                      <input {...getInputProps()} />
+                      <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 mb-4 shadow-sm">
+                        <UploadCloud size={32} />
+                      </div>
+                      <p className="text-lg font-semibold text-slate-700 mb-2">
+                        {isDragActive ? 'Solte a imagem aqui...' : 'Arraste a foto ou clique'}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        Formatos suportados: JPEG, PNG, WEBP
+                      </p>
                     </div>
-                    <p className="text-lg font-semibold text-slate-700 mb-2">
-                      {isDragActive ? 'Solte a imagem aqui...' : 'Arraste a foto ou clique'}
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      Formatos suportados: JPEG, PNG, WEBP
-                    </p>
                   </motion.div>
                 ) : (
                   <motion.div
@@ -117,12 +120,12 @@ export default function Identify() {
                     animate={{ opacity: 1, scale: 1 }}
                     className="relative rounded-2xl overflow-hidden shadow-md border border-slate-200 bg-black aspect-square flex items-center justify-center"
                   >
-                    <img 
-                      src={imagePreview} 
-                      alt="Preview" 
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
                       className="w-full h-full object-cover opacity-80"
                     />
-                    
+
                     {isPending && (
                       <div className="absolute inset-0 flex items-center justify-center bg-blue-900/40 backdrop-blur-sm z-10">
                         <div className="scan-line"></div>
@@ -135,13 +138,13 @@ export default function Identify() {
 
                     {!isPending && !result && (
                       <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-3">
-                        <button 
+                        <button
                           onClick={(e) => { e.stopPropagation(); handleReset(); }}
                           className="px-4 py-2 bg-white text-slate-700 font-semibold rounded-xl shadow-lg hover:bg-slate-100 transition-colors"
                         >
                           Trocar Foto
                         </button>
-                        <button 
+                        <button
                           onClick={(e) => { e.stopPropagation(); handleIdentify(); }}
                           className="px-6 py-2 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-colors"
                         >
@@ -238,7 +241,7 @@ export default function Identify() {
                     </div>
                   </div>
 
-                  <button 
+                  <button
                     onClick={handleReset}
                     className="w-full py-3 mt-4 text-slate-500 font-semibold hover:bg-slate-100 rounded-xl transition-colors"
                   >
@@ -252,7 +255,7 @@ export default function Identify() {
 
         {/* Recommended Products Section */}
         {result && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
@@ -276,12 +279,12 @@ export default function Identify() {
                 ))}
               </div>
             ) : (
-               <div className="bg-white p-8 rounded-2xl text-center border border-slate-200">
-                 <p className="text-slate-500 text-lg">Infelizmente, não encontramos este produto específico em nosso catálogo no momento.</p>
-                 <button onClick={() => window.location.href="/"} className="mt-4 text-blue-600 font-semibold hover:underline">
-                   Ver todo o catálogo
-                 </button>
-               </div>
+              <div className="bg-white p-8 rounded-2xl text-center border border-slate-200">
+                <p className="text-slate-500 text-lg">Infelizmente, não encontramos este produto específico em nosso catálogo no momento.</p>
+                <button onClick={() => window.location.href = "/"} className="mt-4 text-blue-600 font-semibold hover:underline">
+                  Ver todo o catálogo
+                </button>
+              </div>
             )}
           </motion.div>
         )}

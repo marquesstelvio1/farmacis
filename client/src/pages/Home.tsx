@@ -58,13 +58,13 @@ export default function Home() {
                   <Search size={20} />
                   Identificar Comprimido
                 </Link>
-                <a 
-                  href="#catalog" 
+                <Link 
+                  href="/catalog" 
                   className="px-8 py-4 rounded-2xl bg-slate-800 border border-slate-700 text-white font-semibold flex items-center justify-center gap-2 hover:bg-slate-700 transition-colors"
                 >
                   Ver Catálogo
                   <ChevronRight size={20} className="text-slate-400" />
-                </a>
+                </Link>
               </div>
             </motion.div>
           </div>
