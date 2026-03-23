@@ -1,12 +1,5 @@
 import type { Config } from "tailwindcss";
 
-let tailwindAnimate: any;
-try {
-  tailwindAnimate = require("tailwindcss-animate");
-} catch {
-  tailwindAnimate = () => {};
-}
-
 export default {
   darkMode: ["class"],
   content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
@@ -110,5 +103,5 @@ export default {
       },
     },
   },
-  plugins: [tailwindAnimate, require("@tailwindcss/typography")],
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 } satisfies Config;
