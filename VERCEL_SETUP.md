@@ -22,6 +22,15 @@ client
 - **Output Directory:** `dist`
 - **Install Command:** `npm install`
 
+### ⚠️ Importante: Dependências
+
+Certifique-se de que todas as dependências usadas no frontend (incluindo plugins do Tailwind como `tailwindcss-animate`) estão listadas no `package.json` dentro da pasta `client`.
+
+Se o build falhar com "Cannot find module", instale a dependência na pasta cliente:
+```bash
+cd client && npm install tailwindcss-animate
+```
+
 ## 3️⃣ Variáveis de Ambiente
 
 Adicione as seguintes variáveis de ambiente no Vercel:
