@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+const API_URL = import.meta.env.VITE_API_URL || ''
+
 interface PharmacyUser {
   id: number
   email: string
@@ -24,12 +26,12 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       login: async (email: string, password: string) => {
         try {
-          const response = await fetch('/api/pharmacy/admin/login', {
+          const response = await fetch(`${API_URL}/api/pharmacy/admin/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password }),
           })
-          
+
           if (response.ok) {
             const data = await response.json()
             set({ user: data.user, isAuthenticated: true })
