@@ -9,20 +9,11 @@ const httpServer = createServer(app);
 
 // Enable CORS
 app.use((req, res, next) => {
-  const allowedOrigins = [
-    'http://localhost:5173', // web-admin
-    'http://localhost:5174', // web-farmacia
-    'http://localhost:5175', // client
-    'http://localhost:5180', // client (alternative port)
-    process.env.FRONTEND_URL, // Production frontend URL
-    process.env.APP_URL // Alternative frontend URL
-  ].filter(Boolean); // Remove undefined values
-
   const origin = req.headers.origin;
-  const isRenderOrigin = origin && origin.endsWith('.onrender.com');
-
-  if (allowedOrigins.includes(origin) || isRenderOrigin || process.env.NODE_ENV === 'development') {
-    res.header('Access-Control-Allow-Origin', origin || '*');
+  if (origin) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else {
+    res.header('Access-Control-Allow-Origin', '*');
   }
 
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
