@@ -19,7 +19,9 @@ app.use((req, res, next) => {
   ].filter(Boolean); // Remove undefined values
 
   const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
+  const isRenderOrigin = origin && origin.endsWith('.onrender.com');
+
+  if (allowedOrigins.includes(origin) || isRenderOrigin || process.env.NODE_ENV === 'development') {
     res.header('Access-Control-Allow-Origin', origin || '*');
   }
 
@@ -88,13 +90,13 @@ app.use((req, res, next) => {
 
 export const initPromise = (async () => {
   await registerRoutes(httpServer, app);
-  
+
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-    
+
     console.error("Internal Server Error:", err);
-    
+
     if (res.headersSent) {
       return next(err);
     }
@@ -120,7 +122,7 @@ export const initPromise = (async () => {
     // It is the only port that is not firewalled.
     const port = parseInt(process.env.PORT || "5000", 10);
     const host = process.env.HOST || "0.0.0.0";
-    
+
     httpServer.listen(
       {
         port,
