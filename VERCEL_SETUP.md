@@ -28,7 +28,7 @@ Certifique-se de que todas as dependências usadas no frontend (incluindo plugin
 
 Se o build falhar com "Cannot find module", instale a dependência na pasta cliente:
 ```bash
-cd client && npm install tailwindcss-animate
+cd client && npm install tailwindcss-animate react-dropzone
 ```
 
 ## 3️⃣ Variáveis de Ambiente
