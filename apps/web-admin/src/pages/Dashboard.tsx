@@ -50,7 +50,7 @@ export default function Dashboard() {
   const { data: stats, isLoading } = useQuery<DashboardStats>({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
-      const response = await fetch('/api/admin/dashboard-stats')
+      const response = await fetch(import.meta.env.VITE_API_URL + '/api/admin/dashboard-stats')
       if (!response.ok) throw new Error('Failed to fetch stats')
       return response.json()
     },

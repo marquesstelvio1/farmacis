@@ -45,7 +45,7 @@ export default function Layout({ children }: LayoutProps) {
    const fetchPendingCount = async () => {
      try {
        if (!user?.pharmacyId) return;
-       const response = await fetch(`/api/pharmacy/${user.pharmacyId}/orders/pending-count`)
+       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pharmacy/${user.pharmacyId}/orders/pending-count`)
        if (response.ok) {
          const data = await response.json()
          setNewOrdersCount(data.count)

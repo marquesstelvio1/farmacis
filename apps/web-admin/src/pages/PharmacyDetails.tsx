@@ -59,7 +59,7 @@ export default function PharmacyDetails() {
   const { data: pharmacy, isLoading } = useQuery<PharmacyDetails>({
     queryKey: ['pharmacy', id],
     queryFn: async () => {
-      const response = await fetch(`/api/admin/pharmacies/${id}`)
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/pharmacies/${id}`)
       if (!response.ok) throw new Error('Failed to fetch pharmacy')
       return response.json()
     },

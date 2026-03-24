@@ -68,7 +68,7 @@ export default function Pharmacies() {
   const { data: pharmacies, isLoading } = useQuery<Pharmacy[]>({
     queryKey: ['pharmacies'],
     queryFn: async () => {
-      const response = await fetch('/api/admin/pharmacies')
+      const response = await fetch(import.meta.env.VITE_API_URL + '/api/admin/pharmacies')
       if (!response.ok) throw new Error('Failed to fetch pharmacies')
       return response.json()
     },
@@ -76,7 +76,7 @@ export default function Pharmacies() {
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      const response = await fetch(`/api/admin/pharmacies/${id}/status`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/pharmacies/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
@@ -95,7 +95,7 @@ export default function Pharmacies() {
 
   const registerMutation = useMutation({
     mutationFn: async (data: Partial<Pharmacy>) => {
-      const response = await fetch('/api/admin/pharmacies', {
+      const response = await fetch(import.meta.env.VITE_API_URL + '/api/admin/pharmacies', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -119,7 +119,7 @@ export default function Pharmacies() {
   const fetchCredsMutation = useMutation({
     mutationFn: async (id: number) => {
       setLoadingCreds(true)
-      const response = await fetch(`/api/admin/pharmacies/${id}/credentials`)
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/pharmacies/${id}/credentials`)
       if (!response.ok) throw new Error('Falha ao buscar credenciais')
       return response.json()
     },
@@ -135,7 +135,7 @@ export default function Pharmacies() {
 
   const resetPasswordMutation = useMutation({
     mutationFn: async ({ pharmacyId, adminId }: { pharmacyId: number; adminId: number }) => {
-      const response = await fetch(`/api/admin/pharmacies/${pharmacyId}/reset-password`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/pharmacies/${pharmacyId}/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ adminId }),

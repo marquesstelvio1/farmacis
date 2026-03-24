@@ -51,7 +51,7 @@ export default function ImageUpload({ value, onChange, placeholder = "Carregar i
         })
       }, 200)
 
-      const response = await fetch('/api/upload/product-image', {
+      const response = await fetch(import.meta.env.VITE_API_URL + '/api/upload/product-image', {
         method: 'POST',
         body: formData
       })

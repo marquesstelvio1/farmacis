@@ -19,7 +19,7 @@ export default function Settings() {
     setIsLoading(true)
 
     try {
-      const response = await fetch('/api/pharmacy/settings', {
+      const response = await fetch(import.meta.env.VITE_API_URL + '/api/pharmacy/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

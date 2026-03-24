@@ -95,7 +95,7 @@ export default function PharmacyCatalog() {
     mutationFn: async (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'pharmacyId'>) => {
       if (!user?.pharmacyId) throw new Error('Not authenticated')
       
-      const response = await fetch(`/api/pharmacy/${user.pharmacyId}/products`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pharmacy/${user.pharmacyId}/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(productData)
@@ -115,7 +115,7 @@ export default function PharmacyCatalog() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...productData }: Partial<Product> & { id: number }) => {
-      const response = await fetch(`/api/products/${id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(productData)
@@ -135,7 +135,7 @@ export default function PharmacyCatalog() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/products/${id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products/${id}`, {
         method: 'DELETE'
       })
       if (!response.ok) throw new Error('Failed to delete product')

@@ -22,7 +22,7 @@ export default function AdminBalance() {
   const { data: balanceData, isLoading } = useQuery<AdminBalanceData>({
     queryKey: ['admin-balance', timeRange],
     queryFn: async () => {
-      const response = await fetch(`/api/admin/balance?days=${timeRange}`)
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/balance?days=${timeRange}`)
       if (!response.ok) throw new Error('Failed to fetch balance')
       return response.json()
     },

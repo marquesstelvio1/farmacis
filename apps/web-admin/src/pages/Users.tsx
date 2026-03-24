@@ -17,7 +17,7 @@ export default function Users() {
   const { data: users, isLoading } = useQuery<User[]>({
     queryKey: ['admin-users'],
     queryFn: async () => {
-      const response = await fetch('/api/admin/users')
+      const response = await fetch(import.meta.env.VITE_API_URL + '/api/admin/users')
       if (!response.ok) throw new Error('Failed to fetch users')
       return response.json()
     },

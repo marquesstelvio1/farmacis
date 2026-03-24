@@ -46,7 +46,7 @@ export default function Dashboard() {
    queryKey: ['pharmacy-dashboard', user?.pharmacyId],
    queryFn: async () => {
    if (!user?.pharmacyId) throw new Error('Pharmacy ID not found')
-   const response = await fetch(`/api/pharmacy/${user.pharmacyId}/dashboard-stats`)
+   const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pharmacy/${user.pharmacyId}/dashboard-stats`)
    if (!response.ok) throw new Error('Failed to fetch stats')
    return response.json()
    },

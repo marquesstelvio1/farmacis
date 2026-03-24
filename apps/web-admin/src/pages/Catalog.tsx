@@ -76,7 +76,7 @@ export default function Catalog() {
       if (selectedCategory) params.append('category', selectedCategory)
       if (selectedStatus) params.append('status', selectedStatus)
       
-      const response = await fetch(`/api/products?${params}`)
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products?${params}`)
       if (!response.ok) throw new Error('Failed to fetch products')
       return response.json()
     }
@@ -84,7 +84,7 @@ export default function Catalog() {
 
   const createMutation = useMutation({
     mutationFn: async (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
-      const response = await fetch('/api/products', {
+      const response = await fetch(import.meta.env.VITE_API_URL + '/api/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(productData)
@@ -104,7 +104,7 @@ export default function Catalog() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...productData }: Partial<Product> & { id: number }) => {
-      const response = await fetch(`/api/products/${id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(productData)
@@ -124,7 +124,7 @@ export default function Catalog() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/products/${id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products/${id}`, {
         method: 'DELETE'
       })
       if (!response.ok) throw new Error('Failed to delete product')

@@ -80,7 +80,7 @@ export default function Orders() {
    queryKey: ['pharmacy-orders', user?.pharmacyId],
    queryFn: async () => {
    if (!user?.pharmacyId) throw new Error('Pharmacy ID not found')
-  const response = await fetch(`/api/pharmacy/${user.pharmacyId}/orders`)
+  const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pharmacy/${user.pharmacyId}/orders`)
   if (!response.ok) throw new Error('Failed to fetch orders')
   return response.json()
    },
@@ -88,7 +88,7 @@ export default function Orders() {
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ orderId, status }: { orderId: number; status: string }) => {
-      const response = await fetch(`/api/pharmacy/orders/${orderId}/status`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pharmacy/orders/${orderId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),

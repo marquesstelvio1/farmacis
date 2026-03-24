@@ -57,7 +57,7 @@ export default function Orders() {
   const { data: orders, isLoading } = useQuery<Order[]>({
     queryKey: ['admin-orders'],
     queryFn: async () => {
-      const response = await fetch('/api/admin/orders')
+      const response = await fetch(import.meta.env.VITE_API_URL + '/api/admin/orders')
       if (!response.ok) throw new Error('Failed to fetch orders')
       return response.json()
     },

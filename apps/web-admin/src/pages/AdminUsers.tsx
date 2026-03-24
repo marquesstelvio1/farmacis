@@ -29,7 +29,7 @@ export default function AdminUsers() {
   const { data: adminUsers, isLoading } = useQuery<AdminUser[]>({
     queryKey: ['admin-users'],
     queryFn: async () => {
-      const response = await fetch('/api/admin/admin-users')
+      const response = await fetch(import.meta.env.VITE_API_URL + '/api/admin/admin-users')
       if (!response.ok) throw new Error('Failed to fetch admin users')
       return response.json()
     },
@@ -37,7 +37,7 @@ export default function AdminUsers() {
 
   const createAdminMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const response = await fetch('/api/admin/admin-users', {
+      const response = await fetch(import.meta.env.VITE_API_URL + '/api/admin/admin-users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -58,7 +58,7 @@ export default function AdminUsers() {
 
   const updateAdminMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<typeof formData> }) => {
-      const response = await fetch(`/api/admin/admin-users/${id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/admin-users/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -80,7 +80,7 @@ export default function AdminUsers() {
 
   const deleteAdminMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/admin/admin-users/${id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/admin-users/${id}`, {
         method: 'DELETE',
       })
       if (!response.ok) throw new Error('Failed to delete admin user')

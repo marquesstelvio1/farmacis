@@ -31,7 +31,7 @@ export default function Balance() {
   const { data: balance, isLoading: balanceLoading } = useQuery<BalanceData>({
     queryKey: ['pharmacy-balance', user?.pharmacyId, timeRange],
     queryFn: async () => {
-      const response = await fetch(`/api/pharmacy/${user?.pharmacyId}/balance?days=${timeRange}`)
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pharmacy/${user?.pharmacyId}/balance?days=${timeRange}`)
       if (!response.ok) throw new Error('Failed to fetch balance')
       return response.json()
     },
@@ -41,7 +41,7 @@ export default function Balance() {
   const { data: recentOrders, isLoading: ordersLoading } = useQuery<Order[]>({
     queryKey: ['pharmacy-recent-orders', user?.pharmacyId],
     queryFn: async () => {
-      const response = await fetch(`/api/pharmacy/${user?.pharmacyId}/orders?limit=10`)
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pharmacy/${user?.pharmacyId}/orders?limit=10`)
       if (!response.ok) throw new Error('Failed to fetch orders')
       return response.json()
     },

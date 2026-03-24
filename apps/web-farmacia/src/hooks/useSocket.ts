@@ -16,7 +16,7 @@ export function useSocket(pharmacyId: number | undefined) {
     if (!pharmacyId) return
 
     // Connect to WebSocket server
-    const socket = io('/', {
+    const socket = io(import.meta.env.VITE_API_URL, {
       path: '/socket.io',
       transports: ['websocket'],
     })

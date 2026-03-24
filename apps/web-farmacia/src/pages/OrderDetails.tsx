@@ -98,7 +98,7 @@ export default function OrderDetails() {
   const { data: order, isLoading } = useQuery<OrderDetails>({
     queryKey: ['order', id],
     queryFn: async () => {
-      const response = await fetch(`/api/pharmacy/orders/${id}`)
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pharmacy/orders/${id}`)
       if (!response.ok) throw new Error('Failed to fetch order')
       return response.json()
     },
@@ -106,7 +106,7 @@ export default function OrderDetails() {
 
   const updateStatusMutation = useMutation({
     mutationFn: async (status: string) => {
-      const response = await fetch(`/api/pharmacy/orders/${id}/status`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pharmacy/orders/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status, adminId: user.id }),
