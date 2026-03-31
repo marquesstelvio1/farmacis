@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 export interface PaymentMethod {
   id: number;
   userId: number;
-  type: "multicaixa" | "mpesa" | "unitel_money" | "bank_transfer" | "stripe";
+  type: "multicaixa" | "bank_transfer";
   name: string;
   phoneNumber?: string;
   cardNumber?: string;

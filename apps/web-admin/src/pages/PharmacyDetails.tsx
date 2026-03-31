@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import {
   ArrowLeft,
   MapPin,
@@ -7,7 +9,11 @@ import {
   Mail,
   Clock,
   FileText,
-  ExternalLink
+  ExternalLink,
+  CreditCard,
+  CheckCircle2,
+  AlertCircle,
+  Edit2
 } from 'lucide-react'
 
 interface PharmacyDetails {
@@ -26,6 +32,8 @@ interface PharmacyDetails {
   createdAt: string
   ordersCount: number
   totalRevenue: string
+  iban?: string
+  multicaixaExpress?: string
 }
 
 const statusLabels: Record<string, string> = {
@@ -55,6 +63,12 @@ const weekDays: Record<string, string> = {
 export default function PharmacyDetails() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const [showPaymentEdit, setShowPaymentEdit] = useState(false)
+  const [paymentForm, setPaymentForm] = useState({
+    iban: '',
+    multicaixaExpress: ''
+  })
 
   const { data: pharmacy, isLoading } = useQuery<PharmacyDetails>({
     queryKey: ['pharmacy', id],
@@ -64,6 +78,38 @@ export default function PharmacyDetails() {
       return response.json()
     },
   })
+
+  const updatePaymentMutation = useMutation({
+    mutationFn: async (data: { iban: string; multicaixaExpress: string }) => {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/pharmacies/${id}/payment-info`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      if (!response.ok) throw new Error('Failed to update payment info')
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pharmacy', id] })
+      toast.success('Dados de pagamento atualizados!')
+      setShowPaymentEdit(false)
+    },
+    onError: () => {
+      toast.error('Erro ao atualizar dados de pagamento')
+    }
+  })
+
+  const handleEditPayment = () => {
+    setPaymentForm({
+      iban: pharmacy?.iban || '',
+      multicaixaExpress: pharmacy?.multicaixaExpress || ''
+    })
+    setShowPaymentEdit(true)
+  }
+
+  const handleSavePayment = () => {
+    updatePaymentMutation.mutate(paymentForm)
+  }
 
   if (isLoading) {
     return (
@@ -188,6 +234,94 @@ export default function PharmacyDetails() {
               </a>
             </div>
           )}
+
+          {/* Payment Info */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-green-600" />
+                Dados para Pagamento
+              </h2>
+              <button
+                onClick={handleEditPayment}
+                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                title="Editar"
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
+            </div>
+
+            {showPaymentEdit ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">IBAN</label>
+                  <input
+                    type="text"
+                    value={paymentForm.iban}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, iban: e.target.value })}
+                    placeholder="AO06 0040 0000 1234 5678 9101 2"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Multicaixa Express</label>
+                  <input
+                    type="text"
+                    value={paymentForm.multicaixaExpress}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, multicaixaExpress: e.target.value })}
+                    placeholder="+244 9XX XXX XXX"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowPaymentEdit(false)}
+                    className="flex-1 py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSavePayment}
+                    disabled={updatePaymentMutation.isPending}
+                    className="flex-1 py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {updatePaymentMutation.isPending ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    <span className="font-medium text-gray-700">IBAN</span>
+                  </div>
+                  {pharmacy.iban ? (
+                    <span className="font-mono text-sm text-gray-900">{pharmacy.iban}</span>
+                  ) : (
+                    <span className="text-sm text-gray-400 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      Não definido
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    <span className="font-medium text-gray-700">Multicaixa Express</span>
+                  </div>
+                  {pharmacy.multicaixaExpress ? (
+                    <span className="font-mono text-sm text-gray-900">{pharmacy.multicaixaExpress}</span>
+                  ) : (
+                    <span className="text-sm text-gray-400 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      Não definido
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Sidebar */}

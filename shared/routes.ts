@@ -81,6 +81,9 @@ export function buildUrl(path: string, params?: Record<string, string | number>)
   return url;
 }
 
-export type ProductResponse = typeof products.$inferSelect;
+export type ProductResponse = typeof products.$inferSelect & {
+  pharmacyName?: string;
+  pharmacyLogo?: string | null;
+};
 export type PillIdRequest = z.infer<typeof pillIdentificationRequestSchema>;
 export type PillIdResponse = z.infer<typeof pillIdentificationResponseSchema>;

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -9,7 +10,10 @@ import {
   User,
   Clock,
   CreditCard,
-  Package
+  Package,
+  AlertCircle,
+  CheckCircle,
+  Eye
 } from 'lucide-react'
 
 interface OrderDetails {
@@ -24,7 +28,10 @@ interface OrderDetails {
   status: string
   paymentMethod: string
   paymentStatus: string
+  paymentProof?: string
   notes?: string
+  pharmacyIban?: string
+  pharmacyMulticaixaExpress?: string
   createdAt: string
   items: Array<{
     productName: string
@@ -37,6 +44,8 @@ interface OrderDetails {
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
   accepted: 'bg-blue-100 text-blue-800',
+  awaiting_proof: 'bg-amber-100 text-amber-800',
+  proof_submitted: 'bg-blue-100 text-blue-800',
   preparing: 'bg-purple-100 text-purple-800',
   ready: 'bg-indigo-100 text-indigo-800',
   out_for_delivery: 'bg-orange-100 text-orange-800',
@@ -48,6 +57,8 @@ const statusColors: Record<string, string> = {
 const statusLabels: Record<string, string> = {
   pending: 'Pendente',
   accepted: 'Aceito',
+  awaiting_proof: 'Aguardando Comprovativo',
+  proof_submitted: 'Comprovativo Enviado',
   preparing: 'Preparando',
   ready: 'Pronto',
   out_for_delivery: 'Em entrega',
@@ -59,6 +70,8 @@ const statusLabels: Record<string, string> = {
 const nextStatusMap: Record<string, string> = {
   pending: 'accepted',
   accepted: 'preparing',
+  awaiting_proof: 'preparing',
+  proof_submitted: 'preparing',
   preparing: 'ready',
   ready: 'out_for_delivery',
   out_for_delivery: 'delivered',
@@ -67,6 +80,8 @@ const nextStatusMap: Record<string, string> = {
 const statusActions: Record<string, { label: string; color: string }> = {
   pending: { label: 'Aceitar Pedido', color: 'bg-green-600 hover:bg-green-700' },
   accepted: { label: 'Iniciar Preparo', color: 'bg-purple-600 hover:bg-purple-700' },
+  awaiting_proof: { label: 'Iniciar Preparo', color: 'bg-purple-600 hover:bg-purple-700' },
+  proof_submitted: { label: 'Iniciar Preparo', color: 'bg-purple-600 hover:bg-purple-700' },
   preparing: { label: 'Marcar como Pronto', color: 'bg-indigo-600 hover:bg-indigo-700' },
   ready: { label: 'Saiu para Entrega', color: 'bg-orange-600 hover:bg-orange-700' },
   out_for_delivery: { label: 'Marcar como Entregue', color: 'bg-green-600 hover:bg-green-700' },
@@ -77,6 +92,13 @@ export default function OrderDetails() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { user, isAuthenticated } = useAuthStore()
+  const [showProofModal, setShowProofModal] = useState(false)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [paymentInfo, setPaymentInfo] = useState({
+    iban: '',
+    multicaixaExpress: ''
+  })
+
 
   if (!isAuthenticated || !user) {
     return (
@@ -104,12 +126,24 @@ export default function OrderDetails() {
     },
   })
 
+  // Fetch pharmacy payment info
+  const { data: paymentInfoData } = useQuery({
+    queryKey: ['pharmacy-payment-info', user?.pharmacyId],
+    queryFn: async () => {
+      if (!user?.pharmacyId) return null
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/pharmacies/${user.pharmacyId}/payment-info`)
+      if (!response.ok) throw new Error('Failed to fetch payment info')
+      return response.json()
+    },
+    enabled: !!user?.pharmacyId
+  })
+
   const updateStatusMutation = useMutation({
-    mutationFn: async (status: string) => {
+    mutationFn: async ({ status, paymentData }: { status: string; paymentData?: { iban?: string; multicaixaExpress?: string; paymentStatus?: string } }) => {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pharmacy/orders/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, adminId: user.id }),
+        body: JSON.stringify({ status, adminId: user.id, ...paymentData }),
       })
       if (!response.ok) throw new Error('Failed to update status')
       return response.json()
@@ -118,11 +152,41 @@ export default function OrderDetails() {
       queryClient.invalidateQueries({ queryKey: ['order', id] })
       queryClient.invalidateQueries({ queryKey: ['pharmacy-orders'] })
       toast.success('Status atualizado!')
+      setShowPaymentModal(false)
     },
     onError: () => {
       toast.error('Erro ao atualizar status')
     },
   })
+
+  const handleAcceptOrder = () => {
+    // If payment method is not cash and no payment info is set, show modal
+    if (order.paymentMethod !== 'cash') {
+      if (paymentInfoData?.hasIban || paymentInfoData?.hasMulticaixaExpress) {
+        setPaymentInfo({
+          iban: paymentInfoData.iban || '',
+          multicaixaExpress: paymentInfoData.multicaixaExpress || ''
+        })
+      } else {
+        setPaymentInfo({ iban: '', multicaixaExpress: '' })
+      }
+      setShowPaymentModal(true)
+    } else {
+      updateStatusMutation.mutate({ status: 'accepted' })
+    }
+  }
+
+  const handleConfirmAccept = () => {
+    // If electronic payment, status is "awaiting_proof", otherwise "accepted"
+    const newStatus = order.paymentMethod !== 'cash' ? 'awaiting_proof' : 'accepted'
+    updateStatusMutation.mutate({
+      status: newStatus,
+      paymentData: {
+        iban: paymentInfo.iban || undefined,
+        multicaixaExpress: paymentInfo.multicaixaExpress || undefined
+      }
+    })
+  }
 
   if (isLoading) {
     return (
@@ -148,6 +212,13 @@ export default function OrderDetails() {
 
   const action = statusActions[order.status]
   const canReject = order.status === 'pending'
+  
+  // Bloquear avanço se pagamento não for "cash" e status for awaiting_proof ou proof_submitted
+  const isElectronicPayment = order.paymentMethod !== 'cash'
+  const isPendingProof = isElectronicPayment && (order.status === 'awaiting_proof' || order.status === 'proof_submitted')
+  
+  // Só pode avançar para "preparing" se não for pagamento pendente de comprovativo
+  const canProceed = !isPendingProof
 
   return (
     <div className="space-y-6">
@@ -241,22 +312,75 @@ export default function OrderDetails() {
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Payment Status Warning */}
+          {isPendingProof && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-amber-800">Pagamento Pendente</p>
+                  <p className="text-sm text-amber-700 mt-1">
+                    {order.status === 'awaiting_proof' ? (
+                      <>
+                        O cliente ainda não enviou o comprovativo de pagamento. O pedido só avançará após análise do comprovativo.
+                      </>
+                    ) : (
+                      <>
+                        O cliente enviou o comprovativo. Analise e confirme ou recuse.
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Proof Verification Actions */}
+          {order.status === 'proof_submitted' && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Analisar Comprovativo</h2>
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    updateStatusMutation.mutate({ 
+                      status: 'preparing',
+                      paymentData: { paymentStatus: 'paid' }
+                    })
+                  }}
+                  disabled={updateStatusMutation.isPending}
+                  className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <CheckCircle className="w-5 h-5" />
+                  Confirmar Pagamento
+                </button>
+                <button
+                  onClick={() => updateStatusMutation.mutate({ status: 'awaiting_proof' })}
+                  disabled={updateStatusMutation.isPending}
+                  className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                >
+                  Recusar Comprovativo
+                </button>
+              </div>
+            </div>
+          )}
+          
           {/* Actions */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Ações</h2>
             <div className="space-y-3">
-              {action && (
+              {action && order.status !== 'proof_submitted' && (
                 <button
-                  onClick={() => updateStatusMutation.mutate(nextStatusMap[order.status])}
-                  disabled={updateStatusMutation.isPending}
-                  className={`w-full py-3 px-4 text-white font-medium rounded-lg transition-colors disabled:opacity-50 ${action.color}`}
+                  onClick={() => order.status === 'pending' ? handleAcceptOrder() : updateStatusMutation.mutate({ status: nextStatusMap[order.status] })}
+                  disabled={updateStatusMutation.isPending || !canProceed}
+                  className={`w-full py-3 px-4 text-white font-medium rounded-lg transition-colors disabled:opacity-50 ${canProceed ? action.color : 'bg-gray-400 cursor-not-allowed'}`}
+                  title={!canProceed ? 'Aguarde confirmação do pagamento' : ''}
                 >
                   {action.label}
                 </button>
               )}
               {canReject && (
                 <button
-                  onClick={() => updateStatusMutation.mutate('rejected')}
+                  onClick={() => updateStatusMutation.mutate({ status: 'rejected' })}
                   disabled={updateStatusMutation.isPending}
                   className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
                 >
@@ -306,7 +430,12 @@ export default function OrderDetails() {
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <CreditCard className="w-5 h-5 text-gray-400" />
-                <span className="text-gray-900 capitalize">{order.paymentMethod}</span>
+                <span className="text-gray-900 capitalize">
+                  {order.paymentMethod === 'cash' ? 'Pagamento na Entrega' : 
+                   order.paymentMethod === 'multicaixa_express' ? 'Multicaixa Express' : 
+                   order.paymentMethod === 'transferencia' ? 'Transferência Bancária' : 
+                   order.paymentMethod}
+                </span>
               </div>
               <div className="flex items-center gap-3">
                 <Clock className="w-5 h-5 text-gray-400" />
@@ -314,10 +443,145 @@ export default function OrderDetails() {
                   {new Date(order.createdAt).toLocaleString('pt-BR')}
                 </span>
               </div>
+              
+              {/* Payment Proof Section */}
+              {order.paymentProof && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <p className="text-sm font-medium text-gray-700 mb-2">Comprovativo:</p>
+                  <button
+                    onClick={() => setShowProofModal(true)}
+                    className="w-full py-2 px-4 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Eye className="w-4 h-4" />
+                    Ver Comprovativo
+                  </button>
+                </div>
+              )}
+              
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <div className="flex items-center gap-2 mb-3">
+                  {order.paymentStatus === 'paid' ? (
+                    <>
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <span className="font-medium text-green-700">Pagamento Confirmado</span>
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="w-5 h-5 text-amber-600" />
+                      <span className="font-medium text-amber-700">Aguardando Pagamento</span>
+                    </>
+                  )}
+                </div>
+                {order.paymentStatus !== 'paid' && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pharmacy/orders/${order.id}/mark-paid`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ adminId: user?.id }),
+                        });
+                        if (response.ok) {
+                          toast.success('Pagamento confirmado!');
+                          queryClient.invalidateQueries({ queryKey: ['order', id] });
+                        } else {
+                          toast.error('Erro ao confirmar pagamento');
+                        }
+                      } catch (error) {
+                        toast.error('Erro ao confirmar pagamento');
+                      }
+                    }}
+                    className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
+                  >
+                    Confirmar Pagamento
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Payment Info Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Informação de Pagamento</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Forneça os dados para receber o pagamento eletrónico:
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">IBAN</label>
+                <input
+                  type="text"
+                  value={paymentInfo.iban}
+                  onChange={(e) => setPaymentInfo({ ...paymentInfo, iban: e.target.value })}
+                  placeholder="AO06 0040 0001 1234 5678 9101 4"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Multicaixa Express</label>
+                <input
+                  type="text"
+                  value={paymentInfo.multicaixaExpress}
+                  onChange={(e) => setPaymentInfo({ ...paymentInfo, multicaixaExpress: e.target.value })}
+                  placeholder="+244 923 456 789"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmAccept}
+                disabled={updateStatusMutation.isPending}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+              >
+                {updateStatusMutation.isPending ? 'A processar...' : 'Aceitar Pedido'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Proof Modal */}
+      {showProofModal && order?.paymentProof && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-2xl w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Comprovativo de Pagamento</h3>
+              <button
+                onClick={() => setShowProofModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex justify-center">
+              {order.paymentProof.endsWith('.pdf') ? (
+                <iframe
+                  src={order.paymentProof}
+                  className="w-full h-96 rounded-lg border border-gray-200"
+                  title="Payment Proof"
+                />
+              ) : (
+                <img
+                  src={order.paymentProof}
+                  alt="Payment Proof"
+                  className="max-w-full max-h-96 rounded-lg"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

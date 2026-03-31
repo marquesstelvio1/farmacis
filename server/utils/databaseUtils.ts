@@ -12,6 +12,7 @@ export async function ensureProductColumns() {
       { name: 'stock', type: 'INTEGER DEFAULT 0' },
       { name: 'pharmacy_id', type: 'INTEGER' },
       { name: 'status', type: 'TEXT DEFAULT \'active\'' },
+      { name: 'preco_base', type: 'NUMERIC' },
       { name: 'created_at', type: 'TIMESTAMP DEFAULT NOW()' },
       { name: 'updated_at', type: 'TIMESTAMP DEFAULT NOW()' }
     ];

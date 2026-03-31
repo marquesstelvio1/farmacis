@@ -8,6 +8,8 @@ import {
   Package,
   CheckCircle,
   XCircle,
+  Calendar,
+  ShoppingBag,
   Clock,
   DollarSign,
   TrendingUp,
@@ -104,15 +106,17 @@ function PharmacyLoginScreen({ onLogin }: { onLogin: (admin: any) => void }) {
 interface Order {
   customerLng: any;
   customerLat: any;
-  customerAddress: ReactNode;
-  customerPhone: string;
+  customerAddress: string;
+  customerPhone?: string;
   id: number;
   pharmacyId: number;
   customerName: string;
   total: string;
-  status: "pending" | "accepted" | "rejected" | "paid" | "processing" | "shipped" | "delivered";
+  status: "pending" | "accepted" | "rejected" | "paid" | "processing" | "shipped" | "delivered" | "ready";
   paymentMethod: string;
-  items: string;
+  bookingType: string;
+  scheduledTime?: string;
+  items?: any[];
   createdAt: string;
   history?: OrderHistory[];
 }
@@ -145,6 +149,7 @@ const statusConfig = {
   paid: { label: "Pago", color: "bg-green-100 text-green-700", icon: DollarSign },
   processing: { label: "Em Processamento", color: "bg-purple-100 text-purple-700", icon: Package },
   shipped: { label: "Enviado", color: "bg-indigo-100 text-indigo-700", icon: Truck },
+  ready: { label: "Pronto para Levantamento", color: "bg-indigo-100 text-indigo-700", icon: CheckCircle },
   delivered: { label: "Entregue", color: "bg-teal-100 text-teal-700", icon: CheckCircle },
 };
 
@@ -509,6 +514,7 @@ export default function PharmacyAdmin() {
                 <TabsTrigger value="paid">Pagos</TabsTrigger>
                 <TabsTrigger value="processing">Processando</TabsTrigger>
                 <TabsTrigger value="shipped">Enviados</TabsTrigger>
+                <TabsTrigger value="ready">Prontos</TabsTrigger>
                 <TabsTrigger value="delivered">Entregues</TabsTrigger>
                 <TabsTrigger value="rejected">Recusados</TabsTrigger>
               </TabsList>
@@ -588,6 +594,16 @@ export default function PharmacyAdmin() {
                 </div>
               </div>
 
+              {selectedOrder.scheduledTime && (
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-center gap-3">
+                  <Calendar className="text-blue-600 w-5 h-5" />
+                  <div>
+                    <p className="text-xs font-bold text-blue-700 uppercase">AGENDAMENTO</p>
+                    <p className="text-sm font-semibold text-blue-900">{formatDate(selectedOrder.scheduledTime)}</p>
+                  </div>
+                </div>
+              )}
+
               <div className="bg-slate-50 rounded-lg p-3">
                 <p className="text-sm text-slate-500 flex items-center gap-2 mb-1">
                   <MapPin className="w-3.5 h-3.5 text-blue-600" />
@@ -611,16 +627,23 @@ export default function PharmacyAdmin() {
                 <Badge className={statusConfig[selectedOrder.status]?.color}>
                   {statusConfig[selectedOrder.status]?.label}
                 </Badge>
+                <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100">
+                  {selectedOrder.bookingType === 'pickup' ? 'Levantamento (Reserva)' : 'Entrega Domicílio'}
+                </Badge>
+                {selectedOrder.bookingType === 'pickup' && (
+                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 font-mono">
+                    REF: REC-{selectedOrder.id}-{new Date(selectedOrder.createdAt).getFullYear()}
+                  </Badge>
+                )}
                 <Badge variant="outline" className="capitalize">
                   {selectedOrder.paymentMethod.replace('_', ' ')}
                 </Badge>
               </div>
 
+              {/* Itens do Pedido */}
               <div>
                 <p className="text-sm text-slate-500 mb-2 font-medium">Itens do Pedido</p>
                 <div className="bg-slate-50 rounded-lg p-3 space-y-2">
-                  {console.log('Selected order for details:', selectedOrder)}
-                  {console.log('Selected order items:', selectedOrder.items)}
                   {selectedOrder.items && Array.isArray(selectedOrder.items) && selectedOrder.items.length > 0 ? (
                     selectedOrder.items.map((item: any, idx: number) => (
                       <div key={idx} className="flex justify-between text-sm">
@@ -682,22 +705,32 @@ export default function PharmacyAdmin() {
               )}
 
               {selectedOrder.status === "processing" && (
-                <Button
-                  className="w-full"
-                  onClick={() => handleUpdateStatus(selectedOrder.id, "shipped")}
-                >
-                  <Truck className="w-4 h-4 mr-2" />
-                  Marcar como Enviado
-                </Button>
+                selectedOrder.bookingType === 'pickup' ? (
+                  <Button
+                    className="w-full bg-indigo-600 hover:bg-indigo-700"
+                    onClick={() => handleUpdateStatus(selectedOrder.id, "ready")}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Marcar como Pronto
+                  </Button>
+                ) : (
+                  <Button
+                    className="w-full"
+                    onClick={() => handleUpdateStatus(selectedOrder.id, "shipped")}
+                  >
+                    <Truck className="w-4 h-4 mr-2" />
+                    Marcar como Enviado
+                  </Button>
+                )
               )}
 
-              {selectedOrder.status === "shipped" && (
+              {(selectedOrder.status === "shipped" || selectedOrder.status === "ready") && (
                 <Button
                   className="w-full bg-green-600 hover:bg-green-700"
                   onClick={() => handleUpdateStatus(selectedOrder.id, "delivered")}
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
-                  Marcar como Entregue
+                  {selectedOrder.bookingType === 'pickup' ? 'Marcar como Entregue ao Cliente' : 'Marcar como Entregue'}
                 </Button>
               )}
             </div>

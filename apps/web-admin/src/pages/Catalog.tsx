@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { 
-  Plus, 
-  Search, 
-  Edit, 
-  Trash2, 
-  Package, 
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  Package,
   Filter,
   X,
   Save,
-  Eye
+  Eye,
+  Store
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -38,6 +39,8 @@ interface Product {
   prescriptionRequired: boolean
   stock: number
   pharmacyId?: number
+  pharmacyName?: string
+  pharmacyLogo?: string
   status: string
   createdAt: string
   updatedAt: string
@@ -45,7 +48,7 @@ interface Product {
 
 const categories = [
   'medicamento',
-  'vitamina', 
+  'vitamina',
   'suplemento',
   'cosmetico',
   'higiene',
@@ -62,20 +65,32 @@ export default function Catalog() {
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
+  const [selectedPharmacy, setSelectedPharmacy] = useState('')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null)
-  
+
   const queryClient = useQueryClient()
 
+  // Fetch Pharmacies for filter
+  const { data: pharmaciesList = [] } = useQuery({
+    queryKey: ['pharmacies'],
+    queryFn: async () => {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pharmacies`)
+      if (!response.ok) throw new Error('Failed to fetch pharmacies')
+      return response.json()
+    }
+  })
+
   const { data: products = [], isLoading } = useQuery({
-    queryKey: ['products', search, selectedCategory, selectedStatus],
+    queryKey: ['products', search, selectedCategory, selectedStatus, selectedPharmacy],
     queryFn: async () => {
       const params = new URLSearchParams()
       if (search) params.append('search', search)
       if (selectedCategory) params.append('category', selectedCategory)
       if (selectedStatus) params.append('status', selectedStatus)
-      
+      if (selectedPharmacy) params.append('pharmacyId', selectedPharmacy)
+
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products?${params}`)
       if (!response.ok) throw new Error('Failed to fetch products')
       return response.json()
@@ -165,6 +180,12 @@ export default function Catalog() {
     return statuses.find(s => s.value === status) || statuses[0]
   }
 
+  const getStockStatus = (stock: number) => {
+    if (stock === 0) return { label: 'Esgotado', color: 'bg-red-100 text-red-800' }
+    if (stock < 10) return { label: 'Estoque baixo', color: 'bg-yellow-100 text-yellow-800' }
+    return { label: 'Disponível', color: 'bg-green-100 text-green-800' }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -172,7 +193,7 @@ export default function Catalog() {
           <h1 className="text-3xl font-bold">Catálogo de Produtos</h1>
           <p className="text-muted-foreground">Gerencie todos os produtos do sistema</p>
         </div>
-        
+
         <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -184,7 +205,7 @@ export default function Catalog() {
             <DialogHeader>
               <DialogTitle>Adicionar Novo Produto</DialogTitle>
             </DialogHeader>
-            <ProductForm 
+            <ProductForm
               onSubmit={handleCreateProduct}
               isLoading={createMutation.isPending}
               onCancel={() => setIsCreateModalOpen(false)}
@@ -208,7 +229,7 @@ export default function Catalog() {
                 />
               </div>
             </div>
-            
+
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
               <SelectTrigger className="w-48">
                 <Filter className="w-4 h-4 mr-2" />
@@ -219,6 +240,21 @@ export default function Catalog() {
                 {categories.map(category => (
                   <SelectItem key={category} value={category}>
                     {category.charAt(0).toUpperCase() + category.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedPharmacy} onValueChange={setSelectedPharmacy}>
+              <SelectTrigger className="w-48">
+                <Store className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Farmácia" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Todas as Farmácias</SelectItem>
+                {pharmaciesList.map((pharmacy: any) => (
+                  <SelectItem key={pharmacy.id} value={pharmacy.id.toString()}>
+                    {pharmacy.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -260,24 +296,40 @@ export default function Catalog() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {products.map((product: Product) => {
             const statusInfo = getStatusInfo(product.status)
-            
+
             return (
               <Card key={product.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <CardTitle className="text-lg line-clamp-2">{product.name}</CardTitle>
-                      <p className="text-sm text-muted-foreground">{product.brand}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-sm text-muted-foreground">{product.brand}</p>
+                        {product.pharmacyName && (
+                          <>
+                            <span className="text-muted-foreground">•</span>
+                            <div className="flex items-center gap-1 text-xs font-medium text-emerald-600">
+                              <Store className="w-3 h-3" />
+                              {product.pharmacyName}
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <Badge className={statusInfo.color}>
-                      {statusInfo.label}
-                    </Badge>
+                    <div className="flex flex-col gap-1 items-end">
+                      <Badge className={statusInfo.color}>
+                        {statusInfo.label}
+                      </Badge>
+                      <Badge className={getStockStatus(product.stock).color}>
+                        {getStockStatus(product.stock).label}
+                      </Badge>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                    <img 
-                      src={product.imageUrl} 
+                    <img
+                      src={product.imageUrl}
                       alt={product.name}
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -285,12 +337,12 @@ export default function Catalog() {
                       }}
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <p className="text-sm text-muted-foreground line-clamp-2">
                       {product.description}
                     </p>
-                    
+
                     <div className="flex items-center justify-between">
                       <span className="text-xl font-bold text-primary">
                         {formatCurrency(product.price)}
@@ -299,7 +351,7 @@ export default function Catalog() {
                         Estoque: {product.stock}
                       </span>
                     </div>
-                    
+
                     <div className="flex flex-wrap gap-1">
                       <Badge variant="outline" className="text-xs">
                         {product.category}
@@ -311,7 +363,7 @@ export default function Catalog() {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="flex gap-2 pt-2">
                     <Button
                       variant="outline"
@@ -320,7 +372,7 @@ export default function Catalog() {
                     >
                       <Eye className="w-4 h-4" />
                     </Button>
-                    
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -328,7 +380,7 @@ export default function Catalog() {
                     >
                       <Edit className="w-4 h-4" />
                     </Button>
-                    
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -352,7 +404,7 @@ export default function Catalog() {
             <DialogHeader>
               <DialogTitle>Editar Produto</DialogTitle>
             </DialogHeader>
-            <ProductForm 
+            <ProductForm
               product={editingProduct}
               onSubmit={handleUpdateProduct}
               isLoading={updateMutation.isPending}
@@ -371,13 +423,13 @@ export default function Catalog() {
             </DialogHeader>
             <div className="space-y-4">
               <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                <img 
-                  src={viewingProduct.imageUrl} 
+                <img
+                  src={viewingProduct.imageUrl}
                   alt={viewingProduct.name}
                   className="w-full h-full object-cover"
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium">Preço</Label>
@@ -388,17 +440,27 @@ export default function Catalog() {
                   <p className="text-lg">{viewingProduct.stock}</p>
                 </div>
               </div>
-              
+
               <div>
                 <Label className="text-sm font-medium">Descrição</Label>
                 <p className="text-sm">{viewingProduct.description}</p>
               </div>
-              
+
               <div>
                 <Label className="text-sm font-medium">Princípio Ativo</Label>
                 <p className="text-sm">{viewingProduct.activeIngredient}</p>
               </div>
-              
+
+              {viewingProduct.pharmacyName && (
+                <div>
+                  <Label className="text-sm font-medium">Farmácia de Origem</Label>
+                  <div className="flex items-center gap-2 text-sm mt-1">
+                    <Store className="w-4 h-4 text-emerald-600" />
+                    <span className="font-semibold">{viewingProduct.pharmacyName}</span>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <Label className="text-sm font-medium">Indicações</Label>
                 <div className="flex flex-wrap gap-1 mt-1">
@@ -466,7 +528,7 @@ function ProductForm({ product, onSubmit, isLoading, onCancel }: ProductFormProp
             required
           />
         </div>
-        
+
         <div>
           <Label htmlFor="brand">Marca</Label>
           <Input
@@ -500,7 +562,7 @@ function ProductForm({ product, onSubmit, isLoading, onCancel }: ProductFormProp
             required
           />
         </div>
-        
+
         <div>
           <Label htmlFor="stock">Estoque *</Label>
           <Input
@@ -529,7 +591,7 @@ function ProductForm({ product, onSubmit, isLoading, onCancel }: ProductFormProp
             </SelectContent>
           </Select>
         </div>
-        
+
         <div>
           <Label htmlFor="status">Status *</Label>
           <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>

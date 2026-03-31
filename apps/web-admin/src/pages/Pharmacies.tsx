@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
+import L from "leaflet"
+import "leaflet/dist/leaflet.css"
 import {
   Store,
   Search,
@@ -20,8 +23,42 @@ import {
   Shield,
   Copy,
   User,
-  RotateCcw} from 'lucide-react'
+  RotateCcw,
+  Navigation,
+  CheckCircle2} from 'lucide-react'
 import { normalizeError } from '@/lib/errorHandler'
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "/images/marker-icon-2x.png",
+  iconUrl: "/images/marker-icon.png",
+  shadowUrl: "/images/marker-shadow.png",
+});
+
+const markerIcon = new L.Icon({
+  iconUrl: "/images/marker-icon.png",
+  shadowUrl: "/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+function LocationMarker({ 
+  position, 
+  onChange 
+}: { 
+  position: [number, number] | null;
+  onChange: (lat: number, lng: number) => void;
+}) {
+  useMapEvents({
+    click(e) {
+      onChange(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  if (!position) return null;
+  return <Marker position={position} icon={markerIcon} />;
+}
 
 interface Pharmacy {
   id: number
@@ -35,10 +72,10 @@ interface Pharmacy {
 }
 
 const statusColors: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  active: 'bg-green-100 text-green-800',
-  suspended: 'bg-orange-100 text-orange-800',
-  rejected: 'bg-red-100 text-red-800',
+  pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-300',
+  active: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300',
+  suspended: 'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-300',
+  rejected: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300',
 }
 
 const statusLabels: Record<string, string> = {
@@ -56,6 +93,7 @@ const statusIcons: Record<string, React.ElementType> = {
 }
 
 export default function Pharmacies() {
+  const [controlSection, setControlSection] = useState<'pharmacies' | 'clinics' | 'professionals' | 'insurers'>('pharmacies')
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [showRegisterModal, setShowRegisterModal] = useState(false)
@@ -63,6 +101,7 @@ export default function Pharmacies() {
   const [selectedPharmacyForCreds, setSelectedPharmacyForCreds] = useState<Pharmacy | null>(null)
   const [pharmacyAdminsList, setPharmacyAdminsList] = useState<any[]>([])
   const [loadingCreds, setLoadingCreds] = useState(false)
+  const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(null)
   const queryClient = useQueryClient()
 
   const { data: pharmacies, isLoading } = useQuery<Pharmacy[]>({
@@ -169,9 +208,14 @@ export default function Pharmacies() {
       name: formData.get('name') as string,
       email: formData.get('email') as string,
       phone: formData.get('phone') as string,
-      address: formData.get('address') as string,
+      address: markerPosition ? `${markerPosition[0]}, ${markerPosition[1]}` : 'Luanda, Angola',
+      lat: markerPosition ? markerPosition[0].toString() : '-8.8387',
+      lng: markerPosition ? markerPosition[1].toString() : '13.2344',
+      iban: formData.get('iban') as string || null,
+      multicaixaExpress: formData.get('multicaixaExpress') as string || null,
     }
     registerMutation.mutate(data)
+    setMarkerPosition(null)
   }
 
   const filteredPharmacies = pharmacies?.filter((pharmacy) => {
@@ -194,36 +238,88 @@ export default function Pharmacies() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Farmácias</h1>
-          <p className="text-gray-500">Gerencie as farmácias do marketplace</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Área de Controle</h1>
+          <p className="text-gray-500 dark:text-slate-400">
+            Registe e controle farmácias, clínicas, profissionais e seguradoras.
+          </p>
         </div>
-        <button
-          onClick={() => setShowRegisterModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Nova Farmácia
-        </button>
       </div>
 
+      {/* Section switcher */}
+      <div className="flex flex-wrap justify-center gap-2 bg-white dark:bg-slate-900/70 border border-gray-100 dark:border-slate-800 rounded-xl p-2">
+        {[
+          { id: 'pharmacies' as const, label: 'Farmácias', icon: Store },
+          { id: 'clinics' as const, label: 'Clínicas', icon: Shield },
+          { id: 'professionals' as const, label: 'Profissionais', icon: User },
+          { id: 'insurers' as const, label: 'Seguradoras', icon: Shield },
+        ].map((item) => {
+          const Icon = item.icon
+          const active = controlSection === item.id
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setControlSection(item.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+                active
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800/60'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {item.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {controlSection === 'pharmacies' && (
+        <div>
+          <button
+            onClick={() => setShowRegisterModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Nova Farmácia
+          </button>
+        </div>
+      )}
+
+      {controlSection !== 'pharmacies' && (
+        <div className="bg-white dark:bg-slate-900/70 rounded-2xl border border-gray-100 dark:border-slate-800 p-6">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100">
+            {controlSection === 'clinics'
+              ? 'Clínicas'
+              : controlSection === 'professionals'
+                ? 'Profissionais'
+                : 'Seguradoras'}
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
+            Esta área está pronta para receber as telas de registo e gestão. Quando você quiser, eu crio as páginas e rotas reais aqui no admin.
+          </p>
+        </div>
+      )}
+
+      {controlSection === 'pharmacies' && (
+        <>
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-slate-500" />
           <input
             type="text"
             placeholder="Buscar farmácia..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none placeholder:text-gray-400 dark:placeholder:text-slate-500"
           />
         </div>
         <div className="flex items-center gap-2">
-          <Filter className="w-5 h-5 text-gray-400" />
+          <Filter className="w-5 h-5 text-gray-400 dark:text-slate-500" />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            className="px-4 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           >
             <option value="all">Todos os status</option>
             <option value="pending">Pendentes</option>
@@ -239,14 +335,14 @@ export default function Pharmacies() {
         {filteredPharmacies?.map((pharmacy) => {
           const StatusIcon = statusIcons[pharmacy.status]
           return (
-            <div key={pharmacy.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div key={pharmacy.id} className="bg-white dark:bg-slate-900/70 rounded-xl shadow-sm dark:shadow-none border border-gray-100 dark:border-slate-800 p-6">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Store className="w-6 h-6 text-blue-600" />
+                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-500/15 rounded-lg flex items-center justify-center">
+                    <Store className="w-6 h-6 text-blue-600 dark:text-blue-300" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">{pharmacy.name}</h3>
+                    <h3 className="font-semibold text-gray-900 dark:text-slate-100">{pharmacy.name}</h3>
                     <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${statusColors[pharmacy.status]}`}>
                       <StatusIcon className="w-3 h-3" />
                       {statusLabels[pharmacy.status]}
@@ -256,14 +352,14 @@ export default function Pharmacies() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleOpenCreds(pharmacy)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    className="p-2 text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors"
                     title="Ver Credenciais"
                   >
                     <Key className="w-5 h-5" />
                   </button>
                   <Link
                     to={`/pharmacies/${pharmacy.id}`}
-                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    className="p-2 text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </Link>
@@ -271,15 +367,15 @@ export default function Pharmacies() {
               </div>
 
               <div className="mt-4 space-y-2">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
                   <Mail className="w-4 h-4" />
                   {pharmacy.email}
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
                   <Phone className="w-4 h-4" />
                   {pharmacy.phone}
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
                   <MapPin className="w-4 h-4" />
                   {pharmacy.address}
                 </div>
@@ -334,17 +430,17 @@ export default function Pharmacies() {
 
       {filteredPharmacies?.length === 0 && (
         <div className="text-center py-12">
-          <Store className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">Nenhuma farmácia encontrada</h3>
-          <p className="text-gray-500">Tente ajustar os filtros de busca</p>
+          <Store className="w-12 h-12 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-slate-100">Nenhuma farmácia encontrada</h3>
+          <p className="text-gray-500 dark:text-slate-400">Tente ajustar os filtros de busca</p>
         </div>
       )}
 
       {/* Registration Modal */}
       {showRegisterModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h2 className="text-xl font-bold text-gray-900">Registrar Nova Farmácia</h2>
               <button
                 onClick={() => setShowRegisterModal(false)}
@@ -354,7 +450,7 @@ export default function Pharmacies() {
               </button>
             </div>
 
-            <form onSubmit={handleRegister} className="p-6 space-y-4">
+            <form onSubmit={handleRegister} className="p-6 space-y-4 overflow-y-auto flex-1">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700">Nome da Farmácia *</label>
                 <input
@@ -389,34 +485,97 @@ export default function Pharmacies() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700">Endereço Completo *</label>
-                <textarea
-                  required
-                  name="address"
-                  rows={3}
-                  placeholder="Rua, Bairro, Município..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
-                />
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Navigation className="w-5 h-5 text-blue-600" />
+                  <label className="text-sm font-semibold text-gray-700">Localização da Farmácia</label>
+                </div>
+                
+                <div className="text-xs text-blue-600 mb-2 flex items-center gap-1">
+                  <MapPin className="w-4 h-4" />
+                  Clique no mapa para marcar a localização
+                </div>
+
+                <div className="rounded-lg overflow-hidden border-2 h-[200px]">
+                  <MapContainer
+                    center={markerPosition || [-8.8387, 13.2344]}
+                    zoom={12}
+                    style={{ height: "100%", width: "100%" }}
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    <LocationMarker position={markerPosition} onChange={(lat, lng) => setMarkerPosition([lat, lng])} />
+                  </MapContainer>
+                </div>
+
+                {markerPosition && markerPosition[0] !== undefined ? (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    <div>
+                      <p className="text-green-700 font-semibold text-sm">Local Selecionado</p>
+                      <p className="text-green-600 text-xs font-mono">
+                        {markerPosition[0].toFixed(6)}, {markerPosition[1].toFixed(6)}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-amber-600 text-sm flex items-center gap-1">
+                    <MapPin className="w-4 h-4" />
+                    Selecione a localização no mapa acima
+                  </p>
+                )}
               </div>
 
-              <div className="pt-4 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowRegisterModal(false)}
-                  className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={registerMutation.isPending}
-                  className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95 disabled:opacity-50"
-                >
-                  {registerMutation.isPending ? 'Registrando...' : 'Salvar Farmácia'}
-                </button>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
+                  <label className="text-sm font-semibold text-green-800">Dados para Pagamento</label>
+                </div>
+                <p className="text-xs text-green-600">Preencha pelo menos uma opção de pagamento</p>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-green-700">IBAN</label>
+                    <input
+                      name="iban"
+                      type="text"
+                      placeholder="AO06 0040 0000 1234 5678 9101 2"
+                      className="w-full px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-green-700">Multicaixa Express</label>
+                    <input
+                      name="multicaixaExpress"
+                      type="text"
+                      placeholder="+244 9XX XXX XXX"
+                      className="w-full px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm"
+                    />
+                  </div>
+                </div>
               </div>
             </form>
+
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => { setShowRegisterModal(false); setMarkerPosition(null); }}
+                className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={registerMutation.isPending || !markerPosition}
+                className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {registerMutation.isPending ? 'Registrando...' : 'Salvar Farmácia'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -527,6 +686,8 @@ export default function Pharmacies() {
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   )

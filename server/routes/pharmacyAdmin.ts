@@ -252,17 +252,23 @@ export function registerPharmacyAdminRoutes(app: Express) {
   app.post("/api/pharmacy/orders/:orderId/status", async (req: Request, res: Response) => {
     try {
       const orderId = parseInt(req.params.orderId as string);
-      const { status, adminId, notes } = req.body;
+      const { status, adminId, notes, iban, multicaixaExpress, paymentProof, paymentStatus } = req.body;
 
-      const validStatuses = ["processing", "shipped", "delivered"];
+      const validStatuses = ["processing", "shipped", "delivered", "awaiting_proof", "proof_submitted"];
       if (!validStatuses.includes(status)) {
         return res.status(400).json({ message: "Status inválido" });
       }
 
-      // Update order status
+      // Update order status with optional payment info
       const [order] = await db
         .update(orders)
-        .set({ status })
+        .set({ 
+          status,
+          ...(iban && { pharmacyIban: iban }),
+          ...(multicaixaExpress && { pharmacyMulticaixaExpress: multicaixaExpress }),
+          ...(paymentProof && { paymentProof: paymentProof }),
+          ...(paymentStatus && { paymentStatus: paymentStatus })
+        })
         .where(eq(orders.id, orderId))
         .returning();
 

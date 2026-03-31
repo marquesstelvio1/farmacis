@@ -3,6 +3,9 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import session from "express-session";
+import passport from "passport";
+import MemoryStoreSession from "memorystore";
 
 const app = express();
 const httpServer = createServer(app);
@@ -42,6 +45,25 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+
+const MemoryStore = MemoryStoreSession(session);
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "farmacis_secret_key",
+    resave: false,
+    saveUninitialized: false,
+    store: new MemoryStore({
+      checkPeriod: 86400000, // 24h
+    }),
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 24 * 60 * 60 * 1000,
+    },
+  })
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -84,15 +106,22 @@ export const initPromise = (async () => {
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    const message = err.message || "Erro Interno no Servidor";
 
-    console.error("Internal Server Error:", err);
+    console.error("DEBUG - SERVER ERROR:", {
+      message: err.message,
+      stack: err.stack,
+      details: err
+    });
 
     if (res.headersSent) {
       return next(err);
     }
 
-    return res.status(status).json({ message });
+    return res.status(status).json({ 
+      message, 
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined 
+    });
   });
 
   // importantly only setup vite in development and after
@@ -108,10 +137,10 @@ export const initPromise = (async () => {
   // Only listen if not running on Vercel (Vercel handles the server via serverless functions)
   if (process.env.VERCEL !== "1") {
     // ALWAYS serve the app on port specified in the environment variable PORT
-    // Other ports are firewalled. Default to 5000 if not specified.
+    // Other ports are firewalled. Default to 5001 if not specified.
     // this serves both the API and the client.
     // It is the only port that is not firewalled.
-    const port = parseInt(process.env.PORT || "5000", 10);
+    const port = parseInt(process.env.PORT || "5001", 10);
     const host = process.env.HOST || "0.0.0.0";
 
     httpServer.listen(

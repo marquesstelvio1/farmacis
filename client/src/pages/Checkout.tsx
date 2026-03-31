@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
-  CreditCard, Smartphone, Building2, ArrowLeft, Check,
-  Loader2, MapPin, Navigation, AlertCircle, CheckCircle2, Phone,
-  Store, User, Plus, Star,
-  Wallet
+  ArrowLeft, Check, Calendar, Clock, Truck,
+  Loader2, MapPin, AlertCircle, CheckCircle2, Phone, ClipboardList,
+  Store, User, ShoppingBag,
+  Wallet, CreditCard, Building2, Navigation, Loader
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,8 +12,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link, useLocation } from "wouter";
 import { useCart } from "@/hooks/use-cart";
-import { usePaymentMethods, PaymentMethod } from "@/hooks/use-payment-methods";
+import { useSystemSettings } from "@/hooks/use-system-settings";
 import { normalizeError } from "@/lib/errorHandler";
+import { useGeolocation } from "@/hooks/use-geolocation";
+import { DeliveryLocationPicker } from "@/components/DeliveryLocationPicker";
+import { DeliveryToggle } from "@/components/DeliveryToggle";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -40,18 +43,18 @@ function normalisePhone(raw: string): string {
   return raw.replace(/\s/g, "");
 }
 
+// Payment methods that require proof
+const PAYMENT_METHODS_REQUIRING_PROOF = ["multicaixa_express", "transferencia"];
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Checkout() {
   const [, setLocation] = useLocation();
-  const { items, totalPrice, clearCart } = useCart();
-  const total = totalPrice();
+  const { items, totalPrice, clearCart, prescriptions } = useCart();
+  const { settings, fetchSettings } = useSystemSettings();
 
   // User session
   const [user, setUser] = useState<any>({});
-
-  // Payment methods hook
-  const { methods, isLoading: methodsLoading } = usePaymentMethods(user?.id);
 
   // Delivery info
   const [customerName, setCustomerName] = useState("");
@@ -61,20 +64,65 @@ export default function Checkout() {
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerLat, setCustomerLat] = useState<string | null>(null);
   const [customerLng, setCustomerLng] = useState<string | null>(null);
+  
+  // Agrupamento por Farmácia
+  const itemsByPharmacy = items.reduce((acc: any, item: any) => {
+    const pId = item.product.pharmacyId;
+    if (!acc[pId]) {
+      acc[pId] = {
+        id: pId,
+        name: item.product.pharmacyName || "Farmácia",
+        items: []
+      };
+    }
+    acc[pId].items.push(item);
+    return acc;
+  }, {});
+
+  const pharmacyIds = Object.keys(itemsByPharmacy);
+
+  // Configuração individual por farmácia
+  const [pharmacyMethods, setPharmacyMethods] = useState<Record<number, "delivery" | "pickup">>(
+    pharmacyIds.reduce((acc, id) => ({ ...acc, [Number(id)]: "delivery" }), {})
+  );
+
+  const [scheduledTime, setScheduledTime] = useState("");
+  const [additionalNotes, setAdditionalNotes] = useState("");
   const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
-  // Pharmacy selection
-  const [pharmacies, setPharmacies] = useState<any[]>([]);
-  const [selectedPharmacy, setSelectedPharmacy] = useState<number | null>(null);
-  const [pharmaciesLoading, setPharmaciesLoading] = useState(true);
+  // Cálculos Totais
+  const cartTotal = totalPrice();
+  const minOrderAmount = settings ? parseFloat(settings.min_order_amount) : 500;
+  const baseDeliveryFee = settings ? parseFloat(settings.delivery_fee) : 0;
+  
+  // Frete total é a soma dos fretes das farmácias que têm entrega selecionada
+  const totalDeliveryFee = Object.keys(pharmacyMethods).reduce((sum, pId) => 
+    pharmacyMethods[Number(pId)] === "delivery" ? sum + baseDeliveryFee : sum, 0
+  );
+
+  const grandTotal = cartTotal + totalDeliveryFee;
+  const meetsMinimum = cartTotal >= minOrderAmount;
+
+  
+  // Geolocation (used for distance calculation in delivery)
+  const { calculateDistance, formatDistance } = useGeolocation();
 
   // Payment Selection
-  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<number | string | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("cash");
 
   // UI state
   const [isProcessing, setIsProcessing] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState("");
+  const [showMapPicker, setShowMapPicker] = useState(false);
+
+  // Check if selected method requires proof (info only, not required at checkout)
+  const requiresPaymentProof = PAYMENT_METHODS_REQUIRING_PROOF.includes(selectedPaymentMethod);
+
+  // ─── Load system settings ───────────────────────────────────────────────
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   // ─── Load user session, phone, address & map-selected location ──────────
   useEffect(() => {
@@ -104,35 +152,7 @@ export default function Checkout() {
         setLocationStatus("success");
       } catch { }
     }
-
-    // Load pharmacies
-    fetch("/api/pharmacies")
-      .then(res => res.json())
-      .then(data => {
-        setPharmacies(data || []);
-        if (data && data.length === 1) {
-          setSelectedPharmacy(data[0].id);
-        }
-      })
-      .catch(err => {
-        console.error("Failed to load pharmacies:", normalizeError(err));
-        setPharmacies([]);
-      })
-      .finally(() => setPharmaciesLoading(false));
   }, []);
-
-  // Set default payment method if available
-  useEffect(() => {
-    if (!selectedPaymentMethodId) {
-      if (methods.length > 0) {
-        const def = methods.find(m => m.isDefault) || methods[0];
-        setSelectedPaymentMethodId(def.id);
-      } else {
-        // Default to cash when no payment methods are registered.
-        setSelectedPaymentMethodId('cash');
-      }
-    }
-  }, [methods, selectedPaymentMethodId]);
 
   // ─── Phone validation ────────────────────────────────────────────────────
   const handlePhoneChange = (value: string) => {
@@ -180,29 +200,25 @@ export default function Checkout() {
     if (!customerPhone.trim() || !validateAngolanPhone(customerPhone)) {
       setError("Telefone de entrega inválido"); return;
     }
-    if (!customerAddress.trim()) { setError("Endereço de entrega é obrigatório"); return; }
-    if (!customerLat || !customerLng) {
-      setError("Por favor, seleccione o local de entrega no mapa.");
-      document.getElementById("location-section")?.scrollIntoView({ behavior: 'smooth' });
-      return;
+
+    // Valida endereço apenas se pelo menos uma farmácia exigir entrega
+    const needsDelivery = Object.values(pharmacyMethods).includes("delivery");
+    if (needsDelivery) {
+      if (!customerAddress.trim()) { setError("Endereço de entrega é obrigatório"); return; }
+      if (!customerLat || !customerLng) {
+        setError("Por favor, seleccione o local de entrega no mapa.");
+        document.getElementById("location-section")?.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
     }
-    if (!selectedPharmacy) {
-      setError("Seleccione uma farmácia.");
-      document.getElementById("pharmacy-section")?.scrollIntoView({ behavior: 'smooth' });
-      return;
-    }
-    if (!selectedPaymentMethodId) {
+
+    if (!selectedPaymentMethod) {
       setError("Seleccione um método de pagamento.");
       document.getElementById("payment-section")?.scrollIntoView({ behavior: 'smooth' });
       return;
     }
-
-    // Express payment requires immediate payment
-    const methodDetails = methods.find(m => m.id === selectedPaymentMethodId);
-    const isExpress = methodDetails?.type === 'express' || selectedPaymentMethodId === 'express';
-    if (isExpress) {
-      setError("Pagamento express requer confirmação de pagamento imediato. Por favor, processe o pagamento antes de continuar.");
-      document.getElementById("payment-section")?.scrollIntoView({ behavior: 'smooth' });
+    if (!meetsMinimum) {
+      setError(`Valor mínimo de ${minOrderAmount.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })} para encomendar.`);
       return;
     }
 
@@ -212,42 +228,57 @@ export default function Checkout() {
       const normPhone = normalisePhone(customerPhone);
       await saveToProfile(normPhone, customerAddress.trim());
 
-      // Create order
-      const orderResponse = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pharmacyId: selectedPharmacy,
-          userId: user.id || null,
-          customerName: customerName.trim(),
-          customerPhone: normPhone,
-          customerAddress: customerAddress.trim(),
-          customerLat: customerLat ?? null,
-          customerLng: customerLng ?? null,
-          total: String(total || 0),
-          deliveryFee: "0",
-          status: "pending",
-          paymentMethod: selectedPaymentMethodId === 'cash' ? 'cash' : (methodDetails?.type || "mpesa"),
-          paymentStatus: "pending",
-          notes: selectedPaymentMethodId === 'cash' ? 'Pagamento em Dinheiro na Entrega' : `Pagamento via ${methodDetails?.name || 'M-Pesa'} (ID: ${selectedPaymentMethodId})`,
-          items: items.map((i: any) => ({
-            name: i.product.name,
-            productId: i.product.id,
-            quantity: i.quantity,
-            price: Number(i.product.price),
-          })),
-        }),
-      });
+      // Criar múltiplos pedidos (um para cada farmácia)
+      const createdOrderIds: string[] = [];
+      
+      for (const pId of Object.keys(itemsByPharmacy)) {
+        const pharmacyId = Number(pId);
+        const pharmacyItems = itemsByPharmacy[pharmacyId].items;
+        const method = pharmacyMethods[pharmacyId];
+        const subtotal = pharmacyItems.reduce((s: number, i: any) => s + (Number(i.product.price) * i.quantity), 0);
+        const fee = method === "delivery" ? baseDeliveryFee : 0;
 
-      if (!orderResponse.ok) {
-        try {
-          const errorData = await orderResponse.json();
-          throw new Error(errorData.message || `Erro ${orderResponse.status}`);
-        } catch (parseError) {
-          throw new Error(normalizeError(parseError));
+        const response = await fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pharmacyId,
+            userId: user.id || null,
+            customerName: customerName.trim(),
+            customerPhone: normPhone,
+            customerAddress: method === "delivery" ? customerAddress.trim() : "Levantamento na Loja",
+            customerLat: customerLat ?? null,
+            customerLng: customerLng ?? null,
+            bookingType: method,
+            scheduledTime: scheduledTime ? new Date(scheduledTime).toISOString() : null,
+            total: String(subtotal + fee),
+            deliveryFee: String(fee),
+            status: "pending",
+            paymentMethod: selectedPaymentMethod,
+            paymentStatus: "pending",
+            notes: `Farmácia: ${itemsByPharmacy[pharmacyId].name} | ${additionalNotes}`,
+            items: pharmacyItems.map((i: any) => ({
+              name: i.product.name,
+              productId: i.product.id,
+              quantity: i.quantity,
+              price: Number(i.product.price),
+              prescriptionRequired: i.product.prescriptionRequired || false,
+              prescription: prescriptions.get(i.product.id) || null,
+            })),
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`Erro ao criar pedido: ${errorData.message || response.statusText}`);
         }
+
+        const orderData = await response.json();
+        createdOrderIds.push(orderData.id);
       }
 
+      console.log(`✅ ${createdOrderIds.length} pedidos criados com sucesso`);
+      
       // Clean up
       sessionStorage.removeItem("deliveryLocation");
       setIsComplete(true);
@@ -256,6 +287,7 @@ export default function Checkout() {
 
     } catch (err: any) {
       setError(normalizeError(err));
+      console.error("Erro ao criar pedidos:", err);
     } finally {
       setIsProcessing(false);
     }
@@ -269,8 +301,14 @@ export default function Checkout() {
           <div className="w-24 h-24 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-6">
             <Check className="w-12 h-12 text-white" />
           </div>
-          <h2 className="text-3xl font-bold text-white mb-2">Pedido Criado!</h2>
-          <p className="text-slate-300">O pagamento será habilitado após a farmácia confirmar seu pedido.</p>
+          <h2 className="text-3xl font-bold text-white mb-2">
+            {pharmacyIds.length > 1 ? "Pedidos Criados!" : "Pedido Criado!"}
+          </h2>
+          <p className="text-slate-300">
+            {pharmacyIds.length > 1 
+              ? "As farmácias foram notificadas. O pagamento será habilitado individualmente conforme aceitação." 
+              : "O pagamento será habilitado após a farmácia confirmar seu pedido."}
+          </p>
           <p className="text-slate-400 text-sm mt-4 italic">A redirigir para meus pedidos...</p>
         </motion.div>
       </div>
@@ -281,7 +319,7 @@ export default function Checkout() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-4">
       <div className="max-w-4xl mx-auto py-8">
         <Link href="/">
-          <Button variant="ghost" className="text-white mb-6">
+          <Button variant="ghost" className="text-white hover:bg-white/10 mb-6">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
           </Button>
@@ -289,149 +327,283 @@ export default function Checkout() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Summary */}
-          <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-sm h-fit">
-            <CardHeader><CardTitle>Resumo do Pedido</CardTitle></CardHeader>
+          <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-sm dark:bg-slate-800/95 h-fit">
+            <CardHeader><CardTitle className="text-slate-900 dark:text-white">Resumo do Pedido</CardTitle></CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {items.map((item: any) => (
-                  <div key={item.product.id} className="flex justify-between items-center py-2 border-b border-slate-100">
-                    <div className="max-w-[150px]">
-                      <p className="font-medium text-slate-900 truncate">{item.product.name}</p>
-                      <p className="text-sm text-slate-500">Qtd: {item.quantity}</p>
+              <div className="space-y-6">
+                {Object.values(itemsByPharmacy).map((group: any) => (
+                  <div key={group.id} className="p-4 rounded-xl bg-slate-50/80 dark:bg-slate-700/80 border border-slate-100 dark:border-slate-600 shadow-sm space-y-3">
+                    <h4 className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-2 border-b border-blue-100 dark:border-blue-800 pb-2">
+                      <Store size={14} /> {group.name}
+                    </h4>
+                    <div className="space-y-2">
+                      {group.items.map((item: any) => (
+                        <div key={item.product.id} className="flex justify-between items-center">
+                          <div className="max-w-[160px]">
+                            <p className="text-sm font-medium text-slate-900 dark:text-slate-200 truncate">{item.product.name}</p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold">x{item.quantity}</p>
+                          </div>
+                          <p className="text-sm font-bold text-slate-900 dark:text-slate-200">
+                            {(Number(item.product.price) * item.quantity).toLocaleString()} AOA
+                          </p>
+                        </div>
+                      ))}
                     </div>
-                    <p className="font-semibold text-slate-900">
-                      {(Number(item.product.price) * item.quantity).toLocaleString()} AOA
-                    </p>
+                    <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-600">
+                      <div className="flex items-center gap-1.5">
+                        {pharmacyMethods[group.id] === 'pickup' ? <ShoppingBag size={12} className="text-amber-500 dark:text-amber-400" /> : <Truck size={12} className="text-blue-500 dark:text-blue-400" />}
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">{pharmacyMethods[group.id] === 'pickup' ? 'Levantamento' : 'Entrega'}</span>
+                      </div>
+                      <p className="text-xs font-black text-slate-900 dark:text-slate-200">
+                        {pharmacyMethods[group.id] === 'pickup' ? 'GRÁTIS' : `${baseDeliveryFee.toLocaleString()} AOA`}
+                      </p>
+                    </div>
                   </div>
                 ))}
-                <div className="flex justify-between items-center pt-4">
-                  <p className="text-lg font-bold text-slate-900">Total</p>
-                  <p className="text-2xl font-bold text-blue-600">{total.toLocaleString()} AOA</p>
+                <div className="flex justify-between items-center pt-4 border-t border-slate-200 dark:border-slate-600">
+                  <div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Subtotal</p>
+                    <p className="text-lg font-bold text-slate-900 dark:text-white">{cartTotal.toLocaleString()} AOA</p>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Frete</p>
+                    <p className="text-lg font-bold text-slate-900 dark:text-white">
+                      {totalDeliveryFee.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                    </p>
+                  </div>
+                </div>
+
+                {pharmacyIds.length > 1 && totalDeliveryFee > 0 && (
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl flex items-start gap-2">
+                    <AlertCircle size={14} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                    <p className="text-[10px] text-blue-700 dark:text-blue-300 leading-tight">
+                      Nota: Como a sua encomenda inclui produtos de <strong>{pharmacyIds.length} farmácias</strong>, 
+                      o valor do frete corresponde à soma das taxas de entrega individuais de cada estabelecimento.
+                    </p>
+                  </div>
+                )}
+
+                {!meetsMinimum && (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+                    <p className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                      <AlertCircle size={14} />
+                      Mínimo de {minOrderAmount.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })} para encomendar.
+                    </p>
+                  </div>
+                )}
+                <div className="flex justify-between items-center pt-4 border-t border-slate-200 dark:border-slate-600">
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">Total</p>
+                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{grandTotal.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Form */}
-          <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-sm">
+          <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-sm dark:bg-slate-800/95">
             <CardHeader>
-              <CardTitle>Finalizar Encomenda</CardTitle>
-              <CardDescription>Confirme os seus dados de entrega</CardDescription>
+              <CardTitle className="text-slate-900 dark:text-white">Finalizar Encomenda</CardTitle>
+              <CardDescription className="text-slate-500 dark:text-slate-400">Confirme os seus dados de entrega</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
 
+                {/* Escolha por Farmácia */}
+                <div className="space-y-6">
+                  {Object.values(itemsByPharmacy).map((group: any) => (
+                    <div key={group.id} className="space-y-4 p-5 bg-gradient-to-br from-slate-50 to-blue-50/30 dark:from-slate-800 dark:to-blue-900/20 rounded-2xl border-2 border-slate-100 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-700 transition-colors">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 dark:bg-blue-900/20 flex items-center justify-center">
+                          <Store className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <h4 className="font-bold text-slate-800 dark:text-white">{group.name}</h4>
+                      </div>
+                      <DeliveryToggle
+                        value={pharmacyMethods[group.id]}
+                        onChange={(value) => setPharmacyMethods({ ...pharmacyMethods, [group.id]: value })}
+                        pharmacyName={group.name}
+                      />
+                    </div>
+                  ))}
+                </div>
+
                 {/* Person */}
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-2"><User className="w-4 h-4" />Nome Completo *</Label>
-                  <Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />
+                  <Label className="flex items-center gap-2 text-slate-700 dark:text-slate-300"><User className="w-4 h-4" />Nome Completo *</Label>
+                  <Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} required className="dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-2"><Phone className="w-4 h-4" />Telefone *</Label>
+                  <Label className="flex items-center gap-2 text-slate-700 dark:text-slate-300"><Phone className="w-4 h-4" />Telefone *</Label>
                   <div className="relative">
                     <Input
                       value={customerPhone}
                       onChange={(e) => handlePhoneChange(e.target.value)}
-                      className={phoneStatus === "valid" ? "border-green-400" : phoneStatus === "invalid" ? "border-red-400" : ""}
+                      className={`dark:bg-slate-800 dark:border-slate-700 dark:text-white ${phoneStatus === "valid" ? "border-green-400" : phoneStatus === "invalid" ? "border-red-400" : ""}`}
                     />
                     {phoneStatus === "valid" && <CheckCircle2 className="absolute right-3 top-2.5 w-5 h-5 text-green-500" />}
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Endereço de Entrega *</Label>
-                  <Input value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} required />
-                </div>
-
-                {/* Map Point */}
-                <div className="space-y-2" id="location-section">
-                  <Label className="flex items-center gap-2 text-sm font-medium"><MapPin className="w-4 h-4 text-blue-600" />Localização no Mapa *</Label>
-                  {customerLat ? (
-                    <div className="p-3 rounded-xl border border-green-200 bg-green-50 flex flex-col gap-2">
-                      <div className="flex items-center gap-2 text-green-700 text-sm font-semibold">
-                        <CheckCircle2 size={16} /> Confirmado
+                {/* Location Picker */}
+                <div className={`space-y-2 ${!Object.values(pharmacyMethods).includes("delivery") ? 'opacity-40 grayscale pointer-events-none' : ''}`} id="location-section">
+                  <Label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                    <MapPin className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    Endereço para Entrega *
+                  </Label>
+                  {customerLat && customerLng ? (
+                    <div className="p-3 rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-2">
+                          <MapPin className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" />
+                          <div>
+                            <p className="text-green-700 dark:text-green-400 text-sm font-semibold flex items-center gap-1">
+                              <CheckCircle2 size={14} /> Local Confirmado
+                            </p>
+                            <p className="text-green-600 dark:text-green-400 text-xs mt-1">
+                              {parseFloat(customerLat).toFixed(6)}, {parseFloat(customerLng).toFixed(6)}
+                            </p>
+                            {customerAddress && (
+                              <p className="text-gray-600 dark:text-slate-400 text-xs mt-1 truncate">{customerAddress}</p>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => setLocation("/escolher-local")}>Alterar Ponto</Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setShowMapPicker(true)} // Open as modal
+                        className="mt-3 w-full dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700"
+                      >
+                        Alterar Local
+                      </Button>
                     </div>
                   ) : (
-                    <Button type="button" variant="outline" className="w-full h-20 border-dashed border-blue-300 bg-blue-50 text-blue-600 flex flex-col gap-1" onClick={() => setLocation("/escolher-local")}>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      className="w-full h-20 border-dashed border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex flex-col gap-1 hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                      onClick={() => setShowMapPicker(true)}
+                    >
                       <MapPin size={24} />
                       <span className="font-bold">Marcar Ponto no Mapa</span>
                     </Button>
                   )}
                 </div>
 
-                {/* Pharmacy */}
-                <div className="space-y-3" id="pharmacy-section">
-                  <Label className="flex items-center gap-2 font-semibold"><Store className="w-4 h-4 text-blue-600" />Seleccionar Farmácia *</Label>
-                  {pharmaciesLoading ? <Loader2 className="animate-spin mx-auto" /> : (
-                    <div className="space-y-2">
-                      {pharmacies.map((p: any) => (
-                        <button key={p.id} type="button" onClick={() => setSelectedPharmacy(p.id)} className={`w-full p-3 text-left rounded-xl border-2 transition-all ${selectedPharmacy === p.id ? 'border-blue-500 bg-blue-50' : 'border-slate-100 bg-white'}`}>
-                          <p className="font-bold text-slate-800 text-sm">{p.name}</p>
-                          <p className="text-xs text-slate-500 truncate">{p.address}</p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                {/* Agendamento e Notas */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                      <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      Agendamento (Opcional)
+                    </Label>
+                    <Input
+                      type="datetime-local"
+                      value={scheduledTime}
+                      onChange={(e) => setScheduledTime(e.target.value)}
+                      className="rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white focus:ring-blue-500/20"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                      <ClipboardList className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      Notas / Observações
+                    </Label>
+                    <Input
+                      placeholder="Ex: Tocar a campainha..."
+                      value={additionalNotes}
+                      onChange={(e) => setAdditionalNotes(e.target.value)}
+                      className="rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
+                  </div>
                 </div>
 
                 {/* Payment Methods */}
                 <div className="space-y-3" id="payment-section">
-                  <Label className="flex items-center gap-2 font-semibold"><Wallet className="w-4 h-4 text-blue-600" />Método de Pagamento Guardado *</Label>
-                  {methodsLoading ? <Loader2 className="animate-spin mx-auto" /> : methods.length === 0 ? (
-                    <div className="p-4 rounded-xl border border-amber-200 bg-amber-50 text-center">
-                      <p className="text-sm text-amber-700 mb-3">Não tens métodos guardados.</p>
-                      <Link href="/pagamentos"><Button variant="outline" size="sm" className="w-full">Adicionar Agora</Button></Link>
+                  <Label className="flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-300"><Wallet className="w-4 h-4 text-blue-600 dark:text-blue-400" />Método de Pagamento *</Label>
+                  
+                  {/* Cash Option */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPaymentMethod('cash')}
+                    className={`w-full p-4 text-left rounded-xl border-2 transition-all flex items-center gap-4 ${
+                      selectedPaymentMethod === 'cash' 
+                        ? 'border-green-500 bg-green-50 dark:bg-green-900/20' 
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-green-300 dark:hover:border-green-700'
+                    }`}
+                  >
+                    <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Wallet size={24} className="text-white" />
                     </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {methods.map((m) => (
-                        <button key={m.id} type="button" onClick={() => setSelectedPaymentMethodId(m.id)} className={`w-full p-4 text-left rounded-xl border-2 transition-all flex items-center justify-between ${selectedPaymentMethodId === m.id ? 'border-primary-500 bg-primary-50 shadow-sm' : 'border-slate-100 bg-white'}`}>
-                          <div className="flex items-center gap-3">
-                            <CreditCard size={20} className={selectedPaymentMethodId === m.id ? 'text-primary-600' : 'text-slate-400'} />
-                            <div>
-                              <p className="font-bold text-slate-800 text-sm">{m.name} {m.isDefault && <Star size={10} className="inline fill-primary-500 text-primary-500 ml-1" />}</p>
-                              <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">{m.type}</p>
-                            </div>
-                          </div>
-                          {selectedPaymentMethodId === m.id && <CheckCircle2 size={16} className="text-primary-500" />}
-                        </button>
-                      ))}
+                    <div className="flex-1">
+                      <p className="font-bold text-slate-800 dark:text-slate-200">Pagamento na Entrega</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Pague com Multicaixa ou Dinheiro ao receber</p>
+                    </div>
+                    {selectedPaymentMethod === 'cash' && <CheckCircle2 size={24} className="text-green-500 flex-shrink-0" />}
+                  </button>
 
-                      {/* Cash Option */}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPaymentMethodId('cash')}
-                        className={`w-full p-4 text-left rounded-xl border-2 transition-all flex items-center justify-between ${selectedPaymentMethodId === 'cash' ? 'border-primary-500 bg-primary-50 shadow-sm' : 'border-slate-100 bg-white'}`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Wallet size={20} className={selectedPaymentMethodId === 'cash' ? 'text-primary-600' : 'text-slate-400'} />
-                          <div>
-                            <p className="font-bold text-slate-800 text-sm">Dinheiro (Cash)</p>
-                            <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Pagamento na Entrega</p>
-                          </div>
-                        </div>
-                        {selectedPaymentMethodId === 'cash' && <CheckCircle2 size={16} className="text-primary-500" />}
-                      </button>
+                  {/* Multicaixa Express Option */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPaymentMethod('multicaixa_express')}
+                    className={`w-full p-4 text-left rounded-xl border-2 transition-all flex items-center gap-4 ${
+                      selectedPaymentMethod === 'multicaixa_express' 
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-700'
+                    }`}
+                  >
+                    <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <CreditCard size={24} className="text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-bold text-slate-800 dark:text-slate-200">Multicaixa Express</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Transferência imediata via ATM</p>
+                    </div>
+                    {selectedPaymentMethod === 'multicaixa_express' && <CheckCircle2 size={24} className="text-blue-500 flex-shrink-0" />}
+                  </button>
+
+                  {/* Transferencia Option */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPaymentMethod('transferencia')}
+                    className={`w-full p-4 text-left rounded-xl border-2 transition-all flex items-center gap-4 ${
+                      selectedPaymentMethod === 'transferencia' 
+                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' 
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-purple-300 dark:hover:border-purple-700'
+                    }`}
+                  >
+                    <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Building2 size={24} className="text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-bold text-slate-800 dark:text-slate-200">Transferência Bancária</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Transferência para conta bancária</p>
+                    </div>
+                    {selectedPaymentMethod === 'transferencia' && <CheckCircle2 size={24} className="text-purple-500 flex-shrink-0" />}
+                  </button>
+
+                  {requiresPaymentProof && (
+                    <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+                      <p className="text-sm text-blue-800 dark:text-blue-300 flex items-center gap-2">
+                        <AlertCircle size={16} className="text-blue-600 dark:text-blue-400" />
+                        O comprovativo de pagamento será solicitado após a farmácia aceitar o seu pedido.
+                      </p>
                     </div>
                   )}
-                  <Link href="/pagamentos">
-                    <Button variant="ghost" size="sm" className="w-full mt-2 text-blue-600 hover:text-blue-700">
-                      <Plus size={14} className="mr-1" /> Gerenciar Métodos
-                    </Button>
-                  </Link>
                 </div>
 
-                {error && <div className="p-3 bg-red-50 text-red-600 text-xs rounded-lg border border-red-100 flex items-center gap-2"><AlertCircle size={14} />{error}</div>}
+                {error && <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs rounded-lg border border-red-100 dark:border-red-800 flex items-center gap-2"><AlertCircle size={14} />{error}</div>}
 
-                <Button type="submit" className="w-full h-14 bg-gradient-to-r from-blue-600 to-blue-500 text-white font-black rounded-xl shadow-xl shadow-blue-500/30" disabled={isProcessing}>
-                  {isProcessing ? <Loader2 className="animate-spin" /> : `SOLICITAR ENCOMENDA · ${total.toLocaleString()} AOA`}
+                <Button type="submit" className="w-full h-14 bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-500 dark:to-blue-400 text-white font-black rounded-xl shadow-xl shadow-blue-500/30 dark:shadow-blue-900/30 hover:shadow-2xl dark:hover:shadow-blue-600/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none" disabled={isProcessing || !meetsMinimum}>
+                  {isProcessing ? <Loader2 className="animate-spin" /> : `SOLICITAR ENCOMENDA · ${grandTotal.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}`}
                 </Button>
 
-                <p className="text-[10px] text-center text-slate-400 px-4 leading-tight">
-                  Ao solicitar, o seu pedido será enviado para a farmácia. O pagamento só será solicitado após a confirmação de stock.
+                <p className="text-[10px] text-center text-slate-400 dark:text-slate-500 px-4 leading-tight">
+                  Ao solicitar, o seu pedido será enviado para a farmácia. O pagamento só será solicitado após a farmácia aceitar o pedido.
                 </p>
 
               </form>
@@ -439,6 +611,19 @@ export default function Checkout() {
           </Card>
         </div>
       </div>
+
+      <DeliveryLocationPicker
+        isOpen={showMapPicker}
+        onClose={() => setShowMapPicker(false)}
+        onSelect={(lat, lng, address) => {
+          setCustomerLat(lat.toString());
+          setCustomerLng(lng.toString());
+          if (address) setCustomerAddress(address);
+          setLocationStatus("success");
+        }}
+        initialLat={customerLat ? parseFloat(customerLat) : null}
+        initialLng={customerLng ? parseFloat(customerLng) : null}
+      />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import Orders from './pages/Orders'
 import Users from './pages/Users'
 import AdminUsers from './pages/AdminUsers'
 import Balance from './pages/Balance'
+import Settings from './pages/Settings'
 
 function App() {
   const { isAuthenticated } = useAuthStore()
@@ -28,6 +29,7 @@ function App() {
         <Route path="/users" element={<Users />} />
         <Route path="/admin-users" element={<AdminUsers />} />
         <Route path="/balance" element={<Balance />} />
+        <Route path="/settings" element={<Settings />} />
       </Routes>
     </Layout>
   )

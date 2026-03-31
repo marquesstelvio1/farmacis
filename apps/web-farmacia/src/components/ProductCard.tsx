@@ -69,14 +69,14 @@ export function ProductCard({ product, index = 0, compact = false }: ProductCard
         </p>
 
         <div className="flex flex-wrap gap-1 mb-4">
-          {product.diseases.slice(0, 2).map((disease) => (
+          {(product.diseases ?? []).slice(0, 2).map((disease) => (
             <span key={disease} className="text-xs px-2 py-1 bg-slate-100 text-slate-600 rounded-md">
               {disease}
             </span>
           ))}
-          {product.diseases.length > 2 && (
+          {(product.diseases?.length ?? 0) > 2 && (
             <span className="text-xs px-2 py-1 bg-slate-100 text-slate-600 rounded-md">
-              +{product.diseases.length - 2}
+              +{(product.diseases?.length ?? 0) - 2}
             </span>
           )}
         </div>
@@ -91,11 +91,11 @@ export function ProductCard({ product, index = 0, compact = false }: ProductCard
 
           <button
             onClick={() => addItem({
-            id: product.id,
-            name: product.name,
-            price: Number(product.price),
-            imageUrl: product.imageUrl,
-          })}
+              id: product.id,
+              name: product.name,
+              price: Number(product.price),
+              imageUrl: product.imageUrl,
+            })}
             className="h-12 w-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-colors duration-200 shadow-sm active:scale-95"
             aria-label="Adicionar ao carrinho"
           >

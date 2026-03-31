@@ -1,13 +1,49 @@
 import { useState } from 'react'
-import { X } from 'lucide-react'
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
+import L from "leaflet"
+import "leaflet/dist/leaflet.css"
+import { X, MapPin, Navigation, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "/images/marker-icon-2x.png",
+  iconUrl: "/images/marker-icon.png",
+  shadowUrl: "/images/marker-shadow.png",
+});
+
+const markerIcon = new L.Icon({
+  iconUrl: "/images/marker-icon.png",
+  shadowUrl: "/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
 interface RegisterPharmacyModalProps {
   onClose: () => void
   onRegister: (data: any) => Promise<void>
+}
+
+function LocationMarker({ 
+  position, 
+  onChange 
+}: { 
+  position: [number, number] | null;
+  onChange: (lat: number, lng: number) => void;
+}) {
+  useMapEvents({
+    click(e) {
+      onChange(e.latlng.lat, e.latlng.lng);
+    },
+  });
+
+  if (!position) return null;
+  return <Marker position={position} icon={markerIcon} />;
 }
 
 export default function RegisterPharmacyModal({ onClose, onRegister }: RegisterPharmacyModalProps) {
@@ -15,36 +51,48 @@ export default function RegisterPharmacyModal({ onClose, onRegister }: RegisterP
     name: '',
     email: '',
     phone: '',
-   address: '',
-    lat: '-8.8147',
-    lng: '13.2306',
-   description: '',
+    address: '',
+    lat: -8.8387,
+    lng: 13.2344,
+    description: '',
   })
+  const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(null)
+
+  const hasLocation = markerPosition !== null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-   await onRegister(formData)
+    await onRegister({
+      ...formData,
+      lat: markerPosition ? markerPosition[0].toString() : formData.lat.toString(),
+      lng: markerPosition ? markerPosition[1].toString() : formData.lng.toString(),
+    })
   }
 
- return (
+  const handleMapClick = (lat: number, lng: number) => {
+    setMarkerPosition([lat, lng])
+  }
+
+  return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl bg-white">
-        <CardHeader className="flex flex-row items-center justify-between">
+      <Card className="w-full max-w-3xl bg-white max-h-[95vh] overflow-hidden flex flex-col">
+        <CardHeader className="flex flex-row items-center justify-between sticky top-0 bg-white z-10 border-b">
           <CardTitle>Registrar Nova Farmácia</CardTitle>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <X className="w-6 h-6" />
           </button>
         </CardHeader>
-        <CardContent>
+        
+        <CardContent className="p-4 flex-1 overflow-y-auto">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="name">Nome da Farmácia</Label>
                 <Input
                   id="name"
-                 value={formData.name}
+                  value={formData.name}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, name: e.target.value})}
-                 required
+                  required
                 />
               </div>
               <div>
@@ -52,9 +100,9 @@ export default function RegisterPharmacyModal({ onClose, onRegister }: RegisterP
                 <Input
                   id="email"
                   type="email"
-                 value={formData.email}
+                  value={formData.email}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, email: e.target.value})}
-                 required
+                  required
                 />
               </div>
             </div>
@@ -64,49 +112,62 @@ export default function RegisterPharmacyModal({ onClose, onRegister }: RegisterP
                 <Label htmlFor="phone">Telefone</Label>
                 <Input
                   id="phone"
-                 value={formData.phone}
+                  value={formData.phone}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, phone: e.target.value})}
                   placeholder="+244 9XX XXX XXX"
-                 required
-                />
-              </div>
-              <div>
-                <Label htmlFor="address">Endereço</Label>
-                <Input
-                  id="address"
-                 value={formData.address}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, address: e.target.value})}
-                 required
+                  required
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="lat">Latitude</Label>
-                <Input
-                  id="lat"
-                 value={formData.lat}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, lat: e.target.value})}
-                 required
-                />
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Navigation className="w-5 h-5 text-blue-600" />
+                <Label className="text-blue-800 font-semibold">Localização da Farmácia</Label>
               </div>
-              <div>
-                <Label htmlFor="lng">Longitude</Label>
-                <Input
-                  id="lng"
-                 value={formData.lng}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, lng: e.target.value})}
-                 required
-                />
+
+              <div className="text-sm text-blue-600 mb-3 flex items-center gap-1">
+                <MapPin className="w-4 h-4" />
+                Clique no mapa para marcar a localização
               </div>
+
+              <div className="rounded-lg overflow-hidden border-2 h-[300px]">
+                <MapContainer
+                  center={markerPosition || [formData.lat, formData.lng]}
+                  zoom={13}
+                  style={{ height: "100%", width: "100%" }}
+                >
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  <LocationMarker position={markerPosition} onChange={handleMapClick} />
+                </MapContainer>
+              </div>
+
+              {markerPosition ? (
+                <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  <div>
+                    <p className="text-green-700 font-semibold text-sm">Local Selecionado</p>
+                    <p className="text-green-600 text-xs font-mono">
+                      {markerPosition[0].toFixed(6)}, {markerPosition[1].toFixed(6)}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-3 text-amber-600 text-sm flex items-center gap-1">
+                  <MapPin className="w-4 h-4" />
+                  Selecione a localização no mapa acima
+                </p>
+              )}
             </div>
 
             <div>
               <Label htmlFor="description">Descrição</Label>
               <textarea
                 id="description"
-               value={formData.description}
+                value={formData.description}
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                 className="w-full px-3 py-2 border border-input rounded-md bg-background"
                 rows={3}
@@ -117,7 +178,7 @@ export default function RegisterPharmacyModal({ onClose, onRegister }: RegisterP
               <Button type="button" variant="outline" onClick={onClose} className="flex-1">
                 Cancelar
               </Button>
-              <Button type="submit" className="flex-1">
+              <Button type="submit" className="flex-1" disabled={!hasLocation}>
                 Registrar Farmácia
               </Button>
             </div>

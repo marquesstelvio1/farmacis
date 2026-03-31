@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { 
-  LayoutDashboard, 
-  ShoppingBag, 
-  Package, 
-  Settings, 
+import {
+  LayoutDashboard,
+  ShoppingBag,
+  Package,
+  Settings,
   LogOut,
   Menu,
   X,
@@ -12,7 +12,8 @@ import {
   DollarSign,
   Moon,
   Sun,
-  Store
+  Store,
+  FileText
 } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { useSocket } from '../hooks/useSocket'
@@ -25,6 +26,7 @@ interface LayoutProps {
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/orders', label: 'Pedidos', icon: ShoppingBag },
+  { path: '/prescriptions', label: 'Receitas', icon: FileText },
   { path: '/products', label: 'Produtos', icon: Package },
   { path: '/balance', label: 'Faturamento', icon: DollarSign },
   { path: '/settings', label: 'Configurações', icon: Settings },
@@ -33,6 +35,7 @@ const navItems = [
 export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [newOrdersCount, setNewOrdersCount] = useState(0)
+  const [pendingPrescriptionsCount, setPendingPrescriptionsCount] = useState(0)
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const { theme, toggleTheme } = useTheme()
@@ -42,22 +45,42 @@ export default function Layout({ children }: LayoutProps) {
 
   useEffect(() => {
     // Fetch pending orders count
-   const fetchPendingCount = async () => {
-     try {
-       if (!user?.pharmacyId) return;
-       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pharmacy/${user.pharmacyId}/orders/pending-count`)
-       if (response.ok) {
-         const data = await response.json()
-         setNewOrdersCount(data.count)
+    const fetchPendingCount = async () => {
+      try {
+        if (!user?.pharmacyId) return;
+        const apiUrl = import.meta.env.VITE_API_URL || '';
+        const response = await fetch(`${apiUrl}/api/pharmacy/orders/pending-count?pharmacyId=${user.pharmacyId}`)
+        if (response.ok) {
+          const data = await response.json()
+          setNewOrdersCount(data.count)
         }
-      } catch(error) {
-       console.error('Error fetching pending count:', error)
+      } catch (error) {
+        console.error('Error fetching pending count:', error)
       }
     }
 
-   if (user?.pharmacyId) {
+    // Fetch pending prescriptions count
+    const fetchPendingPrescriptions = async () => {
+      try {
+        if (!user?.pharmacyId) return;
+        const apiUrl = import.meta.env.VITE_API_URL || '';
+        const response = await fetch(`${apiUrl}/api/pharmacy/${user.pharmacyId}/prescriptions/pending-count`)
+        if (response.ok) {
+          const data = await response.json()
+          setPendingPrescriptionsCount(data.count)
+        }
+      } catch (error) {
+        console.error('Error fetching pending prescriptions:', error)
+      }
+    }
+
+    if (user?.pharmacyId) {
       fetchPendingCount()
-      const interval = setInterval(fetchPendingCount, 30000) // Refresh every 30s
+      fetchPendingPrescriptions()
+      const interval = setInterval(() => {
+        fetchPendingCount()
+        fetchPendingPrescriptions()
+      }, 30000) // Refresh every 30s
       return () => clearInterval(interval)
     }
   }, [user?.pharmacyId])
@@ -66,7 +89,7 @@ export default function Layout({ children }: LayoutProps) {
     <div className="min-h-screen bg-background">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -88,7 +111,7 @@ export default function Layout({ children }: LayoutProps) {
               <p className="text-xs text-muted-foreground">Portal da Farmácia</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={() => setSidebarOpen(false)}
             className="lg:hidden p-2 rounded-lg hover:bg-accent"
           >
@@ -101,6 +124,7 @@ export default function Layout({ children }: LayoutProps) {
             const Icon = item.icon
             const isActive = location.pathname === item.path
             const isOrders = item.path === '/orders'
+            const isPrescriptions = item.path === '/prescriptions'
             return (
               <Link
                 key={item.path}
@@ -109,8 +133,8 @@ export default function Layout({ children }: LayoutProps) {
                 className={`
                   flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium
                   transition-colors relative
-                  ${isActive 
-                    ? 'bg-primary/10 text-primary' 
+                  ${isActive
+                    ? 'bg-primary/10 text-primary'
                     : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                   }
                 `}
@@ -120,6 +144,11 @@ export default function Layout({ children }: LayoutProps) {
                 {isOrders && newOrdersCount > 0 && (
                   <span className="absolute right-3 bg-destructive text-destructive-foreground text-xs font-bold px-2 py-0.5 rounded-full">
                     {newOrdersCount}
+                  </span>
+                )}
+                {isPrescriptions && pendingPrescriptionsCount > 0 && (
+                  <span className="absolute right-3 bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                    {pendingPrescriptionsCount}
                   </span>
                 )}
               </Link>
@@ -181,11 +210,11 @@ export default function Layout({ children }: LayoutProps) {
                 )}
               </button>
               <span className="text-sm text-muted-foreground hidden sm:block">
-                {new Date().toLocaleDateString('pt-BR', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
+                {new Date().toLocaleDateString('pt-BR', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
                 })}
               </span>
             </div>

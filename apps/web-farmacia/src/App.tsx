@@ -8,6 +8,7 @@ import OrderDetails from './pages/OrderDetails'
 import Products from './pages/Products'
 import Balance from './pages/Balance'
 import Settings from './pages/Settings'
+import Prescriptions from './pages/Prescriptions'
 
 function App() {
   const { isAuthenticated } = useAuthStore()
@@ -24,6 +25,7 @@ function App() {
         <Route path="/orders" element={<Orders />} />
         <Route path="/orders/:id" element={<OrderDetails />} />
         <Route path="/products" element={<Products />} />
+        <Route path="/prescriptions" element={<Prescriptions />} />
         <Route path="/balance" element={<Balance />} />
         <Route path="/settings" element={<Settings />} />
       </Routes>

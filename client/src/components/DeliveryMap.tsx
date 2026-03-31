@@ -9,10 +9,8 @@
  */
 import { useEffect, useRef, useCallback } from "react";
 import type { Map as LMap } from "leaflet";
+import "leaflet/dist/leaflet.css";
 
-// Leaflet CSS — injected once at runtime
-const LEAFLET_CSS =
-    "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
 
 export interface DeliveryLocation {
     lat: string;
@@ -31,15 +29,6 @@ interface Props {
 const DEFAULT_LAT = -8.8368;
 const DEFAULT_LNG = 13.2343;
 const DEFAULT_ZOOM = 13;
-
-// ── helper: inject Leaflet CSS once ──
-function ensureLeafletCSS() {
-    if (document.querySelector(`link[href="${LEAFLET_CSS}"]`)) return;
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = LEAFLET_CSS;
-    document.head.appendChild(link);
-}
 
 // ── Nominatim reverse geocoding ──
 async function reverseGeocode(lat: number, lng: number): Promise<string> {
@@ -120,8 +109,6 @@ export default function DeliveryMap({
 
     useEffect(() => {
         if (!containerRef.current || mapRef.current) return;
-
-        ensureLeafletCSS();
 
         // Dynamic import of Leaflet so Vite doesn't SSR-break
         import("leaflet").then((L) => {

@@ -282,16 +282,23 @@ export function registerPharmacyRoutes(app: Express) {
     try {
       const orderIdParam = req.params.id;
       const orderId = typeof orderIdParam === 'string' ? parseInt(orderIdParam) : NaN;
-      const { status } = req.body;
+      const { status, adminId, iban, multicaixaExpress, paymentProof, paymentStatus } = req.body;
 
-      const validStatuses = ['pending', 'accepted', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'rejected', 'cancelled'];
+      const validStatuses = ['pending', 'accepted', 'awaiting_proof', 'proof_submitted', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'rejected', 'cancelled'];
       if (!validStatuses.includes(status)) {
         return res.status(400).json({ message: "Invalid status" });
       }
 
       await db
         .update(orders)
-        .set({ status, updatedAt: new Date() })
+        .set({ 
+          status, 
+          updatedAt: new Date(),
+          ...(iban && { pharmacyIban: iban }),
+          ...(multicaixaExpress && { pharmacyMulticaixaExpress: multicaixaExpress }),
+          ...(paymentProof && { paymentProof: paymentProof }),
+          ...(paymentStatus && { paymentStatus: paymentStatus })
+        })
         .where(eq(orders.id, orderId));
 
       res.json({ message: "Status updated successfully" });

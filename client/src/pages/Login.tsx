@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Lock, Mail, Eye, EyeOff, Pill, UserPlus } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, Pill } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,20 +18,9 @@ export default function Login({ onLogin, onShowRegister }: LoginProps) {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
-    if (!validateEmail(email)) {
-      setError("Email inválido");
-      return;
-    }
-
     setIsLoading(true);
 
     try {
@@ -40,20 +29,19 @@ export default function Login({ onLogin, onShowRegister }: LoginProps) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Erro ao fazer login");
+        throw new Error(data.message || "Credenciais invalidas");
       }
 
-      // Store user data in localStorage
-      localStorage.setItem("user", JSON.stringify(data.user));
+      if (data?.user) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+      }
+
       onLogin();
     } catch (err: any) {
       setError(err.message || "Erro ao fazer login");
@@ -64,7 +52,6 @@ export default function Login({ onLogin, onShowRegister }: LoginProps) {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-4">
-      {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" />
         <div className="absolute top-40 -left-20 w-72 h-72 bg-teal-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse delay-1000" />
@@ -82,12 +69,13 @@ export default function Login({ onLogin, onShowRegister }: LoginProps) {
               <Pill className="w-8 h-8 text-white" />
             </div>
             <CardTitle className="text-2xl font-bold text-slate-900">
-              Bem-vindo à Farmácia
+              Entrar
             </CardTitle>
             <CardDescription className="text-slate-500">
-              Faça login para acessar o sistema
+              Acesse sua conta para continuar
             </CardDescription>
           </CardHeader>
+
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -125,14 +113,10 @@ export default function Login({ onLogin, onShowRegister }: LoginProps) {
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={() => setShowPassword((prev) => !prev)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                   >
-                    {showPassword ? (
-                      <EyeOff className="w-5 h-5" />
-                    ) : (
-                      <Eye className="w-5 h-5" />
-                    )}
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
@@ -152,39 +136,16 @@ export default function Login({ onLogin, onShowRegister }: LoginProps) {
                 className="w-full h-12 bg-gradient-to-r from-blue-600 to-teal-500 hover:from-blue-700 hover:to-teal-600 text-white font-semibold rounded-xl transition-all hover:shadow-lg hover:shadow-blue-500/25"
                 disabled={isLoading}
               >
-                {isLoading ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        fill="none"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    Entrando...
-                  </span>
-                ) : (
-                  "Entrar"
-                )}
+                {isLoading ? "Entrando..." : "Entrar"}
               </Button>
             </form>
 
-            <div className="mt-6 flex flex-col gap-3">
+            <div className="mt-6 text-center">
               <button
                 onClick={onShowRegister}
-                className="flex items-center justify-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+                className="text-sm text-slate-500 hover:text-slate-700 transition-colors"
               >
-                <UserPlus className="w-4 h-4" />
-                Não tem uma conta? Registre-se
+                Ainda nao tem conta? Criar conta
               </button>
             </div>
           </CardContent>

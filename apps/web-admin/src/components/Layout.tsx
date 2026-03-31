@@ -11,8 +11,8 @@ import {
   Moon,
   Sun,
   Shield,
-  Package,
-  DollarSign
+  DollarSign,
+  Settings
 } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { useTheme } from '../hooks/useTheme'
@@ -23,11 +23,12 @@ interface LayoutProps {
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/pharmacies', label: 'Farmácias', icon: Store },
+  { path: '/pharmacies', label: 'Área de Controle', icon: Store },
   { path: '/orders', label: 'Pedidos', icon: ShoppingCart },
   { path: '/users', label: 'Usuários', icon: Users },
   { path: '/admin-users', label: 'Administradores', icon: Shield },
   { path: '/balance', label: 'Faturamento', icon: DollarSign },
+  { path: '/settings', label: 'Configurações', icon: Settings },
 ]
 
 export default function Layout({ children }: LayoutProps) {
@@ -48,33 +49,36 @@ export default function Layout({ children }: LayoutProps) {
       )}
 
       {/* Sidebar */}
-      <aside className={`
+      <aside
+        className={`
         fixed top-0 left-0 z-50 h-full w-64 bg-card border-r border-border
         transform transition-transform duration-200 ease-in-out
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
-        <div className="flex items-center justify-between h-16 px-6 border-b border-border">
-          <Link to="/" className="text-xl font-bold text-primary">
-            Farmácias Admin
-          </Link>
-          <button 
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-2 rounded-lg hover:bg-accent"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+      `}
+      >
+        <div className="flex h-full flex-col">
+          <div className="flex items-center justify-between h-16 px-6 border-b border-border flex-shrink-0">
+            <Link to="/" className="text-xl font-bold text-primary">
+              Farmácias Admin
+            </Link>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden p-2 rounded-lg hover:bg-accent"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
-        <nav className="p-4 space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            const isActive = location.pathname === item.path
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setSidebarOpen(false)}
-                className={`
+          <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+            {navItems.map((item) => {
+              const Icon = item.icon
+              const isActive = location.pathname === item.path
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`
                   flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium
                   transition-colors
                   ${isActive 
@@ -82,35 +86,36 @@ export default function Layout({ children }: LayoutProps) {
                     : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                   }
                 `}
-              >
-                <Icon className="w-5 h-5" />
-                {item.label}
-              </Link>
-            )
-          })}
-        </nav>
+                >
+                  <Icon className="w-5 h-5" />
+                  {item.label}
+                </Link>
+              )
+            })}
+          </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border">
-          <div className="flex items-center gap-3 px-4 py-2">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <span className="text-sm font-medium text-primary">
-                {user?.name?.charAt(0).toUpperCase()}
-              </span>
+          <div className="flex-shrink-0 p-4 border-t border-border">
+            <div className="flex items-center gap-3 px-4 py-2">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-sm font-medium text-primary">
+                  {user?.name?.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">
+                  {user?.name}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">
-                {user?.name}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-            </div>
+            <button
+              onClick={logout}
+              className="flex items-center gap-3 w-full px-4 py-2 mt-2 text-sm font-medium text-destructive rounded-lg hover:bg-destructive/10 transition-colors"
+            >
+              <LogOut className="w-5 h-5" />
+              Sair
+            </button>
           </div>
-          <button
-            onClick={logout}
-            className="flex items-center gap-3 w-full px-4 py-2 mt-2 text-sm font-medium text-destructive rounded-lg hover:bg-destructive/10 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            Sair
-          </button>
         </div>
       </aside>
 

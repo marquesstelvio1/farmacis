@@ -22,6 +22,8 @@ export default function Login() {
       }
     } catch (error) {
       toast.error('Erro ao fazer login')
+      console.error('Login error:', error);
+      toast.error('Não foi possível conectar ao servidor. Verifique se o backend está ativo.');
     } finally {
       setIsLoading(false)
     }

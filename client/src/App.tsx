@@ -9,50 +9,50 @@ import NotFound from "@/pages/not-found";
 import { Layout } from "@/components/Layout";
 import Home from "@/pages/Home";
 import Catalog from "@/pages/Catalog";
+import Pharmacies from "@/pages/Pharmacies";
 import Identify from "@/pages/Identify";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Checkout from "@/pages/Checkout";
-import PaymentMethods from "@/pages/PaymentMethods";
 import UserOrders from "@/pages/UserOrders";
-import PharmacyAdmin from "@/pages/PharmacyAdmin";
-import DeliveryLocationPage from "@/pages/DeliveryLocationPage";
+import Clinics from "@/pages/Clinics";
+import Professionals from "@/pages/Professionals";
+import AdminProfessionals from "@/pages/AdminProfessionals";
+import ProfessionalDashboard from "@/pages/ProfessionalDashboard";
+import ProfessionalLogin from "@/pages/ProfessionalLogin";
+import Insurance from "@/pages/Insurance";
+// import DeliveryLocationPage from "@/pages/DeliveryLocationPage"; // Removed as it's now a modal
+import MedicalInfo from "@/pages/MedicalInfo";
+import AccountSettings from "@/pages/Settings";
+import EmergencyContacts from "@/pages/EmergencyContacts";
+import { EmergencyButton } from "@/components/EmergencyButton";
 import { useCart } from "@/hooks/use-cart";
 
 interface RouterProps {
-  isAuthenticated: boolean;
   onLogout: () => void;
 }
 
-function Router({ isAuthenticated, onLogout }: RouterProps) {
-  const [, setLocation] = useLocation();
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setLocation("/login");
-    }
-  }, [isAuthenticated, setLocation]);
-
-  if (!isAuthenticated) {
-    return (
-      <Switch>
-        <Route path="/login" component={() => <Login onLogin={() => { }} onShowRegister={() => { }} />} />
-        <Route component={() => <Login onLogin={() => { }} onShowRegister={() => { }} />} />
-      </Switch>
-    );
-  }
-
+function Router({ onLogout }: RouterProps) {
   return (
     <Layout onLogout={onLogout}>
       <Switch>
         <Route path="/" component={Home} />
-        <Route path="/catalog" component={Catalog} />
+        <Route path="/catalogo" component={Catalog} />
+        <Route path="/farmacias" component={Pharmacies} />
+        <Route path="/clinicas" component={Clinics} />
+        <Route path="/profissionais" component={Professionals} />
+        <Route path="/seguradoras" component={Insurance} />
+        <Route path="/admin/profissionais" component={AdminProfessionals} />
+        <Route path="/profissional/dashboard">
+          <ProfessionalDashboard />
+        </Route>
+        <Route path="/profissional/login" component={ProfessionalLogin} />
         <Route path="/identificar" component={Identify} />
-        <Route path="/escolher-local" component={DeliveryLocationPage} />
         <Route path="/checkout" component={Checkout} />
-        <Route path="/pagamentos" component={PaymentMethods} />
         <Route path="/pedidos" component={UserOrders} />
-        <Route path="/farmacia/admin" component={PharmacyAdmin} />
+        <Route path="/configuracoes" component={AccountSettings} />
+        <Route path="/emergencia" component={EmergencyContacts} />
+        <Route path="/info-medica" component={MedicalInfo} />
         <Route path="/login" component={Home} />
         <Route component={NotFound} />
       </Switch>
@@ -91,12 +91,15 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         {isAuthenticated ? (
-          <Router isAuthenticated={isAuthenticated} onLogout={handleLogout} />
+          <Router 
+            onLogout={handleLogout} 
+          />
         ) : showRegister ? (
           <Register onRegister={handleShowLogin} />
         ) : (
           <Login onLogin={handleLogin} onShowRegister={handleShowRegister} />
         )}
+        {isAuthenticated && <EmergencyButton />}
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>

@@ -76,9 +76,10 @@ export const products = pgTable("products", {
   name: text("name").notNull(),
   description: text("description").notNull(),
   price: numeric("price").notNull(),
-  imageUrl: text("image_url").notNull(),
-  diseases: text("diseases").array().notNull(),
-  activeIngredient: text("active_ingredient").notNull(),
+  precoBase: numeric("preco_base"),
+  imageUrl: text("image_url").default("").notNull(),
+  diseases: text("diseases").array().default([]).notNull(),
+  activeIngredient: text("active_ingredient").default("").notNull(),
   category: text("category").notNull().default("medicamento"),
   brand: text("brand"),
   dosage: text("dosage"),
@@ -90,24 +91,24 @@ export const products = pgTable("products", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const insertProductSchema = createInsertSchema(products).omit({ 
-  id: true, 
-  createdAt: true, 
-  updatedAt: true 
+export const insertProductSchema = createInsertSchema(products).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
 });
 
-export const updateProductSchema = createInsertSchema(products).partial().omit({ 
-  id: true, 
-  createdAt: true, 
-  updatedAt: true 
+export const updateProductSchema = createInsertSchema(products).partial().omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
 });
 
 export const productCategoryEnum = z.enum([
-  "medicamento", 
-  "vitamina", 
-  "suplemento", 
-  "cosmetico", 
-  "higiene", 
+  "medicamento",
+  "vitamina",
+  "suplemento",
+  "cosmetico",
+  "higiene",
   "equipamento"
 ]);
 
@@ -131,11 +132,13 @@ export const pharmacies = pgTable("pharmacies", {
   logoUrl: text("logo_url"),
   description: text("description"),
   openingHours: text("opening_hours"), // JSON string
+  iban: text("iban"), // IBAN for bank transfer
+  multicaixaExpress: text("multicaixa_express"), // Multicaixa Express number
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const orderStatusEnum = z.enum(["pending", "accepted", "rejected", "preparing", "ready", "out_for_delivery", "delivered", "cancelled"]);
+export const orderStatusEnum = z.enum(["pending", "accepted", "awaiting_proof", "proof_submitted", "rejected", "preparing", "ready", "out_for_delivery", "delivered", "cancelled"]);
 export type OrderStatus = z.infer<typeof orderStatusEnum>;
 
 export const orders = pgTable("orders", {
@@ -152,7 +155,12 @@ export const orders = pgTable("orders", {
   status: text("status").notNull().default("pending"),
   paymentMethod: text("payment_method").notNull(),
   paymentStatus: text("payment_status").default("pending"), // pending, paid, failed
+  paymentProof: text("payment_proof"), // base64 image of payment proof
   notes: text("notes"),
+  bookingType: text("booking_type").default("delivery").notNull(), // delivery, pickup
+  scheduledTime: timestamp("scheduled_time"),
+  pharmacyIban: text("pharmacy_iban"), // IBAN for payment
+  pharmacyMulticaixaExpress: text("pharmacy_multicaixa_express"), // Multicaixa Express number
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -166,6 +174,8 @@ export const orderItems = pgTable("order_items", {
   quantity: integer("quantity").notNull(),
   unitPrice: numeric("unit_price").notNull(),
   totalPrice: numeric("total_price").notNull(),
+  prescriptionRequired: boolean("prescription_required").default(false).notNull(),
+  prescriptionId: integer("prescription_id").references(() => prescriptions.id),
 });
 
 export const insertPharmacySchema = createInsertSchema(pharmacies).omit({
@@ -268,6 +278,40 @@ export const pillIdentificationResponseSchema = z.object({
 });
 export type PillIdentificationResponse = z.infer<typeof pillIdentificationResponseSchema>;
 
+// System Settings table
+export const systemSettings = pgTable("system_settings", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  value: text("value").notNull(),
+  description: text("description"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type SystemSetting = typeof systemSettings.$inferSelect;
+
+// Prescriptions table for storing uploaded medical prescriptions
+export const prescriptions = pgTable("prescriptions", {
+  id: serial("id").primaryKey(),
+  orderId: integer("order_id").notNull().references(() => orders.id),
+  productId: integer("product_id").notNull().references(() => products.id),
+  userId: integer("user_id").references(() => users.id),
+  imageUrl: text("image_url").notNull(),
+  status: text("status").notNull().default("pending"), // pending, approved, rejected
+  rejectionReason: text("rejection_reason"),
+  reviewedBy: integer("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPrescriptionSchema = createInsertSchema(prescriptions).omit({
+  id: true,
+  createdAt: true,
+  reviewedAt: true
+});
+
+export type Prescription = typeof prescriptions.$inferSelect;
+export type InsertPrescription = z.infer<typeof insertPrescriptionSchema>;
+
 // Pharmacy Admin Users
 export const pharmacyAdmins = pgTable("pharmacy_admins", {
   id: serial("id").primaryKey(),
@@ -295,3 +339,36 @@ export const messages = pgTable("messages", {
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// Medical Records Table
+export const medicalRecords = pgTable("medical_records", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id).unique(),
+  idNumber: text("id_number"), // Número do Bilhete
+  bloodType: text("blood_type"),
+  allergies: text("allergies"),
+  chronicDiseases: text("chronic_diseases"),
+  medications: text("medications"),
+  emergencyContacts: text("emergency_contacts"), // Armazenado como JSON string (array de objectos)
+  insuranceProvider: text("insurance_provider"),
+  insuranceNumber: text("insurance_number"),
+  isOrganDonor: boolean("is_organ_donor").default(false),
+  observations: text("observations"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Medication Reminders (Modo Receita)
+export const medicationReminders = pgTable("medication_reminders", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  medicineName: text("medicine_name").notNull(),
+  durationDays: integer("duration_days").notNull(),
+  hours: text("hours"), // Armazenado como JSON string (array de strings: ["08:00", "20:00"])
+  startDate: timestamp("start_date").defaultNow().notNull(),
+  active: boolean("active").default(true).notNull(),
+});
+
+export type MedicalRecord = typeof medicalRecords.$inferSelect;
+export type InsertMedicalRecord = typeof medicalRecords.$inferInsert;
+export type MedicationReminder = typeof medicationReminders.$inferSelect;
+export type InsertMedicationReminder = typeof medicationReminders.$inferInsert;

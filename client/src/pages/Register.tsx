@@ -93,7 +93,7 @@ export default function Register({ onRegister }: RegisterProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4">
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" />
@@ -106,26 +106,26 @@ export default function Register({ onRegister }: RegisterProps) {
         transition={{ duration: 0.6 }}
         className="w-full max-w-md relative z-10"
       >
-        <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-sm">
+        <Card className="border-0 shadow-2xl bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm">
           <CardHeader className="space-y-1 text-center pb-8">
             <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-teal-500 flex items-center justify-center mb-4 shadow-lg">
               <Pill className="w-8 h-8 text-white" />
             </div>
-            <CardTitle className="text-2xl font-bold text-slate-900">
+            <CardTitle className="text-2xl font-bold text-slate-900 dark:text-white">
               Criar Conta
             </CardTitle>
-            <CardDescription className="text-slate-500">
+            <CardDescription className="text-slate-500 dark:text-slate-400">
               Registre-se para acessar a farmácia
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-slate-700">
+                <Label htmlFor="name" className="text-slate-700 dark:text-slate-300">
                   Nome Completo
                 </Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-5 h-5" />
                   <Input
                     id="name"
                     type="text"
@@ -139,11 +139,11 @@ export default function Register({ onRegister }: RegisterProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-slate-700">
+                <Label htmlFor="email" className="text-slate-700 dark:text-slate-300">
                   Email
                 </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-5 h-5" />
                   <Input
                     id="email"
                     type="email"
@@ -157,11 +157,11 @@ export default function Register({ onRegister }: RegisterProps) {
               </div>
 
               <div className="space-y-2">
-               <Label htmlFor="phone" className="text-slate-700">
+               <Label htmlFor="phone" className="text-slate-700 dark:text-slate-300">
                  Telefone (Opcional)
                </Label>
                <div className="relative">
-                 <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                 <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-5 h-5" />
                  <Input
                   id="phone"
                    type="tel"
@@ -174,11 +174,11 @@ export default function Register({ onRegister }: RegisterProps) {
              </div>
 
               <div className="space-y-2">
-               <Label htmlFor="password" className="text-slate-700">
+               <Label htmlFor="password" className="text-slate-700 dark:text-slate-300">
                  Senha
                </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-5 h-5" />
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
@@ -191,7 +191,7 @@ export default function Register({ onRegister }: RegisterProps) {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                   >
                     {showPassword ? (
                       <EyeOff className="w-5 h-5" />
@@ -203,11 +203,11 @@ export default function Register({ onRegister }: RegisterProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-slate-700">
+                <Label htmlFor="confirmPassword" className="text-slate-700 dark:text-slate-300">
                   Confirmar Senha
                 </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-5 h-5" />
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
@@ -220,7 +220,7 @@ export default function Register({ onRegister }: RegisterProps) {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="w-5 h-5" />
@@ -235,7 +235,7 @@ export default function Register({ onRegister }: RegisterProps) {
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm text-center"
+                  className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm text-center"
                 >
                   {error}
                 </motion.div>
@@ -245,7 +245,7 @@ export default function Register({ onRegister }: RegisterProps) {
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="p-3 rounded-lg bg-green-50 border border-green-200 text-green-600 text-sm text-center"
+                  className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 text-sm text-center"
                 >
                   {success}
                 </motion.div>
@@ -285,7 +285,7 @@ export default function Register({ onRegister }: RegisterProps) {
             <div className="mt-6 flex flex-col gap-3">
               <button
                 onClick={onRegister}
-                className="flex items-center justify-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+                className="flex items-center justify-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Já tem uma conta? Faça login

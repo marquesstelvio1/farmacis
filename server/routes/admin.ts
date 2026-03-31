@@ -1,6 +1,6 @@
 import { Express, Request, Response } from "express";
 import { db } from "../db";
-import { pharmacies, orders, orderItems, users, pharmacyAdmins, adminUsers } from "@shared/schema";
+import { pharmacies, orders, orderItems, users, pharmacyAdmins, adminUsers, systemSettings } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
@@ -94,6 +94,16 @@ export function registerAdminRoutes(app: Express) {
         .orderBy(desc(orders.createdAt))
         .limit(10);
 
+      const [revenueStats] = await db
+        .select({
+          total: sql<string>`coalesce(sum(${orders.total}), 0)`,
+        })
+        .from(orders)
+        .where(eq(orders.status, 'delivered'));
+
+      const totalRevenue = parseFloat(revenueStats.total);
+      const totalProfit = (totalRevenue * (0.15 / 1.15)).toFixed(2);
+
       res.json({
         totalPharmacies: pharmacyStats.total,
         activePharmacies: pharmacyStats.active,
@@ -101,6 +111,8 @@ export function registerAdminRoutes(app: Express) {
         totalOrders: orderStats.total,
         todayOrders: todayOrderStats.total || 0,
         totalUsers: userStats.total || 0,
+        totalRevenue: totalRevenue.toFixed(2),
+        totalProfit: totalProfit,
         recentOrders,
       });
     } catch (error) {
@@ -136,7 +148,7 @@ export function registerAdminRoutes(app: Express) {
   // Create a new pharmacy
   app.post("/api/admin/pharmacies", async (req: Request, res: Response) => {
     try {
-      const { name, email, phone, address, lat, lng } = req.body;
+      const { name, email, phone, address, lat, lng, iban, multicaixaExpress } = req.body;
 
       if (!name || !email || !phone || !address) {
         return res.status(400).json({ message: "All fields are required" });
@@ -149,9 +161,11 @@ export function registerAdminRoutes(app: Express) {
           email,
           phone,
           address,
-          lat: lat || "0",
-          lng: lng || "0",
+          lat: lat || "-8.8387",
+          lng: lng || "13.2344",
           status: 'active',
+          iban: iban || null,
+          multicaixaExpress: multicaixaExpress || null,
         })
         .returning();
 
@@ -308,6 +322,65 @@ export function registerAdminRoutes(app: Express) {
     } catch (error) {
       console.error("Fetch pharmacy error:", error);
       res.status(500).json({ message: "Failed to fetch pharmacy" });
+    }
+  });
+
+  // Get pharmacy payment info (for orders)
+  app.get("/api/admin/pharmacies/:id/payment-info", async (req: Request, res: Response) => {
+    try {
+      const pharmacyId = parseInt(req.params.id as string);
+
+      const [pharmacy] = await db
+        .select({
+          id: pharmacies.id,
+          name: pharmacies.name,
+          iban: pharmacies.iban,
+          multicaixaExpress: pharmacies.multicaixaExpress,
+        })
+        .from(pharmacies)
+        .where(eq(pharmacies.id, pharmacyId))
+        .limit(1);
+
+      if (!pharmacy) {
+        return res.status(404).json({ message: "Pharmacy not found" });
+      }
+
+      res.json({
+        hasIban: !!pharmacy.iban,
+        hasMulticaixaExpress: !!pharmacy.multicaixaExpress,
+        iban: pharmacy.iban,
+        multicaixaExpress: pharmacy.multicaixaExpress,
+        pharmacyName: pharmacy.name,
+      });
+    } catch (error) {
+      console.error("Fetch payment info error:", error);
+      res.status(500).json({ message: "Failed to fetch payment info" });
+    }
+  });
+
+  // Update pharmacy payment info
+  app.patch("/api/admin/pharmacies/:id/payment-info", async (req: Request, res: Response) => {
+    try {
+      const pharmacyId = parseInt(req.params.id as string);
+      const { iban, multicaixaExpress } = req.body;
+
+      const [pharmacy] = await db
+        .update(pharmacies)
+        .set({
+          iban: iban || null,
+          multicaixaExpress: multicaixaExpress || null,
+        })
+        .where(eq(pharmacies.id, pharmacyId))
+        .returning();
+
+      if (!pharmacy) {
+        return res.status(404).json({ message: "Pharmacy not found" });
+      }
+
+      res.json({ message: "Dados de pagamento atualizados", pharmacy });
+    } catch (error) {
+      console.error("Update payment info error:", error);
+      res.status(500).json({ message: "Failed to update payment info" });
     }
   });
 
@@ -469,7 +542,7 @@ export function registerAdminRoutes(app: Express) {
   // Update admin user
   app.put("/api/admin/admin-users/:id", async (req: Request, res: Response) => {
     try {
-      const adminId = parseInt(req.params.id);
+      const adminId = parseInt(req.params.id as string);
       const { email, name, role, password } = req.body;
 
       const updateData: any = {
@@ -511,7 +584,20 @@ export function registerAdminRoutes(app: Express) {
   // Delete admin user
   app.delete("/api/admin/admin-users/:id", async (req: Request, res: Response) => {
     try {
-      const adminId = parseInt(req.params.id);
+      const adminId = parseInt(req.params.id as string);
+      console.log(`[Admin] Attempting to delete admin user with ID: ${adminId}`);
+
+      // First, check if the admin exists
+      const [existingAdmin] = await db
+        .select()
+        .from(adminUsers)
+        .where(eq(adminUsers.id, adminId))
+        .limit(1);
+
+      if (!existingAdmin) {
+        console.log(`[Admin] Admin user with ID ${adminId} not found`);
+        return res.status(404).json({ message: "Administrador não encontrado" });
+      }
 
       const [deletedAdmin] = await db
         .delete(adminUsers)
@@ -519,13 +605,15 @@ export function registerAdminRoutes(app: Express) {
         .returning();
 
       if (!deletedAdmin) {
-        return res.status(404).json({ message: "Admin user not found" });
+        console.log(`[Admin] Failed to delete admin user with ID ${adminId}`);
+        return res.status(500).json({ message: "Falha ao excluir administrador" });
       }
 
-      res.json({ message: "Admin user deleted successfully" });
+      console.log(`[Admin] Successfully deleted admin user: ${deletedAdmin.email}`);
+      res.json({ message: "Administrador excluído com sucesso" });
     } catch (error) {
       console.error("Delete admin user error:", error);
-      res.status(500).json({ message: "Failed to delete admin user" });
+      res.status(500).json({ message: "Erro ao excluir administrador" });
     }
   });
 
@@ -535,6 +623,14 @@ export function registerAdminRoutes(app: Express) {
       const days = parseInt(req.query.days as string) || 30;
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
+
+      // Fetch platform fee from settings
+      const [feeSetting] = await db
+        .select()
+        .from(systemSettings)
+        .where(sql`key = 'platform_fee_percent'`)
+        .limit(1);
+      const feePercent = feeSetting ? parseFloat(feeSetting.value) / 100 : 0.15;
 
       // Total system revenue
       const [systemRevenue] = await db
@@ -562,12 +658,15 @@ export function registerAdminRoutes(app: Express) {
 
       res.json({
         totalSystemRevenue: systemRevenue.total || '0',
+        totalSystemProfit: (parseFloat(systemRevenue.total || '0') * (feePercent / (1 + feePercent))).toFixed(2),
         totalSystemOrders: systemRevenue.count || 0,
         totalSystemCompleted: systemRevenue.completed || 0,
+        platformFeePercent: feeSetting ? feeSetting.value : '15',
         pharmacyBreakdown: pharmacyBreakdown.map(pb => ({
           pharmacyId: pb.pharmacyId,
           pharmacyName: pb.pharmacyName || 'Unknown',
           revenue: pb.revenue || '0',
+          profit: (parseFloat(pb.revenue || '0') * (feePercent / (1 + feePercent))).toFixed(2),
           ordersCount: pb.ordersCount || 0,
           completedOrders: pb.completedOrders || 0,
         })),

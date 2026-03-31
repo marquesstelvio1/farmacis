@@ -6,12 +6,16 @@ import {
     Clock,
     CheckCircle2,
     AlertCircle,
+    Calendar,
+    ShoppingBag,
     ChevronRight,
+    QrCode,
     CreditCard,
     Search,
     ArrowLeft,
     Store,
-    Wallet
+    Wallet,
+    Truck
 } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -31,17 +35,23 @@ interface Order {
     pharmacyId: number;
     customerName: string;
     total: string;
-    status: "pending" | "accepted" | "rejected" | "preparing" | "ready" | "out_for_delivery" | "delivered" | "cancelled";
+    status: "pending" | "accepted" | "awaiting_proof" | "proof_submitted" | "rejected" | "preparing" | "ready" | "out_for_delivery" | "delivered" | "cancelled";
     paymentStatus: "pending" | "paid" | "failed";
     paymentMethod: string;
+    bookingType: "delivery" | "pickup";
+    scheduledTime?: string;
     customerAddress: string;
     createdAt: string;
+    pharmacyIban?: string;
+    pharmacyMulticaixaExpress?: string;
     items?: OrderItem[];
 }
 
 const statusConfig = {
     pending: { label: "Pendente", color: "bg-amber-100 text-amber-700", icon: Clock },
     accepted: { label: "Aceite", color: "bg-blue-100 text-blue-700", icon: CheckCircle2 },
+    awaiting_proof: { label: "Aguardando Pagamento", color: "bg-amber-100 text-amber-700", icon: CreditCard },
+    proof_submitted: { label: "Comprovativo Enviado", color: "bg-blue-100 text-blue-700", icon: Clock },
     rejected: { label: "Rejeitado", color: "bg-red-100 text-red-700", icon: AlertCircle },
     preparing: { label: "Em Preparação", color: "bg-purple-100 text-purple-700", icon: Package },
     ready: { label: "Pronto", color: "bg-indigo-100 text-indigo-700", icon: CheckCircle2 },
@@ -53,6 +63,11 @@ const statusConfig = {
 export default function UserOrders() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
+    const [showProofModal, setShowProofModal] = useState(false);
+    const [selectedOrderForProof, setSelectedOrderForProof] = useState<Order | null>(null);
+    const [showPickupQR, setShowPickupQR] = useState<number | null>(null);
+    const [paymentProof, setPaymentProof] = useState<string | null>(null);
+    const [proofFile, setProofFile] = useState<File | null>(null);
     const { toast } = useToast();
     const userString = localStorage.getItem("user");
     const user = userString ? JSON.parse(userString) : {};
@@ -79,13 +94,22 @@ export default function UserOrders() {
     }, [user?.id]);
 
     const handlePayment = async (orderId: number) => {
-        toast({
-            title: "Processando Pagamento",
-            description: "Aguarde enquanto processamos seu pagamento...",
-        });
+        const order = orders.find(o => o.id === orderId);
+        if (!order) return;
 
+        // If non-cash payment with pharmacy payment info, show proof upload modal
+        if (order.paymentMethod !== 'cash' && (order.pharmacyIban || order.pharmacyMulticaixaExpress)) {
+            setSelectedOrderForProof(order);
+            setShowProofModal(true);
+            return;
+        }
+
+        // For cash or other cases, mark as paid directly
         try {
-            await new Promise(r => setTimeout(r, 1500));
+            toast({
+                title: "Processando Pagamento",
+                description: "Aguarde...",
+            });
             const res = await fetch(`/api/pharmacy/orders/${orderId}/status`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -94,7 +118,7 @@ export default function UserOrders() {
             if (res.ok) {
                 toast({
                     title: "Pagamento Concluído",
-                    description: "Seu pagamento foi confirmado pela farmácia.",
+                    description: "Seu pagamento foi registrado.",
                 });
                 fetchOrders();
             }
@@ -107,11 +131,70 @@ export default function UserOrders() {
         }
     };
 
+    const handleConfirmPaymentWithProof = async () => {
+        if (!selectedOrderForProof || !paymentProof) {
+            toast({
+                title: "Comprovativo Necessário",
+                description: "Por favor, carregue o comprovativo de pagamento.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/user/orders/${selectedOrderForProof.id}/payment-proof`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    paymentProof: paymentProof
+                }),
+            });
+            if (res.ok) {
+                toast({
+                    title: "Comprovativo Enviado",
+                    description: "O seu comprovativo foi enviado para análise da farmácia.",
+                });
+                setShowProofModal(false);
+                setSelectedOrderForProof(null);
+                setPaymentProof(null);
+                setProofFile(null);
+                fetchOrders();
+            }
+        } catch (err) {
+            toast({
+                title: "Erro",
+                description: "Não foi possível enviar o comprovativo.",
+                variant: "destructive",
+            });
+        }
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        
+        if (file.size > 5 * 1024 * 1024) {
+            toast({
+                title: "Ficheiro Muito Grande",
+                description: "O comprovativo deve ter no máximo 5MB.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        setProofFile(file);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setPaymentProof(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+    };
+
     return (
-        <div className="min-h-screen bg-slate-50 py-8">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-8">
             <div className="max-w-4xl mx-auto px-4">
                 <Link href="/">
-                    <Button variant="ghost" className="mb-6 text-slate-600 hover:bg-slate-100">
+                    <Button variant="ghost" className="mb-6 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
                         <ArrowLeft className="w-4 h-4 mr-2" />
                         Voltar ao Início
                     </Button>
@@ -119,16 +202,16 @@ export default function UserOrders() {
 
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h1 className="text-3xl font-bold text-slate-900">Meus Pedidos</h1>
-                        <p className="text-slate-500 mt-1">Acompanhe o estado das suas encomendas</p>
+                        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Meus Pedidos</h1>
+                        <p className="text-slate-500 dark:text-slate-400 mt-1">Acompanhe o estado das suas encomendas</p>
                     </div>
-                    <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+                    <div className="bg-white dark:bg-slate-800 p-3 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400">
                             <Package size={20} />
                         </div>
                         <div>
-                            <p className="text-xs text-slate-500 font-medium">Total de Pedidos</p>
-                            <p className="text-lg font-bold text-slate-800 leading-none">{orders.length}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Total de Pedidos</p>
+                            <p className="text-lg font-bold text-slate-800 dark:text-slate-200 leading-none">{orders.length}</p>
                         </div>
                     </div>
                 </div>
@@ -136,17 +219,17 @@ export default function UserOrders() {
                 {loading ? (
                     <div className="grid gap-4">
                         {[1, 2].map((i) => (
-                            <div key={i} className="h-48 bg-slate-200 animate-pulse rounded-2xl" />
+                            <div key={i} className="h-48 bg-slate-200 dark:bg-slate-800 animate-pulse rounded-2xl" />
                         ))}
                     </div>
                 ) : orders.length === 0 ? (
-                    <Card className="border-dashed py-20">
+                    <Card className="border-dashed border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-20">
                         <CardContent className="flex flex-col items-center justify-center text-center">
-                            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-6">
-                                <Search className="w-10 h-10 text-slate-300" />
+                            <div className="w-20 h-20 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-6">
+                                <Search className="w-10 h-10 text-slate-300 dark:text-slate-600" />
                             </div>
-                            <h3 className="text-xl font-bold text-slate-900">Nenhum pedido encontrado</h3>
-                            <p className="text-slate-500 mt-2 max-w-xs">
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Nenhum pedido encontrado</h3>
+                            <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-xs">
                                 Você ainda não realizou nenhum pedido em nossa plataforma.
                             </p>
                             <Link href="/">
@@ -163,7 +246,7 @@ export default function UserOrders() {
                                 const config = statusConfig[order.status as keyof typeof statusConfig] || statusConfig.pending;
                                 const StatusIcon = config.icon;
                                 const isCash = order.paymentMethod === "cash";
-                                const canPay = !isCash && (order.status === "accepted" || order.status === "ready") && order.paymentStatus === "pending";
+                                const canPay = !isCash && order.status === "awaiting_proof" && order.paymentStatus === "pending";
 
                                 return (
                                     <motion.div
@@ -172,16 +255,16 @@ export default function UserOrders() {
                                         animate={{ opacity: 1, scale: 1 }}
                                         layout
                                     >
-                                        <Card className="overflow-hidden border-slate-200 hover:shadow-xl transition-all duration-300 group">
-                                            <div className="bg-white p-6">
+                                        <Card className="overflow-hidden border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:shadow-xl dark:hover:shadow-slate-900/50 transition-all duration-300 group">
+                                            <div className="bg-white dark:bg-slate-800 p-6">
                                                 <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors">
+                                                        <div className="w-12 h-12 bg-slate-50 dark:bg-slate-700 rounded-2xl flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">
                                                             <Store size={24} />
                                                         </div>
                                                         <div>
-                                                            <h3 className="font-bold text-slate-900">Pedido #{order.id}</h3>
-                                                            <p className="text-sm text-slate-500">
+                                                            <h3 className="font-bold text-slate-900 dark:text-white">Pedido #{order.id}</h3>
+                                                            <p className="text-sm text-slate-500 dark:text-slate-400">
                                                                 {new Date(order.createdAt).toLocaleDateString('pt-AO', {
                                                                     day: '2-digit',
                                                                     month: 'short',
@@ -199,36 +282,89 @@ export default function UserOrders() {
                                                         </Badge>
 
                                                         <Badge className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${order.paymentStatus === "paid"
-                                                            ? "bg-green-100 text-green-700"
-                                                            : "bg-slate-100 text-slate-500"
+                                                            ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                                                            : "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
                                                             }`}>
                                                             {order.paymentStatus === "paid" ? "Pago" : "Pagamento Pendente"}
                                                         </Badge>
                                                     </div>
                                                 </div>
 
-                                                <div className="grid md:grid-cols-2 gap-8 border-t border-slate-100 pt-6">
+                                                <div className="grid md:grid-cols-2 gap-8 border-t border-slate-100 dark:border-slate-700 pt-6">
                                                     <div className="space-y-4">
                                                         <div className="flex items-start gap-3">
-                                                            <MapPin className="w-5 h-5 text-slate-400 mt-0.5" />
+                                                            <div className={`w-5 h-5 mt-0.5 ${order.bookingType === 'pickup' ? 'text-purple-500 dark:text-purple-400' : 'text-blue-500 dark:text-blue-400'}`}>
+                                                                {order.bookingType === 'pickup' ? <ShoppingBag size={20} /> : <Truck size={20} />}
+                                                            </div>
                                                             <div>
-                                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Endereço de Entrega</p>
-                                                                <p className="text-slate-700 mt-1">{order.customerAddress}</p>
+                                                                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Tipo de Serviço</p>
+                                                                <p className="text-slate-700 dark:text-slate-300 mt-1 font-semibold">
+                                                                    {order.bookingType === 'pickup' ? 'Levantamento na Loja' : 'Entrega ao Domicílio'}
+                                                                </p>
+                                                                {order.scheduledTime && (
+                                                                    <div className="flex items-center gap-1 mt-1 text-blue-600 dark:text-blue-400 text-xs font-medium">
+                                                                        <Calendar size={12} />
+                                                                        Agendado: {new Date(order.scheduledTime).toLocaleString('pt-AO')}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
+
+                                                        {order.bookingType === 'pickup' && order.paymentStatus === 'paid' && (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => setShowPickupQR(order.id)}
+                                                                className="w-full mt-2 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 flex items-center gap-2"
+                                                            >
+                                                                <QrCode size={16} />
+                                                                Mostrar Código de Levantamento
+                                                            </Button>
+                                                        )}
+
+                                                        {order.bookingType !== 'pickup' && (
+                                                            <div className="flex items-start gap-3">
+                                                                <MapPin className="w-5 h-5 text-slate-400 dark:text-slate-500 mt-0.5" />
+                                                                <div>
+                                                                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Endereço de Entrega</p>
+                                                                    <p className="text-slate-700 dark:text-slate-300 mt-1">{order.customerAddress}</p>
+                                                                </div>
+                                                            </div>
+                                                        )}
 
                                                         <div className="flex items-start gap-3">
-                                                            <Wallet className="w-5 h-5 text-slate-400 mt-0.5" />
+                                                            <Wallet className="w-5 h-5 text-slate-400 dark:text-slate-500 mt-0.5" />
                                                             <div>
-                                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Método de Pagamento</p>
-                                                                <p className="text-slate-700 mt-1 capitalize">{order.paymentMethod.replace('_', ' ')}</p>
+                                                                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Método de Pagamento</p>
+                                                                <p className="text-slate-700 dark:text-slate-300 mt-1 capitalize">{order.paymentMethod.replace('_', ' ')}</p>
                                                             </div>
                                                         </div>
+
+                                                        {order.paymentMethod !== 'cash' && order.status === 'accepted' && (order.pharmacyIban || order.pharmacyMulticaixaExpress) && (
+                                                            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 mt-2">
+                                                                <p className="text-xs font-bold text-green-700 dark:text-green-400 uppercase tracking-widest mb-3">Dados para Pagamento</p>
+                                                                {order.pharmacyIban && (
+                                                                    <div className="mb-2">
+                                                                        <p className="text-xs text-green-600 dark:text-green-400">IBAN</p>
+                                                                        <p className="text-sm font-mono font-semibold text-green-800 dark:text-green-300">{order.pharmacyIban}</p>
+                                                                    </div>
+                                                                )}
+                                                                {order.pharmacyMulticaixaExpress && (
+                                                                    <div>
+                                                                        <p className="text-xs text-green-600 dark:text-green-400">Multicaixa Express</p>
+                                                                        <p className="text-sm font-mono font-semibold text-green-800 dark:text-green-300">{order.pharmacyMulticaixaExpress}</p>
+                                                                    </div>
+                                                                )}
+                                                                <p className="text-xs text-green-600 dark:text-green-400 mt-3">
+                                                                    Utilize os dados acima para fazer o pagamento. Após confirmar o pagamento, clique em "Confirmar Pagamento".
+                                                                </p>
+                                                            </div>
+                                                        )}
                                                     </div>
 
-                                                    <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                                                    <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700">
                                                         <div className="flex justify-between items-center mb-4">
-                                                            <span className="text-sm font-semibold text-slate-500 uppercase tracking-widest">Total do Pedido</span>
+                                                            <span className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Total do Pedido</span>
                                                             <span className="text-2xl font-black text-blue-600">
                                                                 {Number(order.total).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
                                                             </span>
@@ -240,20 +376,24 @@ export default function UserOrders() {
                                                                 className="w-full bg-green-500 hover:bg-green-600 text-white py-6 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-500/20"
                                                             >
                                                                 <CreditCard size={20} />
-                                                                Pagar Agora
+                                                                {(order.pharmacyIban || order.pharmacyMulticaixaExpress) ? 'Confirmar Pagamento' : 'Pagar Agora'}
                                                             </Button>
                                                         ) : order.paymentStatus === "paid" ? (
-                                                            <div className="w-full bg-green-50 text-green-700 py-3 rounded-xl border border-green-200 text-center font-bold flex items-center justify-center gap-2">
+                                                            <div className="w-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 py-3 rounded-xl border border-green-200 dark:border-green-800 text-center font-bold flex items-center justify-center gap-2">
                                                                 <CheckCircle2 size={18} />
                                                                 Pedido Pago
                                                             </div>
                                                         ) : isCash ? (
-                                                            <div className="w-full bg-blue-50 text-blue-700 py-3 rounded-xl border border-blue-200 text-center text-sm font-bold flex items-center justify-center gap-2">
+                                                            <div className="w-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 py-3 rounded-xl border border-blue-200 dark:border-blue-800 text-center text-sm font-bold flex items-center justify-center gap-2">
                                                                 <Wallet size={18} />
                                                                 Pagamento em Dinheiro na Entrega
                                                             </div>
+                                                        ) : order.status === "proof_submitted" ? (
+                                                            <div className="w-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 py-3 rounded-xl border border-blue-200 dark:border-blue-800 text-center text-sm font-medium px-4">
+                                                                Comprovativo em análise pela farmácia
+                                                            </div>
                                                         ) : order.status === "pending" ? (
-                                                            <div className="w-full bg-amber-50 text-amber-700 py-3 rounded-xl border border-amber-200 text-center text-sm font-medium px-4">
+                                                            <div className="w-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 py-3 rounded-xl border border-amber-200 dark:border-amber-800 text-center text-sm font-medium px-4">
                                                                 Aguardando confirmação da farmácia para habilitar o pagamento
                                                             </div>
                                                         ) : null}
@@ -261,13 +401,13 @@ export default function UserOrders() {
                                                 </div>
 
                                                 {order.items && order.items.length > 0 && (
-                                                    <div className="mt-6 border-t border-slate-50 pt-4">
-                                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Itens do Pedido</p>
+                                                    <div className="mt-6 border-t border-slate-50 dark:border-slate-700 pt-4">
+                                                        <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">Itens do Pedido</p>
                                                         <div className="space-y-2">
                                                             {order.items.map((item, idx) => (
                                                                 <div key={idx} className="flex justify-between text-sm">
-                                                                    <span className="text-slate-600">{item.quantity}x {item.productName}</span>
-                                                                    <span className="font-medium text-slate-900">
+                                                                    <span className="text-slate-600 dark:text-slate-400">{item.quantity}x {item.productName}</span>
+                                                                    <span className="font-medium text-slate-900 dark:text-slate-200">
                                                                         {Number(item.unitPrice).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
                                                                     </span>
                                                                 </div>
@@ -284,6 +424,157 @@ export default function UserOrders() {
                     </div>
                 )}
             </div>
+
+            {/* Payment Proof Modal */}
+            {showProofModal && selectedOrderForProof && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+                        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-blue-50 dark:bg-blue-900/20">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                                    <CreditCard size={20} className="text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">Carregar Comprovativo</h2>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">Pedido #{selectedOrderForProof.id}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => { setShowProofModal(false); setPaymentProof(null); setProofFile(null); }}
+                                className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        
+                        <div className="p-6 space-y-4">
+                            {selectedOrderForProof.pharmacyIban && (
+                                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4">
+                                    <p className="text-xs font-bold text-green-700 dark:text-green-400 uppercase mb-1">IBAN</p>
+                                    <p className="text-sm font-mono font-semibold text-green-800 dark:text-green-300">{selectedOrderForProof.pharmacyIban}</p>
+                                </div>
+                            )}
+                            {selectedOrderForProof.pharmacyMulticaixaExpress && (
+                                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4">
+                                    <p className="text-xs font-bold text-green-700 dark:text-green-400 uppercase mb-1">Multicaixa Express</p>
+                                    <p className="text-sm font-mono font-semibold text-green-800 dark:text-green-300">{selectedOrderForProof.pharmacyMulticaixaExpress}</p>
+                                </div>
+                            )}
+
+                            <div className="space-y-4">
+                                <div className="flex gap-2">
+                                    <label className="flex-1 cursor-pointer">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            capture="environment"
+                                            onChange={handleFileChange}
+                                            className="hidden"
+                                            id="proof-camera"
+                                        />
+                                        <div className="flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors">
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                            Tirar Foto
+                                        </div>
+                                    </label>
+                                    <label className="flex-1 cursor-pointer">
+                                        <input
+                                            type="file"
+                                            accept="image/*,.pdf"
+                                            onChange={handleFileChange}
+                                            className="hidden"
+                                            id="proof-upload"
+                                        />
+                                        <div className="flex items-center justify-center gap-2 py-3 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium rounded-xl transition-colors border border-slate-200 dark:border-slate-600">
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            Carregar Ficheiro
+                                        </div>
+                                    </label>
+                                </div>
+
+                                {paymentProof && (
+                                    <div className="relative">
+                                        <img src={paymentProof} alt="Comprovativo" className="max-h-48 mx-auto rounded-xl border border-slate-200 dark:border-slate-700" />
+                                        <button
+                                            onClick={() => { setPaymentProof(null); setProofFile(null); }}
+                                            className="absolute top-2 right-2 w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {!paymentProof && (
+                                <p className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-2">
+                                    <AlertCircle size={16} />
+                                    Carregue o comprovativo de pagamento para confirmar
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex gap-3">
+                            <Button
+                                variant="outline"
+                                onClick={() => { setShowProofModal(false); setPaymentProof(null); setProofFile(null); }}
+                                className="flex-1"
+                            >
+                                Cancelar
+                            </Button>
+                            <Button
+                                onClick={handleConfirmPaymentWithProof}
+                                disabled={!paymentProof}
+                                className="flex-1 bg-green-600 hover:bg-green-700"
+                            >
+                                Confirmar Pagamento
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Pickup QR Code Modal */}
+            <AnimatePresence>
+                {showPickupQR && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            className="bg-white dark:bg-slate-800 rounded-3xl p-8 w-full max-w-sm text-center shadow-2xl"
+                        >
+                            <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/20 rounded-2xl flex items-center justify-center text-purple-600 dark:text-purple-400 mx-auto mb-4">
+                                <ShoppingBag size={32} />
+                            </div>
+                            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Código de Reserva</h2>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Apresente este código na farmácia para levantar o seu pedido #{showPickupQR}</p>
+                            
+                            <div className="bg-slate-50 dark:bg-slate-700 p-6 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-600 mb-6">
+                                <img 
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=FARMACIS-ORDER-${showPickupQR}`} 
+                                    alt="QR Code de Levantamento"
+                                    className="mx-auto mix-blend-multiply dark:mix-blend-normal dark:invert"
+                                />
+                                <p className="mt-4 font-mono font-bold text-lg tracking-widest text-slate-700 dark:text-slate-300 uppercase">
+                                    REC-{showPickupQR}-{new Date().getFullYear()}
+                                </p>
+                            </div>
+
+                            <Button 
+                                onClick={() => setShowPickupQR(null)}
+                                className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-12"
+                            >
+                                Fechar
+                            </Button>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

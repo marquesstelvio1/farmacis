@@ -1,33 +1,77 @@
 import { motion } from "framer-motion";
-import { Link } from "wouter";
-import { Search, ChevronRight, Activity, ShieldCheck, Clock } from "lucide-react";
-import { useProducts } from "@/hooks/use-products";
-import { ProductCard } from "@/components/ProductCard";
-import { useState } from "react";
+import { useLocation } from "wouter";
+import { ChevronLeft, ChevronRight, ArrowRight, Building2, ShieldCheck, Clock3 } from "lucide-react";
+import { SplitSearch } from "@/components/SplitSearch";
+import { QuickServices } from "@/components/QuickServices";
+import { useState, useEffect, useCallback } from "react";
+import useEmblaCarousel from "embla-carousel-react";
+
+const heroImages = [
+  "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=1920&q=80",
+  "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=1920&q=80",
+  "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=1920&q=80",
+  "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=1920&q=80",
+  "https://images.unsplash.com/photo-1631815588090-d4bfec5b1ccb?w=1920&q=80",
+];
+
+const sponsors = [
+  { id: 1, name: "Empresa Saúde A", logo: "https://images.unsplash.com/photo-1563213126-a4273aed2016?w=200&q=80", link: "https://example.com" },
+  { id: 2, name: "BioTech", logo: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=200&q=80", link: "https://example.com" },
+  { id: 3, name: "MedCare", logo: "https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=200&q=80", link: "https://example.com" },
+  { id: 4, name: "Vida Ativa", logo: "https://images.unsplash.com/photo-1551288049-bbbda536ad0a?w=200&q=80", link: "https://example.com" },
+  { id: 5, name: "Laboratórios Unidos", logo: "https://images.unsplash.com/photo-1532187863486-abf9d39d6618?w=200&q=80", link: "https://example.com" },
+];
 
 export default function Home() {
-  const [filters, setFilters] = useState({ search: "" });
-  const { data: products, isLoading, error } = useProducts(filters);
+  const [, setLocation] = useLocation();
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [currentImage, setCurrentImage] = useState(0);
+
+  // Configuração do Carrossel de Patrocinadores
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: 'start', slidesToScroll: 1 });
+  const scrollPrev = useCallback(() => emblaApi && emblaApi.scrollPrev(), [emblaApi]);
+  const scrollNext = useCallback(() => emblaApi && emblaApi.scrollNext(), [emblaApi]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImage((prev) => (prev + 1) % heroImages.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleSearch = (query: string) => {
+    if (!query || query.trim() === "") return;
+    setLocation(`/catalogo?search=${encodeURIComponent(query.trim())}`);
+  };
+
+  const goToCatalog = () => setLocation("/catalogo");
+  const goToPharmacies = () => setLocation("/farmacias");
 
   return (
     <div className="w-full">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-slate-900 pt-20 pb-32">
-        {/* Abstract Background Elements */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 pt-8 sm:pt-16 md:pt-20 pb-16 sm:pb-28 md:pb-32">
+        {/* Carousel Background - Simplified */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {/* landing page hero abstract medical clinic blue modern */}
-          <img 
-            src="https://images.unsplash.com/photo-1551076805-e1869033e561?q=80&w=2000&auto=format&fit=crop" 
-            alt="Medical abstract" 
-            className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-overlay"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/95 to-blue-900/80" />
-          <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" />
-          <div className="absolute top-40 -left-20 w-72 h-72 bg-teal-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse delay-1000" />
+          {heroImages.map((src, index) => (
+            <div
+              key={index}
+              className={`absolute inset-0 transition-opacity duration-1000 ${index === currentImage ? 'opacity-25' : 'opacity-0'}`}
+            >
+              <img 
+                src={src} 
+                alt="Medical" 
+                className="absolute inset-0 w-full h-full object-cover scale-110"
+              />
+            </div>
+          ))}
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 via-slate-800/90 to-blue-900/80" />
+          <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" />
+          <div className="absolute top-40 -left-20 w-72 h-72 bg-teal-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse delay-1000" />
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="max-w-2xl">
+          <div className="max-w-4xl mx-auto text-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -40,129 +84,129 @@ export default function Home() {
                 </span>
                 Nova Funcionalidade IA
               </span>
-              <h1 className="text-5xl md:text-7xl font-extrabold text-white mb-6 leading-[1.1]">
+              <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-7xl font-extrabold text-white mb-4 sm:mb-6 leading-[1.1]">
                 Saúde inteligente <br/>
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-300">
                   ao seu alcance.
                 </span>
               </h1>
-              <p className="text-lg md:text-xl text-slate-300 mb-10 leading-relaxed font-light">
+              <p className="text-sm sm:text-lg md:text-xl text-slate-300 mb-6 sm:mb-8 leading-relaxed font-light max-w-2xl mx-auto">
                 Compre seus medicamentos com segurança e utilize nossa nova inteligência artificial para identificar comprimidos perdidos instantaneamente.
               </p>
               
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link 
-                  href="/identificar" 
-                  className="px-8 py-4 rounded-2xl bg-white text-blue-600 font-bold flex items-center justify-center gap-2 hover:bg-blue-50 hover:scale-105 transition-all shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]"
-                >
-                  <Search size={20} />
-                  Identificar Comprimido
-                </Link>
-                <Link 
-                  href="/catalog" 
-                  className="px-8 py-4 rounded-2xl bg-slate-800 border border-slate-700 text-white font-semibold flex items-center justify-center gap-2 hover:bg-slate-700 transition-colors"
+              <SplitSearch
+                onSearch={handleSearch}
+                onChatOpen={setIsChatOpen}
+                className="mb-6 sm:mb-8"
+              />
+
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-8">
+                <button
+                  onClick={goToCatalog}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg shadow-blue-900/30 transition"
                 >
                   Ver Catálogo
-                  <ChevronRight size={20} className="text-slate-400" />
-                </Link>
+                  <ArrowRight size={16} />
+                </button>
+                <button
+                  onClick={goToPharmacies}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 text-white font-semibold transition"
+                >
+                  <Building2 size={16} />
+                  Escolher Farmácia
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-3xl mx-auto">
+                <div className="rounded-xl border border-white/15 bg-white/5 backdrop-blur-sm px-4 py-3 text-left">
+                  <div className="flex items-center gap-2 text-blue-300 mb-1">
+                    <ShieldCheck size={16} />
+                    <span className="text-xs font-bold uppercase tracking-wide">Segurança</span>
+                  </div>
+                  <p className="text-sm text-slate-200">Farmácias verificadas e compra protegida.</p>
+                </div>
+                <div className="rounded-xl border border-white/15 bg-white/5 backdrop-blur-sm px-4 py-3 text-left">
+                  <div className="flex items-center gap-2 text-teal-300 mb-1">
+                    <Clock3 size={16} />
+                    <span className="text-xs font-bold uppercase tracking-wide">Rapidez</span>
+                  </div>
+                  <p className="text-sm text-slate-200">Busca inteligente e pedido em poucos passos.</p>
+                </div>
+                <div className="rounded-xl border border-white/15 bg-white/5 backdrop-blur-sm px-4 py-3 text-left">
+                  <div className="flex items-center gap-2 text-indigo-300 mb-1">
+                    <Building2 size={16} />
+                    <span className="text-xs font-bold uppercase tracking-wide">Cobertura</span>
+                  </div>
+                  <p className="text-sm text-slate-200">Compare opcoes de varias farmacias perto de si.</p>
+                </div>
               </div>
             </motion.div>
           </div>
         </div>
-        
-        {/* Decorative Wave Divider */}
-        <div className="absolute bottom-0 w-full overflow-hidden leading-none z-10">
-          <svg className="relative block w-[calc(100%+1.3px)] h-[60px]" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
-            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V120H0V95.8C59.71,118.08,130.83,123.15,190.15,115.54,235.85,108.6,281.33,78.29,321.39,56.44Z" className="fill-slate-50"></path>
-          </svg>
-        </div>
       </section>
 
-      {/* Features */}
-      <section className="py-12 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 -mt-20 relative z-20">
-            {[
-              { icon: ShieldCheck, title: "Qualidade Garantida", desc: "Todos os produtos originais e certificados pela ANVISA." },
-              { icon: Activity, title: "IA Médica", desc: "Identificação precisa de comprimidos usando tecnologia de ponta." },
-              { icon: Clock, title: "Entrega Expressa", desc: "Receba seus medicamentos em casa em até 2 horas." }
-            ].map((feature, i) => (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 + (i * 0.1) }}
-                key={i} 
-                className="bg-white rounded-2xl p-6 shadow-xl shadow-slate-200/50 border border-slate-100 flex items-start gap-4"
+      {/* Quick Services Section - Outside Hero */}
+      {!isChatOpen && (
+        <QuickServices />
+      )}
+
+
+      {/* Sponsor Carousel Section */}
+      {!isChatOpen && (
+        <section className="py-12 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800">
+          <div className="max-w-7xl mx-auto px-4 mb-10 flex items-center justify-between">
+            <h2 className="text-sm font-bold text-gray-400 dark:text-gray-300 uppercase tracking-[0.2em]">
+              Nossos Patrocinadores & Parceiros
+            </h2>
+            
+            <div className="flex gap-2">
+              <button 
+                onClick={scrollPrev}
+                className="p-2 rounded-full border border-gray-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-blue-600 transition-all text-gray-400 dark:text-gray-500 shadow-sm"
+                aria-label="Patrocinadores anteriores"
               >
-                <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0 text-blue-600">
-                  <feature.icon size={24} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-800 text-lg mb-1">{feature.title}</h3>
-                  <p className="text-slate-500 text-sm leading-relaxed">{feature.desc}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Catalog Section */}
-      <section id="catalog" className="py-20 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">
-                Catálogo de <span className="text-blue-600">Medicamentos</span>
-              </h2>
-              <p className="text-slate-500 max-w-2xl text-lg">
-                Encontre o que você precisa com rapidez. Navegue pela nossa lista completa de medicamentos e produtos de saúde.
-              </p>
-            </div>
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-              <input 
-                type="text" 
-                placeholder="Buscar por nome ou doença..." 
-                className="w-full md:w-80 pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
-                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-              />
+                <ChevronLeft size={20} />
+              </button>
+              <button 
+                onClick={scrollNext}
+                className="p-2 rounded-full border border-gray-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-blue-600 transition-all text-gray-400 dark:text-gray-500 shadow-sm"
+                aria-label="Próximos patrocinadores"
+              >
+                <ChevronRight size={20} />
+              </button>
             </div>
           </div>
-
-          {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                <div key={n} className="bg-white rounded-2xl p-5 h-[400px] border border-slate-100 shadow-sm animate-pulse flex flex-col">
-                  <div className="w-full h-48 bg-slate-100 rounded-xl mb-6"></div>
-                  <div className="w-3/4 h-6 bg-slate-100 rounded mb-2"></div>
-                  <div className="w-full h-4 bg-slate-100 rounded mb-4"></div>
-                  <div className="w-1/2 h-4 bg-slate-100 rounded mb-6"></div>
-                  <div className="mt-auto flex justify-between">
-                    <div className="w-1/3 h-8 bg-slate-100 rounded"></div>
-                    <div className="w-12 h-12 bg-slate-100 rounded-xl"></div>
-                  </div>
+          
+          <div className="max-w-7xl mx-auto px-4 overflow-hidden" ref={emblaRef}>
+            <div className="flex">
+              {sponsors.map((sponsor) => (
+                <div key={sponsor.id} className="flex-[0_0_85%] sm:flex-[0_0_45%] lg:flex-[0_0_25%] pl-4 first:pl-0">
+                  <a 
+                    href={sponsor.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block group relative bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-3xl p-6 h-32 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 overflow-hidden"
+                  >
+                    <div className="w-full h-full flex items-center justify-center grayscale group-hover:grayscale-0 opacity-60 group-hover:opacity-100 transition-all">
+                      <img 
+                        src={sponsor.logo} 
+                        alt={sponsor.name} 
+                        className="max-h-12 w-auto object-contain"
+                      />
+                    </div>
+                  </a>
                 </div>
               ))}
             </div>
-          ) : error ? (
-            <div className="bg-red-50 text-red-600 p-6 rounded-2xl border border-red-100 text-center">
-              <p className="font-semibold">Erro ao carregar produtos.</p>
-              <p className="text-sm mt-1 opacity-80">Por favor, recarregue a página.</p>
-            </div>
-          ) : products?.length === 0 ? (
-            <div className="text-center py-20">
-              <p className="text-slate-500 text-lg">Nenhum produto encontrado.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {products?.map((product, idx) => (
-                <ProductCard key={product.id} product={product} index={idx} />
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+          </div>
+
+          <div className="max-w-7xl mx-auto px-4 mt-6">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Trabalhamos com parceiros para ampliar disponibilidade de medicamentos e servicos de saude.
+            </p>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

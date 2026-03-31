@@ -3,6 +3,9 @@ import type { Server } from "http";
 import { Server as SocketIOServer, Socket } from "socket.io";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
+import { db } from "./db";
+import { prescriptions, orders, systemSettings } from "@shared/schema";
+import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import OpenAI from "openai";
 import bcrypt from "bcryptjs";
@@ -14,6 +17,10 @@ import { registerAdminRoutes } from "./routes/admin";
 import { registerPharmacyRoutes } from "./routes/pharmacy";
 import { registerCatalogRoutes } from "./routes/catalog";
 import { registerUploadRoutes } from "./routes/upload";
+import { registerPrescriptionRoutes } from "./routes/prescriptions";
+import { registerSettingsRoutes } from "./routes/settings";
+import { registerLocationRoutes } from "./routes/location";
+import { registerMedicalRoutes } from "./routes/medical";
 import { ensureProductColumns } from "./utils/databaseUtils";
 
 // OpenAI configuration from the AI integration blueprint
@@ -103,15 +110,17 @@ export async function registerRoutes(
   // Register upload routes
   registerUploadRoutes(app);
 
-  // Health check endpoint
-  app.get("/api/health", (req, res) => {
-    res.json({
-      status: "ok",
-      timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV || "development",
-      version: process.env.npm_package_version || "1.0.0"
-    });
-  });
+  // Register prescription routes
+  registerPrescriptionRoutes(app);
+
+  // Register settings routes
+  registerSettingsRoutes(app);
+
+  // Register location routes
+  registerLocationRoutes(app);
+
+  // Register medical routes
+  registerMedicalRoutes(app);
 
   app.get(api.products.list.path, async (req, res) => {
     try {
@@ -119,19 +128,25 @@ export async function registerRoutes(
       const allProducts = await storage.getProducts(search);
       res.json(allProducts);
     } catch (err) {
-      res.status(500).json({ message: "Failed to fetch products" });
+      console.error("DETAILED ERROR in GET /api/products:", err);
+      res.status(500).json({ 
+        message: "Failed to fetch products",
+        error: err instanceof Error ? err.message : String(err),
+        stack: process.env.NODE_ENV === 'development' ? (err as Error).stack : undefined
+      });
     }
   });
 
   app.get(api.products.get.path, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(req.params.id as string);
       const product = await storage.getProduct(id);
       if (!product) {
         return res.status(404).json({ message: "Produto não encontrado" });
       }
       res.json(product);
     } catch (err) {
+      console.error("Error in GET /api/products/:id:", err);
       res.status(500).json({ message: "Failed to fetch product" });
     }
   });
@@ -159,6 +174,37 @@ export async function registerRoutes(
       res.json(orders);
     } catch (err) {
       res.status(500).json({ message: "Erro ao buscar pedidos do usuário" });
+    }
+  });
+
+  // Submit payment proof (user app)
+  app.patch("/api/user/orders/:orderId/payment-proof", async (req, res) => {
+    try {
+      const orderId = parseInt(req.params.orderId);
+      const { paymentProof } = req.body;
+
+      if (!orderId) {
+        return res.status(400).json({ message: "Order ID required" });
+      }
+
+      if (!paymentProof) {
+        return res.status(400).json({ message: "Payment proof required" });
+      }
+
+      await db
+        .update(orders)
+        .set({ 
+          status: "proof_submitted",
+          paymentProof: paymentProof,
+          paymentStatus: "paid",
+          updatedAt: new Date()
+        })
+        .where(eq(orders.id, orderId));
+
+      res.json({ message: "Payment proof submitted successfully" });
+    } catch (err) {
+      console.error("Error submitting payment proof:", err);
+      res.status(500).json({ message: "Erro ao enviar comprovativo" });
     }
   });
 
@@ -190,18 +236,57 @@ export async function registerRoutes(
         customerLng: orderData.customerLng ? String(orderData.customerLng) : null,
       };
 
+      // Validate minimum order amount
+      const [minOrderSetting] = await db
+        .select()
+        .from(systemSettings)
+        .where(sql`key = 'min_order_amount'`)
+        .limit(1);
+      const minOrderAmount = minOrderSetting ? parseFloat(minOrderSetting.value) : 500;
+      const orderSubtotal = parseFloat(orderData.total || "0") - parseFloat(orderData.deliveryFee || "0");
+      
+      if (orderSubtotal < minOrderAmount) {
+        return res.status(400).json({
+          message: `Valor mínimo de ${minOrderAmount.toLocaleString('pt-AO')} AOA para encomendar`,
+          minOrderAmount,
+        });
+      }
+
       console.log("Processed order data for insertion:", processedOrderData);
       const order = await storage.createOrder(processedOrderData);
 
-      // Create order items if provided
+      // Create order items and prescriptions if provided
       if (items && Array.isArray(items) && items.length > 0) {
-        const orderItemsData = items.map((item: any) => {
+        const orderItemsData = await Promise.all(items.map(async (item: any) => {
           // Handle cases where item might have a nested product object
           const product = item.product || {};
           const productId = item.productId || product.id || 1;
           const productName = item.productName || item.name || product.name || "Produto";
           const unitPrice = item.unitPrice || item.price || product.price || "0";
           const quantity = item.quantity || 1;
+          const prescriptionRequired = item.prescriptionRequired || false;
+          
+          let prescriptionId = null;
+          
+          // If item has prescription data, create prescription record
+          if (item.prescription && prescriptionRequired) {
+            try {
+              const [prescription] = await db
+                .insert(prescriptions)
+                .values({
+                  orderId: order.id,
+                  productId,
+                  userId: orderData.userId || null,
+                  imageUrl: item.prescription.imageUrl || item.prescription.base64,
+                  status: "pending",
+                })
+                .returning();
+              prescriptionId = prescription.id;
+              console.log(`Created prescription #${prescription.id} for order #${order.id}, product #${productId}`);
+            } catch (prescriptionError) {
+              console.error("Error creating prescription:", prescriptionError);
+            }
+          }
 
           return {
             orderId: order.id,
@@ -210,9 +295,13 @@ export async function registerRoutes(
             quantity,
             unitPrice: String(unitPrice),
             totalPrice: String((Number(unitPrice) * quantity) || 0),
+            prescriptionRequired,
+            prescriptionId,
           };
-        });
+        }));
+        
         await storage.createOrderItems(orderItemsData);
+        console.log(`Created ${orderItemsData.length} order items for order #${order.id}`);
       }
 
       // Emit real-time notification to pharmacy
@@ -224,6 +313,15 @@ export async function registerRoutes(
             total: order.total,
             items: items || [],
           });
+          
+          // Also emit notification about pending prescriptions
+          const itemsWithPrescription = items?.filter((i: any) => i.prescription) || [];
+          if (itemsWithPrescription.length > 0) {
+            io.to(`pharmacy-${order.pharmacyId}`).emit('new-prescription', {
+              orderId: order.id,
+              count: itemsWithPrescription.length,
+            });
+          }
         } catch (socketError) {
           console.warn('socket emit falhou (pharmacy notification):', socketError);
           // Não falhar o pedido por erro de websocket
@@ -243,7 +341,7 @@ export async function registerRoutes(
 
   app.get(api.orders.status.path, async (req, res) => {
     try {
-      const order = await storage.getOrder(parseInt(req.params.id));
+      const order = await storage.getOrder(parseInt(req.params.id as string));
       res.json(order);
     } catch (err) {
       res.status(500).json({ message: "Erro ao buscar pedido" });
@@ -269,7 +367,7 @@ export async function registerRoutes(
 
 async function seedDatabase() {
   console.log("Starting database seeding...");
-  
+
   // First ensure all columns exist
   try {
     await ensureProductColumns();
@@ -310,10 +408,10 @@ async function seedDatabase() {
   // Ensure all pharmacies have admin credentials
   const allPharmacies = await storage.getPharmacies();
   const existingPharmacyAdmins = await storage.getPharmacyAdmins();
-  
+
   for (const pharmacy of allPharmacies) {
     const hasAdmin = existingPharmacyAdmins.some(admin => admin.pharmacyId === pharmacy.id);
-    
+
     if (!hasAdmin) {
       const farmPassword = await bcrypt.hash("farm123", 10);
       await storage.createPharmacyAdmin({
@@ -397,12 +495,58 @@ async function seedDatabase() {
       prescriptionRequired: false,
       stock: 50,
       status: "active"
+    },
+    {
+      name: "Diazepam 10mg",
+      description: "Ansiolítico utilizado no tratamento de ansiedade, insônia e espasmos musculares. Uso sob prescrição médica.",
+      price: "4500",
+      imageUrl: "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=500&auto=format&fit=crop&q=60",
+      diseases: ["ansiedade", "insônia", "espasmos musculares"],
+      activeIngredient: "Diazepam",
+      category: "medicamento",
+      brand: "Genérico",
+      dosage: "10mg",
+      prescriptionRequired: true,
+      stock: 30,
+      status: "active"
     }
   ];
 
   try {
-    await storage.seedProducts(seedData);
-    console.log("Database seeded successfully");
+    if (allPharmacies.length > 0) {
+      const dataWithPharmacy = seedData.map(p => ({
+        ...p,
+        pharmacyId: allPharmacies[0].id
+      }));
+      await storage.seedProducts(dataWithPharmacy as any);
+      console.log(`Database seeded with ${seedData.length} products for pharmacy: ${allPharmacies[0].name}`);
+
+      // Seed some sample orders if none exist
+      const existingOrders = await storage.getUserOrders(1).catch(() => []);
+      // Actually we need a more general check since getUserOrders needs a userId
+      if (existingOrders.length === 0) {
+        console.log("Seeding sample orders for admin testing...");
+        for (let i = 0; i < allPharmacies.length; i++) {
+          const pharm = allPharmacies[i];
+          const orderTotal = 5000 + (i * 2500);
+          await storage.createOrder({
+            userId: 1,
+            pharmacyId: pharm.id,
+            customerName: `Cliente Teste ${i + 1}`,
+            customerPhone: `+24490000000${i}`,
+            customerAddress: "Rua de Teste, 123",
+            total: String(orderTotal),
+            deliveryFee: "500",
+            status: "delivered", // Important for revenue/profit
+            paymentMethod: "cash",
+            paymentStatus: "paid",
+          });
+        }
+        console.log(`✓ Seeded ${allPharmacies.length} sample delivered orders`);
+      }
+    } else {
+      console.log("No pharmacies found to seed products/orders into");
+    }
   } catch (error) {
     console.error("Error seeding database:", error);
   }

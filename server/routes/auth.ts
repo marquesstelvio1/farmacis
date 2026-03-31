@@ -184,6 +184,7 @@ export function registerAuthRoutes(app: Express) {
         user: userWithoutPassword,
       });
     } catch (error) {
+      console.error("Login error:", error);
       if (error instanceof Error) {
         res.status(400).json({ message: error.message });
       } else {

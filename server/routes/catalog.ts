@@ -11,15 +11,19 @@ export function registerCatalogRoutes(app: express.Application) {
       const pharmacyId = req.query.pharmacyId ? parseInt(req.query.pharmacyId as string) : undefined;
       const category = req.query.category as string;
       const status = req.query.status as string;
-      
+
+      console.log('🔍 GET /api/products - Query params:', { search, pharmacyId, category, status });
+
       let products = await storage.getProducts(search, pharmacyId);
+      console.log('🔍 Products fetched from storage:', products.length, 'items');
+      
       if (category) {
         products = products.filter((product) => product.category === category);
       }
       if (status) {
         products = products.filter((product) => product.status === status);
       }
-      
+
       res.json(products);
     } catch (error) {
       console.error("Get products error:", error);
@@ -30,13 +34,13 @@ export function registerCatalogRoutes(app: express.Application) {
   // Get product by ID
   app.get("/api/products/:id", async (req: Request, res: Response) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(req.params.id as string);
       const product = await storage.getProduct(id);
-      
+
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
-      
+
       res.json(product);
     } catch (error) {
       console.error("Get product error:", error);
@@ -47,15 +51,32 @@ export function registerCatalogRoutes(app: express.Application) {
   // Create new product
   app.post("/api/products", async (req: Request, res: Response) => {
     try {
-      const productData = insertProductSchema.parse(req.body);
+      const data = { ...req.body };
+
+      // Calculate 15% commission if precoBase is provided
+      if (data.precoBase) {
+        const base = parseFloat(String(data.precoBase));
+        if (!isNaN(base)) {
+          data.price = (base * 1.15).toFixed(2).toString();
+        }
+      } else if (data.price && !data.precoBase) {
+        // If only price is provided, treat it as base and add commission
+        const base = parseFloat(String(data.price));
+        if (!isNaN(base)) {
+          data.precoBase = base.toString();
+          data.price = (base * 1.15).toFixed(2).toString();
+        }
+      }
+
+      const productData = insertProductSchema.parse(data);
       const newProduct = await storage.createProduct(productData);
       res.status(201).json(newProduct);
     } catch (error) {
       console.error("Create product error:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          message: "Invalid product data", 
-          errors: error.errors 
+        return res.status(400).json({
+          message: "Invalid product data",
+          errors: error.errors
         });
       }
       res.status(500).json({ message: "Failed to create product" });
@@ -65,19 +86,36 @@ export function registerCatalogRoutes(app: express.Application) {
   // Update product
   app.put("/api/products/:id", async (req: Request, res: Response) => {
     try {
-      const id = parseInt(req.params.id);
-      const updateData = updateProductSchema.parse(req.body);
+      const id = parseInt(req.params.id as string);
+      const data = { ...req.body };
+
+      // Calculate 15% commission if precoBase is being updated
+      if (data.precoBase) {
+        const base = parseFloat(String(data.precoBase));
+        if (!isNaN(base)) {
+          data.price = (base * 1.15).toFixed(2).toString();
+        }
+      } else if (data.price && !data.precoBase) {
+        // If only price is provided, treat it as base and add commission
+        const base = parseFloat(String(data.price));
+        if (!isNaN(base)) {
+          data.precoBase = base.toString();
+          data.price = (base * 1.15).toFixed(2).toString();
+        }
+      }
+
+      const updateData = updateProductSchema.parse(data);
       const updatedProduct = await storage.updateProduct(id, updateData);
       res.json(updatedProduct);
     } catch (error) {
       console.error("Update product error:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          message: "Invalid product data", 
-          errors: error.errors 
+        return res.status(400).json({
+          message: "Invalid product data",
+          errors: error.errors
         });
       }
-      if (error.message === "Product not found") {
+      if (error instanceof Error && error.message === "Product not found") {
         return res.status(404).json({ message: "Product not found" });
       }
       res.status(500).json({ message: "Failed to update product" });
@@ -87,7 +125,7 @@ export function registerCatalogRoutes(app: express.Application) {
   // Delete product
   app.delete("/api/products/:id", async (req: Request, res: Response) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(req.params.id as string);
       await storage.deleteProduct(id);
       res.status(204).send();
     } catch (error) {
@@ -121,11 +159,11 @@ export function registerCatalogRoutes(app: express.Application) {
   // Get products for specific pharmacy
   app.get("/api/pharmacy/:pharmacyId/products", async (req: Request, res: Response) => {
     try {
-      const pharmacyId = parseInt(req.params.pharmacyId);
+      const pharmacyId = parseInt(req.params.pharmacyId as string);
       const search = req.query.search as string;
       const category = req.query.category as string;
       const status = req.query.status as string;
-      
+
       let products = await storage.getProducts(search, pharmacyId);
       if (category) {
         products = products.filter((product) => product.category === category);
@@ -133,7 +171,7 @@ export function registerCatalogRoutes(app: express.Application) {
       if (status) {
         products = products.filter((product) => product.status === status);
       }
-      
+
       res.json(products);
     } catch (error) {
       console.error("Get pharmacy products error:", error);
@@ -144,20 +182,33 @@ export function registerCatalogRoutes(app: express.Application) {
   // Create product for specific pharmacy
   app.post("/api/pharmacy/:pharmacyId/products", async (req: Request, res: Response) => {
     try {
-      const pharmacyId = parseInt(req.params.pharmacyId);
-      const productData = insertProductSchema.parse({
-        ...req.body,
-        pharmacyId,
-      });
-      
+      const pharmacyId = parseInt(req.params.pharmacyId as string);
+      const data = { ...req.body, pharmacyId };
+
+      // Calculate 15% commission if precoBase is provided
+      if (data.precoBase) {
+        const base = parseFloat(String(data.precoBase));
+        if (!isNaN(base)) {
+          data.price = (base * 1.15).toFixed(2).toString();
+        }
+      } else if (data.price && !data.precoBase) {
+        // If only price is provided, treat it as base and add commission
+        const base = parseFloat(String(data.price));
+        if (!isNaN(base)) {
+          data.precoBase = base.toString();
+          data.price = (base * 1.15).toFixed(2).toString();
+        }
+      }
+
+      const productData = insertProductSchema.parse(data);
       const newProduct = await storage.createProduct(productData);
       res.status(201).json(newProduct);
     } catch (error) {
       console.error("Create pharmacy product error:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          message: "Invalid product data", 
-          errors: error.errors 
+        return res.status(400).json({
+          message: "Invalid product data",
+          errors: error.errors
         });
       }
       res.status(500).json({ message: "Failed to create product" });

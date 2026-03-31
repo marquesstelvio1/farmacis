@@ -41,7 +41,8 @@ export default function Balance() {
   const { data: recentOrders, isLoading: ordersLoading } = useQuery<Order[]>({
     queryKey: ['pharmacy-recent-orders', user?.pharmacyId],
     queryFn: async () => {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pharmacy/${user?.pharmacyId}/orders?limit=10`)
+      const apiUrl = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/pharmacy/orders?pharmacyId=${user?.pharmacyId}&limit=10`)
       if (!response.ok) throw new Error('Failed to fetch orders')
       return response.json()
     },
@@ -184,14 +185,13 @@ export default function Balance() {
                     {formatCurrency(order.total)}
                   </td>
                   <td className="px-6 py-4 text-sm">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                      order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${order.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                        order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-gray-100 text-gray-800'
+                      }`}>
                       {order.status === 'delivered' ? 'Entregue' :
-                       order.status === 'pending' ? 'Pendente' :
-                       order.status}
+                        order.status === 'pending' ? 'Pendente' :
+                          order.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600 capitalize">

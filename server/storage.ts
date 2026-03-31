@@ -16,7 +16,7 @@ import {
   type AdminUser,
   type PharmacyAdmin
 } from "@shared/schema";
-import { eq, ilike, sql } from "drizzle-orm";
+import { and, eq, ilike, or, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Product methods
@@ -30,6 +30,7 @@ export interface IStorage {
 
   // Pharmacy methods
   getPharmacies(): Promise<Pharmacy[]>;
+  getActivePharmacies(): Promise<Pharmacy[]>;
   createPharmacy(pharmacy: any): Promise<Pharmacy>;
 
   // Order methods
@@ -50,26 +51,86 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  async getProducts(search?: string, pharmacyId?: number): Promise<Product[]> {
+  async getProducts(search?: string, pharmacyId?: number): Promise<any[]> {
     try {
-      // Try to use the full query first
-      let query = db.select().from(products);
-      
+      console.log('💾 Storage.getProducts called with:', { search, pharmacyId });
+      const conditions = [];
       if (pharmacyId) {
-        query = query.where(eq(products.pharmacyId, pharmacyId));
+        console.log('💾 Adding pharmacyId filter:', pharmacyId);
+        conditions.push(eq(products.pharmacyId, pharmacyId));
       }
-      
       if (search) {
-        query = query.where(
-          sql`(${products.name} ILIKE ${`%${search}%`} OR ${products.diseases}::text ILIKE ${`%${search}%`} OR COALESCE(${products.brand}, '') ILIKE ${`%${search}%`})`
-        );
+        const searchTerms = search.split(',').map(s => s.trim()).filter(s => s.length > 0);
+        
+        if (searchTerms.length === 1) {
+          conditions.push(
+            sql`(${products.name} ILIKE ${`%${searchTerms[0]}%`} OR ${products.diseases}::text ILIKE ${`%${searchTerms[0]}%`} OR COALESCE(${products.brand}, '') ILIKE ${`%${searchTerms[0]}%`})`
+          );
+        } else if (searchTerms.length > 1) {
+          const termConditions = searchTerms.flatMap(term => [
+            ilike(products.name, `%${term}%`),
+            ilike(products.diseases, `%${term}%`),
+            ilike(products.brand, `%${term}%`)
+          ]);
+          conditions.push(or(...termConditions));
+        }
       }
-      
-      return await query.orderBy(products.name);
+
+      // Join with pharmacies to get pharmacy name and ensure pharmacy exists
+      let query = db
+        .select({
+          id: products.id,
+          name: products.name,
+          description: products.description,
+          price: products.price,
+          precoBase: products.precoBase,
+          imageUrl: products.imageUrl,
+          diseases: products.diseases,
+          activeIngredient: products.activeIngredient,
+          category: products.category,
+          brand: products.brand,
+          dosage: products.dosage,
+          prescriptionRequired: products.prescriptionRequired,
+          stock: products.stock,
+          pharmacyId: products.pharmacyId,
+          status: products.status,
+          createdAt: products.createdAt,
+          updatedAt: products.updatedAt,
+          pharmacyName: pharmacies.name,
+          pharmacyLogo: pharmacies.logoUrl,
+        })
+        .from(products)
+        .innerJoin(pharmacies, eq(products.pharmacyId, pharmacies.id))
+        .$dynamic();
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+
+      const result = await query.orderBy(products.name);
+      console.log('💾 Final result:', result.length, 'products with filters:', { search, pharmacyId });
+      return result;
     } catch (error: any) {
       // If columns don't exist, use a basic query
       if (error.message?.includes('does not exist')) {
         console.log('Using fallback query for products without new columns');
+        const conditions = [];
+        if (search) {
+          const searchTerms = search.split(',').map(s => s.trim()).filter(s => s.length > 0);
+          
+          if (searchTerms.length === 1) {
+            conditions.push(
+              sql`(${products.name} ILIKE ${`%${searchTerms[0]}%`} OR ${products.diseases}::text ILIKE ${`%${searchTerms[0]}%`})`
+            );
+          } else if (searchTerms.length > 1) {
+            const termConditions = searchTerms.flatMap(term => [
+              ilike(products.name, `%${term}%`),
+              ilike(products.diseases, `%${term}%`)
+            ]);
+            conditions.push(or(...termConditions));
+          }
+        }
+
         let query = db.select({
           id: products.id,
           name: products.name,
@@ -78,20 +139,19 @@ export class DatabaseStorage implements IStorage {
           imageUrl: products.imageUrl,
           diseases: products.diseases,
           activeIngredient: products.activeIngredient
-        }).from(products);
-        
-        if (search) {
-          query = query.where(
-            sql`(${products.name} ILIKE ${`%${search}%`} OR ${products.diseases}::text ILIKE ${`%${search}%`})`
-          );
+        }).from(products).$dynamic();
+
+        if (conditions.length > 0) {
+          query = query.where(and(...conditions));
         }
-        
+
         const basicProducts = await query.orderBy(products.name);
-        
+
         // Add default values for missing columns
         return basicProducts.map(product => ({
           ...product,
           category: 'medicamento',
+          precoBase: null,
           brand: null,
           dosage: null,
           prescriptionRequired: false,
@@ -100,7 +160,7 @@ export class DatabaseStorage implements IStorage {
           status: 'active',
           createdAt: new Date(),
           updatedAt: new Date()
-        }));
+        })) as Product[];
       }
       throw error;
     }
@@ -114,6 +174,9 @@ export class DatabaseStorage implements IStorage {
   async createProduct(product: InsertProduct): Promise<Product> {
     const [newProduct] = await db.insert(products).values({
       ...product,
+      diseases: product.diseases || [],
+      activeIngredient: product.activeIngredient || "",
+      imageUrl: product.imageUrl || "",
       createdAt: new Date(),
       updatedAt: new Date(),
     }).returning();
@@ -129,11 +192,11 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(products.id, id))
       .returning();
-    
+
     if (!updatedProduct) {
       throw new Error("Product not found");
     }
-    
+
     return updatedProduct;
   }
 
@@ -143,13 +206,14 @@ export class DatabaseStorage implements IStorage {
 
   async getProductsByCategory(category: string, pharmacyId?: number): Promise<Product[]> {
     try {
-      let query = db.select().from(products).where(eq(products.category, category));
-      
+      const conditions = [eq(products.category, category)];
       if (pharmacyId) {
-        query = query.where(eq(products.pharmacyId, pharmacyId));
+        conditions.push(eq(products.pharmacyId, pharmacyId));
       }
-      
-      return await query.orderBy(products.name);
+
+      return await db.select().from(products)
+        .where(and(...conditions))
+        .orderBy(products.name);
     } catch (error: any) {
       // If category column doesn't exist, return all products
       if (error.message?.includes('does not exist')) {
@@ -173,6 +237,10 @@ export class DatabaseStorage implements IStorage {
 
   async getPharmacies(): Promise<Pharmacy[]> {
     return await db.select().from(pharmacies);
+  }
+
+  async getActivePharmacies(): Promise<Pharmacy[]> {
+    return await db.select().from(pharmacies).where(eq(pharmacies.status, "active"));
   }
 
   async createPharmacy(pharmacy: any): Promise<Pharmacy> {

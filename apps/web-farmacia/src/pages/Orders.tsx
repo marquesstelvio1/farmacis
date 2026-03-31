@@ -77,13 +77,14 @@ export default function Orders() {
   const queryClient = useQueryClient()
 
   const { data: orders, isLoading } = useQuery<Order[]>({
-   queryKey: ['pharmacy-orders', user?.pharmacyId],
-   queryFn: async () => {
-   if (!user?.pharmacyId) throw new Error('Pharmacy ID not found')
-  const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pharmacy/${user.pharmacyId}/orders`)
-  if (!response.ok) throw new Error('Failed to fetch orders')
-  return response.json()
-   },
+    queryKey: ['pharmacy-orders', user?.pharmacyId],
+    queryFn: async () => {
+      if (!user?.pharmacyId) throw new Error('Pharmacy ID not found')
+      const apiUrl = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/pharmacy/orders?pharmacyId=${user.pharmacyId}`)
+      if (!response.ok) throw new Error('Failed to fetch orders')
+      return response.json()
+    },
   })
 
   const updateStatusMutation = useMutation({
