@@ -82,10 +82,8 @@ export function Layout({ children, onLogout }: LayoutProps) {
             {/* Mobile Header */}
             <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-teal-400 flex items-center justify-center">
-                  <HeartPulse className="text-white" size={20} />
-                </div>
-                <span className="font-bold text-slate-800 dark:text-slate-100">FarmáciaDigital</span>
+                <img src="/logo.png" alt="Brócolis" className="w-8 h-8 object-contain" />
+                <span className="font-bold text-slate-800 dark:text-slate-100">Brócolis</span>
               </div>
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
@@ -151,7 +149,7 @@ export function Layout({ children, onLogout }: LayoutProps) {
 
             <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
               <p className="text-[10px] text-center text-slate-400 dark:text-slate-500 font-medium">
-                One Health Care — Seu shopping de saúde digital
+                Brócolis — Saúde vitalícia
               </p>
             </div>
           </div>
@@ -164,15 +162,17 @@ export function Layout({ children, onLogout }: LayoutProps) {
 
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-teal-400 flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
-              <HeartPulse className="text-white" size={24} />
-            </div>
+            <img 
+              src="/logo.png" 
+              alt="Brócolis" 
+              className="w-10 h-10 object-contain group-hover:scale-105 transition-transform" 
+            />
             <div>
               <h1 className="text-xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100 leading-none">
-                Farmácia<span className="text-blue-600">Digital</span>
+                Brócolis
               </h1>
               <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500">
-                Saúde & IA
+                Saúde vitalícia
               </p>
             </div>
           </Link>
@@ -230,12 +230,12 @@ export function Layout({ children, onLogout }: LayoutProps) {
 
       <footer className="bg-slate-900 text-slate-400 py-12 mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2 opacity-50 grayscale">
-            <HeartPulse size={24} />
-            <span className="text-xl font-bold font-display text-white">FarmáciaDigital</span>
+          <div className="flex items-center gap-2 opacity-80">
+            <img src="/logo.png" alt="Brócolis" className="w-6 h-6 object-contain" />
+            <span className="text-xl font-bold font-display text-white">Brócolis</span>
           </div>
           <p className="text-sm">
-            © 2026 Farmácia Digital. Todos os direitos reservados.
+            © 2026 Brócolis. Todos os direitos reservados.
           </p>
           <div className="flex gap-4 text-sm">
             <a href="#" className="hover:text-white transition-colors">Termos</a>

@@ -21,7 +21,9 @@ import {
   Truck,
   RotateCcw,
   MapPin,
-  Navigation
+  FileText,
+  Navigation as NavigationIcon,
+  Eye
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -110,9 +112,10 @@ interface Order {
   customerPhone?: string;
   id: number;
   pharmacyId: number;
+  paymentProof?: string;
   customerName: string;
   total: string;
-  status: "pending" | "accepted" | "rejected" | "paid" | "processing" | "shipped" | "delivered" | "ready";
+  status: "pending" | "accepted" | "rejected" | "paid" | "processing" | "shipped" | "delivered" | "ready" | "proof_submitted";
   paymentMethod: string;
   bookingType: string;
   scheduledTime?: string;
@@ -145,6 +148,7 @@ interface Stats {
 const statusConfig = {
   pending: { label: "Pendente", color: "bg-yellow-100 text-yellow-700", icon: Clock },
   accepted: { label: "Aceito", color: "bg-blue-100 text-blue-700", icon: CheckCircle },
+  proof_submitted: { label: "Comprovativo Recebido", color: "bg-indigo-100 text-indigo-700", icon: FileText },
   rejected: { label: "Recusado", color: "bg-red-100 text-red-700", icon: XCircle },
   paid: { label: "Pago", color: "bg-green-100 text-green-700", icon: DollarSign },
   processing: { label: "Em Processamento", color: "bg-purple-100 text-purple-700", icon: Package },
@@ -408,16 +412,16 @@ export default function PharmacyAdmin() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-teal-400 flex items-center justify-center">
               <Store className="text-white w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-bold text-slate-900">Painel da Farmácia</h1>
+              <h1 className="font-bold text-slate-900 dark:text-white">Painel da Farmácia</h1>
               <p className="text-xs text-slate-500">{adminSession?.pharmacyName || "Gerenciamento de Pedidos"} • ID {pharmacyId}</p>
             </div>
           </div>
@@ -440,33 +444,33 @@ export default function PharmacyAdmin() {
         {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <Card>
+            <Card className="dark:bg-slate-900 dark:border-slate-800">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-500">Total Pedidos</p>
-                    <p className="text-2xl font-bold">{stats.total}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Total Pedidos</p>
+                    <p className="text-2xl font-bold dark:text-white">{stats.total}</p>
                   </div>
                   <Package className="w-8 h-8 text-blue-500" />
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="dark:bg-slate-900 dark:border-slate-800">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-500">Pendentes</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Pendentes</p>
                     <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
                   </div>
                   <Clock className="w-8 h-8 text-yellow-500" />
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="dark:bg-slate-900 dark:border-slate-800">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-500">Receita Total</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Receita Total</p>
                     <p className="text-2xl font-bold text-green-600">
                       {formatCurrency(stats.totalRevenue.toString())}
                     </p>
@@ -475,11 +479,11 @@ export default function PharmacyAdmin() {
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="dark:bg-slate-900 dark:border-slate-800">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-500">Entregues</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Entregues</p>
                     <p className="text-2xl font-bold text-teal-600">{stats.delivered}</p>
                   </div>
                   <CheckCircle className="w-8 h-8 text-teal-500" />
@@ -490,7 +494,7 @@ export default function PharmacyAdmin() {
         )}
 
         {/* Orders Section */}
-        <Card>
+        <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardHeader>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <CardTitle>Pedidos</CardTitle>
@@ -500,7 +504,7 @@ export default function PharmacyAdmin() {
                   placeholder="Buscar pedidos..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-full md:w-64"
+                  className="pl-10 w-full md:w-64 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
                 />
               </div>
             </div>
@@ -511,6 +515,7 @@ export default function PharmacyAdmin() {
                 <TabsTrigger value="all">Todos</TabsTrigger>
                 <TabsTrigger value="pending">Pendentes</TabsTrigger>
                 <TabsTrigger value="accepted">Aceitos</TabsTrigger>
+                <TabsTrigger value="proof_submitted">Comprovativos</TabsTrigger>
                 <TabsTrigger value="paid">Pagos</TabsTrigger>
                 <TabsTrigger value="processing">Processando</TabsTrigger>
                 <TabsTrigger value="shipped">Enviados</TabsTrigger>
@@ -539,7 +544,7 @@ export default function PharmacyAdmin() {
                           key={order.id}
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
-                          className="border rounded-lg p-4 hover:bg-slate-50 transition-colors cursor-pointer"
+                          className="border dark:border-slate-800 rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
                           onClick={() => {
                             setSelectedOrder(order);
                             setIsDetailsOpen(true);
@@ -552,7 +557,7 @@ export default function PharmacyAdmin() {
                               </div>
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <span className="font-semibold">Pedido #{order.id}</span>
+                                  <span className="font-semibold dark:text-slate-100">Pedido #{order.id}</span>
                                   <Badge className={status?.color}>{status?.label}</Badge>
                                 </div>
                                 <p className="text-sm text-slate-500">{order.customerName}</p>
@@ -560,7 +565,7 @@ export default function PharmacyAdmin() {
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="font-bold text-lg">{formatCurrency(order.total)}</p>
+                              <p className="font-bold text-lg dark:text-white">{formatCurrency(order.total)}</p>
                               <p className="text-sm text-slate-500">{items.length} item(s)</p>
                             </div>
                           </div>
@@ -581,7 +586,11 @@ export default function PharmacyAdmin() {
           <DialogHeader>
             <DialogTitle>Detalhes do Pedido #{selectedOrder?.id}</DialogTitle>
           </DialogHeader>
-          {selectedOrder && (
+          {selectedOrder && (() => {
+            const isDigital = ["multicaixa_express", "transferencia"].includes(selectedOrder.paymentMethod);
+            const isLocked = isDigital && (selectedOrder.status !== "pending" && selectedOrder.status !== "rejected");
+            
+            return (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -617,7 +626,7 @@ export default function PharmacyAdmin() {
                     className="h-auto p-0 mt-2 text-xs text-blue-600 flex items-center gap-1"
                     onClick={() => window.open(`https://www.google.com/maps?q=${selectedOrder.customerLat},${selectedOrder.customerLng}`, '_blank')}
                   >
-                    <Navigation className="w-3 h-3" />
+                    <NavigationIcon className="w-3 h-3" />
                     Ver localização exata no Google Maps
                   </Button>
                 )}
@@ -627,6 +636,18 @@ export default function PharmacyAdmin() {
                 <Badge className={statusConfig[selectedOrder.status]?.color}>
                   {statusConfig[selectedOrder.status]?.label}
                 </Badge>
+                <AnimatePresence>
+                  {isLocked && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.8 }} 
+                      animate={{ opacity: 1, scale: 1 }}
+                    >
+                      <Badge className="bg-blue-600 text-white border-none flex items-center gap-1 shadow-sm">
+                        🔒 Transação Garantida - MCX
+                      </Badge>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100">
                   {selectedOrder.bookingType === 'pickup' ? 'Levantamento (Reserva)' : 'Entrega Domicílio'}
                 </Badge>
@@ -675,14 +696,51 @@ export default function PharmacyAdmin() {
                     <CheckCircle className="w-4 h-4 mr-2" />
                     Aceitar Pedido
                   </Button>
-                  <Button
-                    variant="outline"
-                    className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
-                    onClick={() => setIsRejectDialogOpen(true)}
-                  >
-                    <XCircle className="w-4 h-4 mr-2" />
-                    Recusar
-                  </Button>
+                  <AnimatePresence>
+                    {!isLocked && (
+                      <motion.div exit={{ opacity: 0, x: 20 }} className="flex-1">
+                        <Button
+                          variant="outline"
+                          className="w-full border-red-300 text-red-600 hover:bg-red-50"
+                          onClick={() => setIsRejectDialogOpen(true)}
+                        >
+                          <XCircle className="w-4 h-4 mr-2" />
+                          Recusar
+                        </Button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+
+              {selectedOrder.status === "proof_submitted" && (
+                <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-bold text-xs uppercase tracking-wider">
+                    <FileText size={16} />
+                    Comprovativo por Analisar
+                  </div>
+                  <p className="text-xs text-indigo-600 dark:text-indigo-400">
+                    O cliente enviou o comprovativo bancário. Verifique o documento antes de confirmar.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="flex-1 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300"
+                      onClick={() => selectedOrder.paymentProof && window.open(selectedOrder.paymentProof, '_blank')}
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      Ver Ficheiro
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => handleUpdateStatus(selectedOrder.id, "paid")}
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Confirmar Pago
+                    </Button>
+                  </div>
                 </div>
               )}
 

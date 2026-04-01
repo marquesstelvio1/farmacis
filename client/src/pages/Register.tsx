@@ -6,12 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "wouter";
+import AuthOneHealth from "./AuthOneHealth";
+import { useToast } from "@/hooks/use-toast";
 
 interface RegisterProps {
   onRegister: () => void;
 }
 
 export default function Register({ onRegister }: RegisterProps) {
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -21,9 +24,24 @@ export default function Register({ onRegister }: RegisterProps) {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showPhoneAuth, setShowPhoneAuth] = useState(false);
+  const [isPhoneValidated, setIsPhoneValidated] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  const formatPhoneNumber = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    const subNumber = digits.startsWith("244") ? digits.slice(3) : digits;
+    const limited = subNumber.slice(0, 9);
+    
+    const parts = [];
+    if (limited.length > 0) parts.push(limited.slice(0, 3));
+    if (limited.length > 3) parts.push(limited.slice(3, 6));
+    if (limited.length > 6) parts.push(limited.slice(6, 9));
+    
+    return limited.length > 0 ? "+244 " + parts.join(" ") : "";
+  };
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -56,6 +74,12 @@ export default function Register({ onRegister }: RegisterProps) {
       return;
     }
 
+    // Se ainda não validou o telefone via e-mail, mostra o componente AuthOneHealth
+    if (!isPhoneValidated) {
+      setShowPhoneAuth(true);
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -80,7 +104,7 @@ export default function Register({ onRegister }: RegisterProps) {
         throw new Error(data.message || "Erro ao criar conta");
       }
 
-      setSuccess("Conta criada com sucesso! Verifique seu email para ativar sua conta.");
+      setSuccess("Conta criada com sucesso!");
       setFormData({ name: "", email: "", phone: "", password: "", confirmPassword: "" });
       
       // Redirect to login after 3 seconds
@@ -119,7 +143,19 @@ export default function Register({ onRegister }: RegisterProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {showPhoneAuth ? (
+              <AuthOneHealth 
+                emailToVerify={formData.email}
+                onSuccess={() => {
+                  setIsPhoneValidated(true);
+                  setShowPhoneAuth(false);
+                  toast({ title: "E-mail Validado!", description: "Telemóvel confirmado. Clique em concluir para criar a conta." });
+                }}
+                onCancel={() => setShowPhoneAuth(false)}
+              />
+            ) : (
+              <>
+              <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-slate-700 dark:text-slate-300">
                   Nome Completo
@@ -167,7 +203,7 @@ export default function Register({ onRegister }: RegisterProps) {
                    type="tel"
                    placeholder="+244 9XX XXX XXX"
                    value={formData.phone}
-                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                   onChange={(e) => setFormData({ ...formData, phone: formatPhoneNumber(e.target.value) })}
                    className="pl-10 h-12 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
                  />
                </div>
@@ -277,7 +313,7 @@ export default function Register({ onRegister }: RegisterProps) {
                     Criando conta...
                   </span>
                 ) : (
-                  "Criar Conta"
+                  isPhoneValidated ? "Concluir Registo" : "Verificar E-mail e Continuar"
                 )}
               </Button>
             </form>
@@ -291,6 +327,8 @@ export default function Register({ onRegister }: RegisterProps) {
                 Já tem uma conta? Faça login
               </button>
             </div>
+            </>
+          )}
           </CardContent>
         </Card>
       </motion.div>

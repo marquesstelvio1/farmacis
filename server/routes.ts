@@ -21,7 +21,7 @@ import { registerPrescriptionRoutes } from "./routes/prescriptions";
 import { registerSettingsRoutes } from "./routes/settings";
 import { registerLocationRoutes } from "./routes/location";
 import { registerMedicalRoutes } from "./routes/medical";
-import { ensureProductColumns } from "./utils/databaseUtils";
+import { ensureProductColumns, ensureOrderColumns } from "./utils/databaseUtils";
 
 // OpenAI configuration from the AI integration blueprint
 const openai = new OpenAI({
@@ -181,7 +181,7 @@ export async function registerRoutes(
   app.patch("/api/user/orders/:orderId/payment-proof", async (req, res) => {
     try {
       const orderId = parseInt(req.params.orderId);
-      const { paymentProof } = req.body;
+      const { paymentProof, status, paymentStatus, clientIban, clientMulticaixaExpress, clientAccountName } = req.body;
 
       if (!orderId) {
         return res.status(400).json({ message: "Order ID required" });
@@ -191,14 +191,31 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Payment proof required" });
       }
 
+      const updateData: any = { 
+        status: status || "proof_submitted",
+        paymentProof: paymentProof,
+        updatedAt: new Date()
+      };
+
+      // Update paymentStatus if provided
+      if (paymentStatus) {
+        updateData.paymentStatus = paymentStatus;
+      }
+
+      // Store client payment details if provided
+      if (clientIban) {
+        updateData.clientIban = clientIban;
+      }
+      if (clientMulticaixaExpress) {
+        updateData.clientMulticaixaExpress = clientMulticaixaExpress;
+      }
+      if (clientAccountName) {
+        updateData.clientAccountName = clientAccountName;
+      }
+
       await db
         .update(orders)
-        .set({ 
-          status: "proof_submitted",
-          paymentProof: paymentProof,
-          paymentStatus: "paid",
-          updatedAt: new Date()
-        })
+        .set(updateData)
         .where(eq(orders.id, orderId));
 
       res.json({ message: "Payment proof submitted successfully" });
@@ -371,6 +388,7 @@ async function seedDatabase() {
   // First ensure all columns exist
   try {
     await ensureProductColumns();
+    await ensureOrderColumns();
     console.log("Database columns ensured successfully");
   } catch (error) {
     console.error("Error ensuring database columns:", error);

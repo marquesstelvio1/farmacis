@@ -12,7 +12,8 @@ import {
   ChevronRight,
   CheckCircle,
   XCircle,
-  Package
+  Package,
+  Lock
 } from 'lucide-react'
 
 interface Order {
@@ -24,6 +25,8 @@ interface Order {
   deliveryFee: string
   status: string
   paymentMethod: string
+  paymentStatus?: string
+  isLocked?: boolean
   createdAt: string
   items: Array<{
     productName: string
@@ -123,9 +126,9 @@ export default function Orders() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 dark:bg-slate-950 min-h-screen transition-colors">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Pedidos</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Pedidos</h1>
         <p className="text-gray-500">Gerencie os pedidos da sua farmácia</p>
       </div>
 
@@ -138,7 +141,7 @@ export default function Orders() {
             placeholder="Buscar pedido..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -146,7 +149,7 @@ export default function Orders() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+            className="px-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
           >
             <option value="all">Todos os status</option>
             <option value="pending">Pendentes</option>
@@ -166,20 +169,26 @@ export default function Orders() {
           const ActionIcon = action?.icon
 
           return (
-            <div key={order.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div key={order.id} className={`bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 p-6 transition-all ${order.isLocked ? 'border-l-4 border-l-green-500' : ''}`}>
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <ShoppingBag className="w-6 h-6 text-green-600" />
+                  <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <ShoppingBag className="w-6 h-6 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-gray-900">Pedido #{order.id}</h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-gray-900 dark:text-slate-100">Pedido #{order.id}</h3>
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[order.status]}`}>
                         {statusLabels[order.status]}
                       </span>
+                      {order.isLocked && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                          <Lock className="w-3 h-3" />
+                          Transação Garantida - MCX
+                        </span>
+                      )}
                     </div>
-                    <p className="text-lg font-bold text-gray-900 mt-1">
+                    <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">
                       {Number(order.total).toLocaleString('pt-AO', {
                         style: 'currency',
                         currency: 'AOA'
@@ -192,7 +201,7 @@ export default function Orders() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {action && (
+                  {!order.isLocked && action && (
                     <button
                       onClick={() => updateStatusMutation.mutate({
                         orderId: order.id,
@@ -205,7 +214,7 @@ export default function Orders() {
                       {action.label}
                     </button>
                   )}
-                  {order.status === 'pending' && (
+                  {order.status === 'pending' && !order.isLocked && (
                     <button
                       onClick={() => updateStatusMutation.mutate({
                         orderId: order.id,
@@ -220,36 +229,36 @@ export default function Orders() {
                   )}
                   <Link
                     to={`/orders/${order.id}`}
-                    className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                    className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </Link>
                 </div>
               </div>
 
-              <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-700 mb-1">Cliente</p>
-                  <p className="text-sm text-gray-900">{order.customerName}</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">Cliente</p>
+                  <p className="text-sm text-gray-900 dark:text-slate-200">{order.customerName}</p>
                   <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
                     <Phone className="w-3 h-3" />
                     {order.customerPhone}
                   </p>
                 </div>
                 <div className="md:col-span-2">
-                  <p className="text-sm font-medium text-gray-700 mb-1">Endereço</p>
-                  <p className="text-sm text-gray-900 flex items-start gap-1">
+                  <p className="text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">Endereço</p>
+                  <p className="text-sm text-gray-900 dark:text-slate-200 flex items-start gap-1">
                     <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     {order.customerAddress}
                   </p>
                 </div>
               </div>
 
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <p className="text-sm font-medium text-gray-700 mb-2">Itens</p>
+              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-slate-800">
+                <p className="text-sm font-medium text-gray-700 dark:text-slate-400 mb-2">Itens</p>
                 <div className="flex flex-wrap gap-2">
                   {order.items?.map((item, index) => (
-                    <span key={index} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">
+                    <span key={index} className="px-3 py-1 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 text-sm rounded-full">
                       {item.quantity}x {item.productName}
                     </span>
                   ))}

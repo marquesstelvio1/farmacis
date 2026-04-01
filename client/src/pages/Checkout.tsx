@@ -4,7 +4,8 @@ import {
   ArrowLeft, Check, Calendar, Clock, Truck,
   Loader2, MapPin, AlertCircle, CheckCircle2, Phone, ClipboardList,
   Store, User, ShoppingBag,
-  Wallet, CreditCard, Building2, Navigation, Loader
+  Wallet, CreditCard, Building2, Navigation, Loader,
+  Upload, X, FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -156,13 +157,24 @@ export default function Checkout() {
 
   // ─── Phone validation ────────────────────────────────────────────────────
   const handlePhoneChange = (value: string) => {
-    setCustomerPhone(value);
-    if (!value.trim()) {
+    const digits = value.replace(/\D/g, "");
+    const subNumber = digits.startsWith("244") ? digits.slice(3) : digits;
+    const limited = subNumber.slice(0, 9);
+    
+    const parts = [];
+    if (limited.length > 0) parts.push(limited.slice(0, 3));
+    if (limited.length > 3) parts.push(limited.slice(3, 6));
+    if (limited.length > 6) parts.push(limited.slice(6, 9));
+    
+    const formatted = limited.length > 0 ? "+244 " + parts.join(" ") : "";
+    setCustomerPhone(formatted);
+
+    if (limited.length === 0) {
       setPhoneStatus("idle");
       setPhoneError("");
       return;
     }
-    if (validateAngolanPhone(value)) {
+    if (limited.length === 9) {
       setPhoneStatus("valid");
       setPhoneError("");
     } else {

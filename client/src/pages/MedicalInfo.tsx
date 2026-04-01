@@ -179,7 +179,7 @@ export default function MedicalInfo() {
                   value={medicalInfo.idNumber}
                   onChange={(e) => updateField("idNumber", e.target.value)}
                   placeholder="000000000LA000"
-                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
                 />
               </div>
               <div>
@@ -189,7 +189,7 @@ export default function MedicalInfo() {
                 <select
                   value={medicalInfo.bloodType}
                   onChange={(e) => updateField("bloodType", e.target.value)}
-                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
                 >
                   <option value="">Selecione seu tipo sanguíneo</option>
                   {bloodTypes.map(type => (

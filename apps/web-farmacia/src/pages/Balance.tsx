@@ -185,13 +185,16 @@ export default function Balance() {
                     {formatCurrency(order.total)}
                   </td>
                   <td className="px-6 py-4 text-sm">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                        order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                      }`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      order.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                      order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      order.status === 'proof_submitted' ? 'bg-indigo-100 text-indigo-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
                       {order.status === 'delivered' ? 'Entregue' :
-                        order.status === 'pending' ? 'Pendente' :
-                          order.status}
+                       order.status === 'pending' ? 'Pendente' :
+                       order.status === 'proof_submitted' ? 'Comprovativo' :
+                       order.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600 capitalize">

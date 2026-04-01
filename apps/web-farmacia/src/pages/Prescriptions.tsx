@@ -97,14 +97,14 @@ export default function Prescriptions() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 dark:bg-slate-950 min-h-screen transition-colors">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Receitas Médicas</h1>
-          <p className="text-gray-500">Analise e aprove as receitas dos clientes</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Receitas Médicas</h1>
+          <p className="text-gray-500 dark:text-slate-400">Analise e aprove as receitas dos clientes</p>
         </div>
         {pendingCount > 0 && (
-          <div className="flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg">
+          <div className="flex items-center gap-2 px-4 py-2 bg-yellow-100 dark:bg-yellow-500/15 text-yellow-800 dark:text-yellow-300 rounded-lg">
             <Clock className="w-5 h-5" />
             <span className="font-semibold">{pendingCount} pendente{pendingCount > 1 ? 's' : ''}</span>
           </div>
@@ -120,7 +120,7 @@ export default function Prescriptions() {
             placeholder="Buscar por ID do pedido..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -128,7 +128,7 @@ export default function Prescriptions() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+            className="px-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
           >
             <option value="all">Todos os status</option>
             <option value="pending">Pendentes</option>
@@ -141,26 +141,26 @@ export default function Prescriptions() {
       {/* Prescriptions List */}
       <div className="space-y-4">
         {filteredPrescriptions?.map((prescription) => (
-          <div key={prescription.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div key={prescription.id} className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 p-6 transition-all">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div className="flex items-start gap-4">
                 <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${
-                  prescription.status === 'pending' ? 'bg-yellow-100' :
-                  prescription.status === 'approved' ? 'bg-green-100' : 'bg-red-100'
+                  prescription.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-500/15' :
+                  prescription.status === 'approved' ? 'bg-green-100 dark:bg-green-500/15' : 'bg-red-100 dark:bg-red-500/15'
                 }`}>
                   <FileText className={`w-7 h-7 ${
-                    prescription.status === 'pending' ? 'text-yellow-600' :
-                    prescription.status === 'approved' ? 'text-green-600' : 'text-red-600'
+                    prescription.status === 'pending' ? 'text-yellow-600 dark:text-yellow-400' :
+                    prescription.status === 'approved' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                   }`} />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-gray-900">Receita #{prescription.id}</h3>
+                    <h3 className="font-semibold text-gray-900 dark:text-slate-100">Receita #{prescription.id}</h3>
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[prescription.status]}`}>
                       {statusLabels[prescription.status]}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
                     Pedido #{prescription.orderId} • {new Date(prescription.createdAt).toLocaleString('pt-BR')}
                   </p>
                   {prescription.rejectionReason && (

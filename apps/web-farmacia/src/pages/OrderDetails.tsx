@@ -13,7 +13,8 @@ import {
   Package,
   AlertCircle,
   CheckCircle,
-  Eye
+  Eye,
+  Lock
 } from 'lucide-react'
 
 interface OrderDetails {
@@ -28,6 +29,7 @@ interface OrderDetails {
   status: string
   paymentMethod: string
   paymentStatus: string
+  isLocked?: boolean
   paymentProof?: string
   notes?: string
   pharmacyIban?: string
@@ -211,7 +213,7 @@ export default function OrderDetails() {
   }
 
   const action = statusActions[order.status]
-  const canReject = order.status === 'pending'
+  const canReject = order.status === 'pending' && !order.isLocked
   
   // Bloquear avanço se pagamento não for "cash" e status for awaiting_proof ou proof_submitted
   const isElectronicPayment = order.paymentMethod !== 'cash'
@@ -219,6 +221,12 @@ export default function OrderDetails() {
   
   // Só pode avançar para "preparing" se não for pagamento pendente de comprovativo
   const canProceed = !isPendingProof
+  
+  // Pedido está bloqueado - não permite cancelamento ou edição
+  const isOrderLocked = order.isLocked || false
+  // Métodos de pagamento que bloqueiam o pedido
+  const lockablePaymentMethods = ['multicaixa_express', 'transferencia', 'atm']
+  const isDigitalPayment = lockablePaymentMethods.includes(order.paymentMethod)
 
   return (
     <div className="space-y-6">
@@ -335,6 +343,24 @@ export default function OrderDetails() {
             </div>
           )}
           
+          {/* Locked Order Warning */}
+          {isOrderLocked && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="flex items-start gap-3">
+                <Lock className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-green-800 flex items-center gap-2">
+                    <span>🔒 Transação Garantida - MCX</span>
+                  </p>
+                  <p className="text-sm text-green-700 mt-1">
+                    Este pedido foi bloqueado porque o pagamento foi processado via {order.paymentMethod === 'multicaixa_express' ? 'Multicaixa Express' : order.paymentMethod === 'transferencia' ? 'Transferência Bancária' : 'ATM'}. 
+                    O pedido não pode ser cancelado ou modificado para proteger o saldo do cliente.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* Proof Verification Actions */}
           {order.status === 'proof_submitted' && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
@@ -365,10 +391,10 @@ export default function OrderDetails() {
           )}
           
           {/* Actions */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className={`bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-500 ${isOrderLocked ? 'opacity-60' : ''}`}>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Ações</h2>
             <div className="space-y-3">
-              {action && order.status !== 'proof_submitted' && (
+              {!isOrderLocked && action && order.status !== 'proof_submitted' && (
                 <button
                   onClick={() => order.status === 'pending' ? handleAcceptOrder() : updateStatusMutation.mutate({ status: nextStatusMap[order.status] })}
                   disabled={updateStatusMutation.isPending || !canProceed}
@@ -386,6 +412,12 @@ export default function OrderDetails() {
                 >
                   Rejeitar Pedido
                 </button>
+              )}
+              {isOrderLocked && (
+                <div className="py-3 px-4 bg-gray-100 text-gray-600 font-medium rounded-lg text-center flex items-center justify-center gap-2">
+                  <Lock className="w-4 h-4" />
+                  Pedido Bloqueado - Em Processamento
+                </div>
               )}
             </div>
           </div>
@@ -460,10 +492,12 @@ export default function OrderDetails() {
               
               <div className="mt-4 pt-4 border-t border-gray-100">
                 <div className="flex items-center gap-2 mb-3">
-                  {order.paymentStatus === 'paid' ? (
+                  {order.paymentStatus === 'paid' || isOrderLocked ? (
                     <>
                       <CheckCircle className="w-5 h-5 text-green-600" />
-                      <span className="font-medium text-green-700">Pagamento Confirmado</span>
+                      <span className="font-medium text-green-700">
+                        {isOrderLocked ? 'Pagamento Garantido (Bloqueado)' : 'Pagamento Confirmado'}
+                      </span>
                     </>
                   ) : (
                     <>
@@ -472,7 +506,7 @@ export default function OrderDetails() {
                     </>
                   )}
                 </div>
-                {order.paymentStatus !== 'paid' && (
+                {order.paymentStatus !== 'paid' && !isOrderLocked && (
                   <button
                     onClick={async () => {
                       try {

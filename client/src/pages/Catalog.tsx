@@ -207,7 +207,7 @@ export default function Catalog() {
                 ) : (
                   <div className="hidden sm:flex items-center text-white">
                     <Package className="w-6 h-6 text-blue-400" />
-                    <span className="ml-2 text-lg font-bold">Farmácis</span>
+                    <span className="ml-2 text-lg font-bold">Catálogo</span>
                   </div>
                 )}
               </div>

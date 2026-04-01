@@ -7,15 +7,20 @@ export function registerSettingsRoutes(app: express.Application) {
   // Get all system settings
   app.get("/api/admin/settings", async (req: Request, res: Response) => {
     try {
+      console.log("[Settings] Fetching all settings...");
       const settings = await db.select().from(systemSettings);
+      console.log("[Settings] Found settings:", settings);
       const settingsMap: Record<string, string> = {};
       settings.forEach(s => {
         settingsMap[s.key] = s.value;
       });
       res.json(settingsMap);
     } catch (error) {
-      console.error("Error fetching settings:", error);
-      res.status(500).json({ message: "Erro ao buscar configurações" });
+      console.error("[Settings] Error fetching settings:", error);
+      if (error instanceof Error) {
+        console.error("[Settings] Error stack:", error.stack);
+      }
+      res.status(500).json({ message: "Erro ao buscar configurações", error: error instanceof Error ? error.message : String(error) });
     }
   });
 

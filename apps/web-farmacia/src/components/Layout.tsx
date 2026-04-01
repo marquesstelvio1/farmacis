@@ -101,14 +101,12 @@ export default function Layout({ children }: LayoutProps) {
         transform transition-transform duration-200 ease-in-out
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-        <div className="flex items-center justify-between h-16 px-6 border-b border-border">
+        <div className="flex items-center justify-between h-16 px-6 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Store className="w-5 h-5 text-primary-foreground" />
-            </div>
+            <img src="/logo.png" alt="Brócolis" className="w-8 h-8 object-contain" />
             <div>
               <p className="text-sm font-semibold text-foreground">{user?.pharmacyName}</p>
-              <p className="text-xs text-muted-foreground">Portal da Farmácia</p>
+              <p className="text-xs text-muted-foreground">Brócolis Farmácia</p>
             </div>
           </div>
           <button

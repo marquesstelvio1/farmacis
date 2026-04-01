@@ -1,6 +1,47 @@
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 
+export async function ensureOrderColumns() {
+  try {
+    // Add is_locked column for payment immutability
+    await db.execute(sql`
+      ALTER TABLE orders 
+      ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT false NOT NULL
+    `);
+    console.log('Column is_locked ensured in orders table');
+
+    // Create index for better performance
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_orders_is_locked ON orders(is_locked)
+    `);
+    console.log('Index idx_orders_is_locked created/verified');
+
+    // Add client payment details columns
+    await db.execute(sql`
+      ALTER TABLE orders 
+      ADD COLUMN IF NOT EXISTS client_iban TEXT
+    `);
+    console.log('Column client_iban ensured in orders table');
+
+    await db.execute(sql`
+      ALTER TABLE orders 
+      ADD COLUMN IF NOT EXISTS client_multicaixa_express TEXT
+    `);
+    console.log('Column client_multicaixa_express ensured in orders table');
+
+    await db.execute(sql`
+      ALTER TABLE orders 
+      ADD COLUMN IF NOT EXISTS client_account_name TEXT
+    `);
+    console.log('Column client_account_name ensured in orders table');
+
+    console.log('Order columns and indexes ensured successfully');
+  } catch (error) {
+    console.error('Error ensuring order columns:', error);
+    // Don't throw - allow app to continue even if column exists
+  }
+}
+
 export async function ensureProductColumns() {
   try {
     // Check if columns exist and add them if they don't

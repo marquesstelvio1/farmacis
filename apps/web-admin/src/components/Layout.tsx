@@ -58,8 +58,9 @@ export default function Layout({ children }: LayoutProps) {
       >
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between h-16 px-6 border-b border-border flex-shrink-0">
-            <Link to="/" className="text-xl font-bold text-primary">
-              Farmácias Admin
+            <Link to="/" className="flex items-center gap-2">
+              <img src="/logo.png" alt="Brócolis" className="w-8 h-8 object-contain" />
+              <span className="text-xl font-bold text-primary">Brócolis Admin</span>
             </Link>
             <button
               onClick={() => setSidebarOpen(false)}

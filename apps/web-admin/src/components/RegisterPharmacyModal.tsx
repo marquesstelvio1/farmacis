@@ -2,11 +2,36 @@ import { useState } from 'react'
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
-import { X, MapPin, Navigation, CheckCircle2 } from 'lucide-react'
+import { X, MapPin, Navigation, CheckCircle2, Building2, CreditCard, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+
+function formatIBAN(value: string): string {
+  const cleaned = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+  const groups = cleaned.match(/.{1,4}/g)
+  return groups ? groups.join(' ') : cleaned
+}
+
+function formatPhoneNumber(value: string): string {
+  const digits = value.replace(/\D/g, '')
+  if (digits.startsWith('244')) {
+    const parts = []
+    if (digits.length > 0) parts.push('+' + digits.slice(0, 3))
+    if (digits.length > 3) parts.push(digits.slice(3, 6))
+    if (digits.length > 6) parts.push(digits.slice(6, 9))
+    if (digits.length > 9) parts.push(digits.slice(9, 12))
+    return parts.join(' ')
+  } else if (digits.startsWith('9')) {
+    const parts = []
+    if (digits.length > 0) parts.push(digits.slice(0, 3))
+    if (digits.length > 3) parts.push(digits.slice(3, 6))
+    if (digits.length > 6) parts.push(digits.slice(6, 9))
+    return parts.join(' ')
+  }
+  return digits
+}
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -55,6 +80,9 @@ export default function RegisterPharmacyModal({ onClose, onRegister }: RegisterP
     lat: -8.8387,
     lng: 13.2344,
     description: '',
+    iban: '',
+    multicaixaExpress: '',
+    accountName: '',
   })
   const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(null)
 
@@ -113,10 +141,64 @@ export default function RegisterPharmacyModal({ onClose, onRegister }: RegisterP
                 <Input
                   id="phone"
                   value={formData.phone}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, phone: e.target.value})}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, phone: formatPhoneNumber(e.target.value)})}
                   placeholder="+244 9XX XXX XXX"
                   required
                 />
+              </div>
+              <div>
+                <Label htmlFor="address">Endereço</Label>
+                <Input
+                  id="address"
+                  value={formData.address}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, address: e.target.value})}
+                  placeholder="Rua, número, bairro..."
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Building2 className="w-5 h-5 text-green-600" />
+                <Label className="text-green-800 font-semibold">Dados de Pagamento (Para Transferências)</Label>
+              </div>
+              <p className="text-sm text-green-600 mb-3">
+                Estes dados serão mostrados aos clientes para efectuarem pagamentos
+              </p>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="iban">IBAN da Farmácia</Label>
+                  <Input
+                    id="iban"
+                    value={formData.iban}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, iban: formatIBAN(e.target.value)})}
+                    placeholder="AO06 0040 0000 1234 5678 9012 3"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="multicaixaExpress">Número Multicaixa Express</Label>
+                  <Input
+                    id="multicaixaExpress"
+                    value={formData.multicaixaExpress}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, multicaixaExpress: formatPhoneNumber(e.target.value)})}
+                    placeholder="+244 9XX XXX XXX"
+                  />
+                </div>
+              </div>
+              <div className="mt-3">
+                <Label htmlFor="accountName">Nome Associado à Conta</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    id="accountName"
+                    value={formData.accountName}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, accountName: e.target.value})}
+                    placeholder="Nome da farmácia ou titular da conta"
+                    className="pl-10"
+                  />
+                </div>
               </div>
             </div>
 

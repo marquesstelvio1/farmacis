@@ -268,6 +268,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateOrderStatus(id: number, status: string): Promise<Order> {
+    const order = await this.getOrder(id);
+    if (!order) throw new Error("Pedido não encontrado");
+
+    // Regra de Integridade One Health Care:
+    // Se o pedido for ATM/Express e já foi aceite ou pago, o status é imutável para baixo.
+    const isDigital = ["multicaixa_express", "transferencia"].includes(order.paymentMethod);
+    const wasAcceptedOrPaid = order.status !== "pending" && order.status !== "rejected" || order.paymentStatus === "paid";
+
+    if (isDigital && wasAcceptedOrPaid) {
+      if (["pending", "rejected", "cancelled"].includes(status)) {
+        throw new Error("Transação Garantida: Este pedido não pode ser cancelado ou revertido após aceitação do pagamento digital.");
+      }
+    }
+
     const [updated] = await db.update(orders)
       .set({ status })
       .where(eq(orders.id, id))
@@ -275,8 +289,63 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async getUserOrders(userId: number): Promise<Order[]> {
-    return await db.select().from(orders).where(eq(orders.userId, userId)).orderBy(sql`${orders.createdAt} DESC`);
+  async getUserOrders(userId: number): Promise<any[]> {
+    try {
+      return await db
+        .select({
+          id: orders.id,
+          userId: orders.userId,
+          pharmacyId: orders.pharmacyId,
+          status: orders.status,
+          paymentStatus: orders.paymentStatus,
+          paymentMethod: orders.paymentMethod,
+          total: orders.total,
+          deliveryFee: orders.deliveryFee,
+          subtotal: orders.subtotal,
+          deliveryAddress: orders.deliveryAddress,
+          deliveryPhone: orders.deliveryPhone,
+          deliveryInstructions: orders.deliveryInstructions,
+          paymentProof: orders.paymentProof,
+          clientIban: orders.clientIban,
+          clientMulticaixaExpress: orders.clientMulticaixaExpress,
+          clientAccountName: orders.clientAccountName,
+          isLocked: orders.isLocked,
+          createdAt: orders.createdAt,
+          updatedAt: orders.updatedAt,
+          pharmacyName: pharmacies.name,
+          pharmacyPhone: pharmacies.phone,
+          pharmacyAddress: pharmacies.address,
+          pharmacyIban: pharmacies.iban,
+          pharmacyMulticaixaExpress: pharmacies.multicaixaExpress,
+          pharmacyAccountName: pharmacies.accountName,
+        })
+        .from(orders)
+        .leftJoin(pharmacies, eq(orders.pharmacyId, pharmacies.id))
+        .where(eq(orders.userId, userId))
+        .orderBy(sql`${orders.createdAt} DESC`);
+    } catch (error: any) {
+      // Fallback if columns don't exist
+      if (error.message?.includes('does not exist')) {
+        console.log('[Storage] Using fallback for getUserOrders without bank columns');
+        const basicOrders = await db
+          .select()
+          .from(orders)
+          .where(eq(orders.userId, userId))
+          .orderBy(sql`${orders.createdAt} DESC`);
+        
+        // Add default null values for missing columns
+        return basicOrders.map(order => ({
+          ...order,
+          pharmacyName: null,
+          pharmacyPhone: null,
+          pharmacyAddress: null,
+          pharmacyIban: null,
+          pharmacyMulticaixaExpress: null,
+          pharmacyAccountName: null,
+        }));
+      }
+      throw error;
+    }
   }
 
   async getAdminUsers(): Promise<AdminUser[]> {

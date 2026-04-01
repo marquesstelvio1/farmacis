@@ -214,6 +214,8 @@ export function registerPharmacyRoutes(app: Express) {
           deliveryFee: orders.deliveryFee,
           status: orders.status,
           paymentMethod: orders.paymentMethod,
+          paymentStatus: orders.paymentStatus,
+          isLocked: orders.isLocked,
           createdAt: orders.createdAt,
         })
         .from(orders)
@@ -277,6 +279,12 @@ export function registerPharmacyRoutes(app: Express) {
     }
   });
 
+  // Digital payment methods that trigger order locking
+  const LOCKABLE_PAYMENT_METHODS = ['multicaixa_express', 'transferencia', 'atm'];
+
+  // Forbidden status transitions for locked orders
+  const FORBIDDEN_TRANSITIONS = ['pending', 'cancelled', 'rejected'];
+
   // Update order status
   app.patch("/api/pharmacy/orders/:id/status", async (req: Request, res: Response) => {
     try {
@@ -289,11 +297,54 @@ export function registerPharmacyRoutes(app: Express) {
         return res.status(400).json({ message: "Invalid status" });
       }
 
+      // Fetch current order to check locking status
+      const [existingOrder] = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.id, orderId))
+        .limit(1);
+
+      if (!existingOrder) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      // Check if order is locked - prevent any modifications
+      if (existingOrder.isLocked) {
+        // Allow only forward progress (preparing -> ready -> out_for_delivery -> delivered)
+        const allowedForwardStatuses = ['preparing', 'ready', 'out_for_delivery', 'delivered'];
+        const currentStatusIndex = allowedForwardStatuses.indexOf(existingOrder.status);
+        const newStatusIndex = allowedForwardStatuses.indexOf(status);
+        
+        // Block transitions to forbidden statuses
+        if (FORBIDDEN_TRANSITIONS.includes(status)) {
+          return res.status(403).json({ 
+            message: "Este pedido está bloqueado. Não é possível cancelar ou reverter o status pois o pagamento já foi processado.",
+            code: "ORDER_LOCKED"
+          });
+        }
+
+        // Block changing payment method data on locked orders
+        if (iban || multicaixaExpress) {
+          return res.status(403).json({
+            message: "Não é possível alterar dados de pagamento de um pedido bloqueado.",
+            code: "PAYMENT_LOCKED"
+          });
+        }
+      }
+
+      // Determine if this update should lock the order
+      // Lock when: accepting order with digital payment method (ATM, Multicaixa Express)
+      const shouldLockOrder = (
+        (status === 'accepted' || status === 'awaiting_proof') &&
+        LOCKABLE_PAYMENT_METHODS.includes(existingOrder.paymentMethod)
+      );
+
       await db
         .update(orders)
         .set({ 
           status, 
           updatedAt: new Date(),
+          ...(shouldLockOrder && { isLocked: true }),
           ...(iban && { pharmacyIban: iban }),
           ...(multicaixaExpress && { pharmacyMulticaixaExpress: multicaixaExpress }),
           ...(paymentProof && { paymentProof: paymentProof }),
@@ -301,7 +352,10 @@ export function registerPharmacyRoutes(app: Express) {
         })
         .where(eq(orders.id, orderId));
 
-      res.json({ message: "Status updated successfully" });
+      res.json({ 
+        message: "Status updated successfully",
+        isLocked: shouldLockOrder || existingOrder.isLocked
+      });
     } catch (error) {
       console.error("Update status error:", error);
       res.status(500).json({ message: "Failed to update status" });
@@ -345,7 +399,7 @@ export function registerPharmacyRoutes(app: Express) {
   // Update pharmacy settings
   app.put("/api/pharmacy/settings", async (req: Request, res: Response) => {
     try {
-      const { pharmacyId, name, email, phone, address, description } = req.body;
+      const { pharmacyId, name, email, phone, address, description, lat, lng, iban, multicaixaExpress, accountName } = req.body;
 
       await db
         .update(pharmacies)
@@ -355,6 +409,11 @@ export function registerPharmacyRoutes(app: Express) {
           phone,
           address,
           description,
+          lat,
+          lng,
+          iban,
+          multicaixaExpress,
+          accountName,
           updatedAt: new Date(),
         })
         .where(eq(pharmacies.id, pharmacyId));

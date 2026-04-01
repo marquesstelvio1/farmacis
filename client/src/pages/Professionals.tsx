@@ -115,6 +115,17 @@ export default function Professionals() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const today = new Date().toISOString().split('T')[0];
+    if (formData.date < today) {
+      toast({
+        title: "Data Inválida",
+        description: "Não é possível agendar consultas em datas que já passaram.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     // Simulando chamada de API para salvar o agendamento
@@ -232,13 +243,13 @@ export default function Professionals() {
 
       {/* Modal de Agendamento */}
       <Dialog open={isScheduleModalOpen} onOpenChange={setIsScheduleModalOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-white rounded-3xl">
+        <DialogContent className="sm:max-w-[425px] bg-white dark:bg-slate-900 dark:border-slate-800 rounded-3xl">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-              <Calendar className="text-purple-600" />
+            <DialogTitle className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Calendar className="text-purple-600 dark:text-purple-400" />
               Agendar Consulta
             </DialogTitle>
-            <DialogDescription className="text-slate-500">
+            <DialogDescription className="text-slate-500 dark:text-slate-400">
               Solicite um horário com <strong>{selectedProfessional?.name}</strong>.
             </DialogDescription>
           </DialogHeader>
@@ -246,43 +257,44 @@ export default function Professionals() {
           <form onSubmit={handleSubmit} className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="date" className="text-slate-700">Data</Label>
+                <Label htmlFor="date" className="text-slate-700 dark:text-slate-300">Data</Label>
                 <Input
                   id="date"
                   type="date"
                   required
+                  min={new Date().toISOString().split('T')[0]}
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className="rounded-xl border-slate-200"
+                  className="rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="time" className="text-slate-700">Hora</Label>
+                <Label htmlFor="time" className="text-slate-700 dark:text-slate-300">Hora</Label>
                 <Input
                   id="time"
                   type="time"
                   required
                   value={formData.time}
                   onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                  className="rounded-xl border-slate-200"
+                  className="rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes" className="text-slate-700">Sintomas ou Motivo (Opcional)</Label>
+              <Label htmlFor="notes" className="text-slate-700 dark:text-slate-300">Sintomas ou Motivo (Opcional)</Label>
               <Textarea
                 id="notes"
                 placeholder="Descreva brevemente o que está sentindo..."
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="rounded-xl border-slate-200 min-h-[100px]"
+                className="rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white min-h-[100px]"
               />
             </div>
 
-            <div className="bg-purple-50 p-3 rounded-xl border border-purple-100 flex items-start gap-2">
-              <Clock size={16} className="text-purple-600 mt-0.5" />
-              <p className="text-[11px] text-purple-700 leading-tight">
+            <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-xl border border-purple-100 dark:border-purple-800 flex items-start gap-2">
+              <Clock size={16} className="text-purple-600 dark:text-purple-400 mt-0.5" />
+              <p className="text-[11px] text-purple-700 dark:text-purple-300 leading-tight">
                 O especialista confirmará o agendamento através do seu contacto registado em até 24 horas.
               </p>
             </div>

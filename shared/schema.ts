@@ -156,11 +156,16 @@ export const orders = pgTable("orders", {
   paymentMethod: text("payment_method").notNull(),
   paymentStatus: text("payment_status").default("pending"), // pending, paid, failed
   paymentProof: text("payment_proof"), // base64 image of payment proof
+  isLocked: boolean("is_locked").default(false).notNull(), // Prevents modifications after digital payment acceptance
   notes: text("notes"),
   bookingType: text("booking_type").default("delivery").notNull(), // delivery, pickup
   scheduledTime: timestamp("scheduled_time"),
   pharmacyIban: text("pharmacy_iban"), // IBAN for payment
   pharmacyMulticaixaExpress: text("pharmacy_multicaixa_express"), // Multicaixa Express number
+  // Client payment details (for verification)
+  clientIban: text("client_iban"), // Client's IBAN used for transfer
+  clientMulticaixaExpress: text("client_multicaixa_express"), // Client's MCX number used
+  clientAccountName: text("client_account_name"), // Client's account name
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

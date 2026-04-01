@@ -1,40 +1,29 @@
 services:
   - type: web
-    name: farmacia-backend
-    runtime: node
-    buildCommand: npm install
+    name: farmacis-api
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000
       - key: DATABASE_URL
-        sync: false # Will be set manually with Supabase connection string
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: STRIPE_SECRET_KEY
-        sync: false
-      - key: STRIPE_PUBLISHABLE_KEY
-        sync: false
-      - key: SMTP_HOST
-        sync: false
-      - key: SMTP_PORT
-        value: 587
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASS
-        sync: false
-      - key: SMTP_FROM
-        sync: false
+        fromDatabase:
+          name: farmacis-db
+          property: connectionString
       - key: SESSION_SECRET
         generateValue: true
-      - key: MAX_FILE_SIZE
-        value: 10485760
-      - key: UPLOAD_DIR
-        value: uploads
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
       - key: APP_URL
-        fromService:
-          type: web
-          name: farmacia-frontend
-          property: host
+        sync: false # Coloque aqui a URL que o Render te der (ex: https://farmacis.onrender.com)
+
+databases:
+  - name: farmacis-db
+    plan: free
+    postgresStringData:
+      - key: sslmode
+        value: require

@@ -10,6 +10,7 @@ import {
     ShoppingBag,
     ChevronRight,
     QrCode,
+    FileText,
     CreditCard,
     Search,
     ArrowLeft,
@@ -35,7 +36,8 @@ interface Order {
     pharmacyId: number;
     customerName: string;
     total: string;
-    status: "pending" | "accepted" | "awaiting_proof" | "proof_submitted" | "rejected" | "preparing" | "ready" | "out_for_delivery" | "delivered" | "cancelled";
+    deliveryFee?: string;
+    status: "pending" | "accepted" | "awaiting_proof" | "proof_submitted" | "rejected" | "preparing" | "ready" | "out_for_delivery" | "delivered" | "cancelled" | "paid";
     paymentStatus: "pending" | "paid" | "failed";
     paymentMethod: string;
     bookingType: "delivery" | "pickup";
@@ -51,7 +53,7 @@ const statusConfig = {
     pending: { label: "Pendente", color: "bg-amber-100 text-amber-700", icon: Clock },
     accepted: { label: "Aceite", color: "bg-blue-100 text-blue-700", icon: CheckCircle2 },
     awaiting_proof: { label: "Aguardando Pagamento", color: "bg-amber-100 text-amber-700", icon: CreditCard },
-    proof_submitted: { label: "Comprovativo Enviado", color: "bg-blue-100 text-blue-700", icon: Clock },
+    proof_submitted: { label: "Comprovativo Enviado", color: "bg-indigo-100 text-indigo-700", icon: FileText },
     rejected: { label: "Rejeitado", color: "bg-red-100 text-red-700", icon: AlertCircle },
     preparing: { label: "Em Preparação", color: "bg-purple-100 text-purple-700", icon: Package },
     ready: { label: "Pronto", color: "bg-indigo-100 text-indigo-700", icon: CheckCircle2 },
@@ -68,6 +70,12 @@ export default function UserOrders() {
     const [showPickupQR, setShowPickupQR] = useState<number | null>(null);
     const [paymentProof, setPaymentProof] = useState<string | null>(null);
     const [proofFile, setProofFile] = useState<File | null>(null);
+    // Payment details from client
+    const [clientPaymentDetails, setClientPaymentDetails] = useState({
+        iban: "",
+        multicaixaExpress: "",
+        accountName: ""
+    });
     const { toast } = useToast();
     const userString = localStorage.getItem("user");
     const user = userString ? JSON.parse(userString) : {};
@@ -97,7 +105,17 @@ export default function UserOrders() {
         const order = orders.find(o => o.id === orderId);
         if (!order) return;
 
-        // If non-cash payment with pharmacy payment info, show proof upload modal
+        // Se for pagamento eletrônico mas não houver dados bancários da farmácia
+        if (order.paymentMethod !== 'cash' && !order.pharmacyIban && !order.pharmacyMulticaixaExpress) {
+            toast({
+                title: "Dados Indisponíveis",
+                description: "A farmácia ainda não forneceu os dados para transferência. Tente novamente em instantes.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        // Abrir modal de upload para pagamentos eletrônicos
         if (order.paymentMethod !== 'cash' && (order.pharmacyIban || order.pharmacyMulticaixaExpress)) {
             setSelectedOrderForProof(order);
             setShowProofModal(true);
@@ -141,23 +159,49 @@ export default function UserOrders() {
             return;
         }
 
+        // Validate required fields based on payment method
+        if (selectedOrderForProof.paymentMethod === "transferencia" && !clientPaymentDetails.iban) {
+            toast({
+                title: "IBAN Necessário",
+                description: "Por favor, informe o IBAN utilizado para a transferência.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        if (selectedOrderForProof.paymentMethod === "multicaixa_express" && !clientPaymentDetails.multicaixaExpress) {
+            toast({
+                title: "Número Necessário",
+                description: "Por favor, informe o número Multicaixa Express utilizado.",
+                variant: "destructive",
+            });
+            return;
+        }
+
         try {
             const res = await fetch(`/api/user/orders/${selectedOrderForProof.id}/payment-proof`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
-                    paymentProof: paymentProof
+                    paymentProof: paymentProof,
+                    status: "proof_submitted",
+                    paymentStatus: "paid",
+                    // Include client's payment details
+                    clientIban: clientPaymentDetails.iban,
+                    clientMulticaixaExpress: clientPaymentDetails.multicaixaExpress,
+                    clientAccountName: clientPaymentDetails.accountName
                 }),
             });
             if (res.ok) {
                 toast({
                     title: "Comprovativo Enviado",
-                    description: "O seu comprovativo foi enviado para análise da farmácia.",
+                    description: "O seu pagamento foi registado e está em análise.",
                 });
                 setShowProofModal(false);
                 setSelectedOrderForProof(null);
                 setPaymentProof(null);
                 setProofFile(null);
+                setClientPaymentDetails({ iban: "", multicaixaExpress: "", accountName: "" });
                 fetchOrders();
             }
         } catch (err) {
@@ -246,7 +290,10 @@ export default function UserOrders() {
                                 const config = statusConfig[order.status as keyof typeof statusConfig] || statusConfig.pending;
                                 const StatusIcon = config.icon;
                                 const isCash = order.paymentMethod === "cash";
-                                const canPay = !isCash && order.status === "awaiting_proof" && order.paymentStatus === "pending";
+                                
+                                // O botão de pagar aparece se não for dinheiro, o pagamento estiver pendente 
+                                // e a farmácia já tiver aceitado ou solicitado o comprovativo.
+                                const canPay = !isCash && (order.status === "accepted" || order.status === "awaiting_proof") && order.paymentStatus === "pending";
 
                                 return (
                                     <motion.div
@@ -363,11 +410,27 @@ export default function UserOrders() {
                                                     </div>
 
                                                     <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700">
-                                                        <div className="flex justify-between items-center mb-4">
-                                                            <span className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Total do Pedido</span>
-                                                            <span className="text-2xl font-black text-blue-600">
-                                                                {Number(order.total).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
-                                                            </span>
+                                                        <div className="space-y-2 mb-4">
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest">Subtotal</span>
+                                                                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                                                                    {Number(Number(order.total) - (order.deliveryFee ? Number(order.deliveryFee) : 0)).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                                                                </span>
+                                                            </div>
+                                                            {order.deliveryFee && Number(order.deliveryFee) > 0 && (
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest">Entrega</span>
+                                                                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                                                                        {Number(order.deliveryFee).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-700">
+                                                                <span className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-widest">Total</span>
+                                                                <span className="text-2xl font-black text-blue-600">
+                                                                    {Number(order.total).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                                                                </span>
+                                                            </div>
                                                         </div>
 
                                                         {canPay ? (
@@ -448,20 +511,76 @@ export default function UserOrders() {
                         </div>
                         
                         <div className="p-6 space-y-4">
+                            {/* Pharmacy Payment Details */}
                             {selectedOrderForProof.pharmacyIban && (
                                 <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4">
-                                    <p className="text-xs font-bold text-green-700 dark:text-green-400 uppercase mb-1">IBAN</p>
+                                    <p className="text-[10px] font-bold text-green-700 dark:text-green-400 uppercase mb-1 tracking-widest">IBAN para Transferência</p>
                                     <p className="text-sm font-mono font-semibold text-green-800 dark:text-green-300">{selectedOrderForProof.pharmacyIban}</p>
                                 </div>
                             )}
                             {selectedOrderForProof.pharmacyMulticaixaExpress && (
                                 <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4">
-                                    <p className="text-xs font-bold text-green-700 dark:text-green-400 uppercase mb-1">Multicaixa Express</p>
+                                    <p className="text-[10px] font-bold text-green-700 dark:text-green-400 uppercase mb-1 tracking-widest">Número Multicaixa Express</p>
                                     <p className="text-sm font-mono font-semibold text-green-800 dark:text-green-300">{selectedOrderForProof.pharmacyMulticaixaExpress}</p>
                                 </div>
                             )}
 
-                            <div className="space-y-4">
+                            {/* Client Payment Details */}
+                            <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                                <p className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">
+                                    Dados do Pagamento Efectuado
+                                </p>
+                                
+                                {selectedOrderForProof.paymentMethod === "transferencia" && (
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                                                IBAN da Transferência *
+                                            </label>
+                                            <input
+                                                type="text"
+                                                placeholder="AO06 0040 0000 1234 5678 9012 3"
+                                                value={clientPaymentDetails.iban}
+                                                onChange={(e) => setClientPaymentDetails({ ...clientPaymentDetails, iban: e.target.value })}
+                                                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                                                Nome da Conta (Opcional)
+                                            </label>
+                                            <input
+                                                type="text"
+                                                placeholder="Nome associado à conta"
+                                                value={clientPaymentDetails.accountName}
+                                                onChange={(e) => setClientPaymentDetails({ ...clientPaymentDetails, accountName: e.target.value })}
+                                                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedOrderForProof.paymentMethod === "multicaixa_express" && (
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                                            Número Multicaixa Express Utilizado *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder="+244 9XX XXX XXX"
+                                            value={clientPaymentDetails.multicaixaExpress}
+                                            onChange={(e) => setClientPaymentDetails({ ...clientPaymentDetails, multicaixaExpress: e.target.value })}
+                                            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* File Upload */}
+                            <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                                <p className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">
+                                    Comprovativo de Pagamento *
+                                </p>
                                 <div className="flex gap-2">
                                     <label className="flex-1 cursor-pointer">
                                         <input
@@ -498,8 +617,15 @@ export default function UserOrders() {
                                 </div>
 
                                 {paymentProof && (
-                                    <div className="relative">
-                                        <img src={paymentProof} alt="Comprovativo" className="max-h-48 mx-auto rounded-xl border border-slate-200 dark:border-slate-700" />
+                                    <div className="relative mt-4">
+                                        {proofFile?.type === 'application/pdf' ? (
+                                            <div className="flex flex-col items-center p-8 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
+                                                <FileText size={48} className="text-red-500 mb-2" />
+                                                <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate w-full text-center">{proofFile.name}</p>
+                                            </div>
+                                        ) : (
+                                            <img src={paymentProof} alt="Comprovativo" className="max-h-48 mx-auto rounded-xl border border-slate-200 dark:border-slate-700" />
+                                        )}
                                         <button
                                             onClick={() => { setPaymentProof(null); setProofFile(null); }}
                                             className="absolute top-2 right-2 w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg"
@@ -513,7 +639,7 @@ export default function UserOrders() {
                             {!paymentProof && (
                                 <p className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-2">
                                     <AlertCircle size={16} />
-                                    Carregue o comprovativo de pagamento para confirmar
+                                    Seleccione o comprovativo bancário (PDF ou Imagem)
                                 </p>
                             )}
                         </div>
@@ -521,7 +647,7 @@ export default function UserOrders() {
                         <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex gap-3">
                             <Button
                                 variant="outline"
-                                onClick={() => { setShowProofModal(false); setPaymentProof(null); setProofFile(null); }}
+                                onClick={() => { setShowProofModal(false); setPaymentProof(null); setProofFile(null); setClientPaymentDetails({ iban: "", multicaixaExpress: "", accountName: "" }); }}
                                 className="flex-1"
                             >
                                 Cancelar

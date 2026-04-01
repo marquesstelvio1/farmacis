@@ -157,11 +157,11 @@ export default function Products() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 dark:bg-slate-950 min-h-screen transition-colors">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Produtos</h1>
-          <p className="text-gray-500">Gerencie os produtos da sua farmácia</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Produtos</h1>
+          <p className="text-gray-500 dark:text-slate-400">Gerencie os produtos da sua farmácia</p>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
@@ -438,15 +438,15 @@ export default function Products() {
           placeholder="Buscar produto..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+          className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
         />
       </div>
 
       {/* Products Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredProducts?.map((product) => (
-          <div key={product.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="aspect-video bg-gray-100 relative">
+          <div key={product.id} className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden transition-all">
+            <div className="aspect-video bg-gray-100 dark:bg-slate-800 relative">
               {product.imageUrl ? (
                 <img
                   src={product.imageUrl}
@@ -468,18 +468,18 @@ export default function Products() {
               </div>
             </div>
             <div className="p-4">
-              <h3 className="font-semibold text-gray-900">{product.name}</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-slate-100">{product.name}</h3>
               <div className="flex flex-wrap gap-1 mt-1">
-                <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded capitalize">
+                <span className="text-xs bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 px-2 py-0.5 rounded capitalize">
                   {product.category}
                 </span>
                 {product.diseases && product.diseases.slice(0, 2).map((disease, i) => (
-                  <span key={i} className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded">
+                  <span key={i} className="text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded">
                     {disease}
                   </span>
                 ))}
               </div>
-              <p className="text-lg font-bold text-green-600 mt-2">
+              <p className="text-lg font-bold text-green-600 dark:text-green-400 mt-2">
                 {Number(product.price).toLocaleString('pt-AO', {
                   style: 'currency',
                   currency: 'AOA'
@@ -501,7 +501,7 @@ export default function Products() {
                       imageUrl: product.imageUrl || ''
                     });
                   }}
-                  className="flex-1 flex items-center justify-center gap-2 py-2 px-4 border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 py-2 px-4 border border-gray-300 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-300 text-sm font-medium rounded-lg transition-colors"
                 >
                   <Edit className="w-4 h-4" />
                   Editar
@@ -509,13 +509,13 @@ export default function Products() {
                 <button
                   onClick={() => toggleStockMutation.mutate({ id: product.id, inStock: product.stock > 0 })}
                   className={`flex-1 text-sm font-medium py-2 px-4 rounded-lg transition-colors ${product.stock > 0
-                    ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                    : 'bg-green-50 text-green-600 hover:bg-green-100'
+                    ? 'bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20'
+                    : 'bg-green-50 dark:bg-green-900/10 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/20'
                     }`}
                 >
                   {product.stock > 0 ? 'Tirar de Stock' : 'Pôr em Stock'}
                 </button>
-                <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                <button className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
                   <Trash2 className="w-5 h-5" />
                 </button>
               </div>

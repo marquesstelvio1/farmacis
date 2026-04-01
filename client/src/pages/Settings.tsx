@@ -16,9 +16,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import AuthOneHealth from "./AuthOneHealth";
 
 interface MedicationReminder {
   id?: number;
@@ -44,8 +46,23 @@ export default function AccountSettings() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isChangingPhone, setIsChangingPhone] = useState(false);
+  const [newPhoneNumber, setNewPhoneNumber] = useState("");
   const [activeTab, setActiveTab] = useState<'profile' | 'meds' | 'appointments'>('meds');
   
+  const formatPhoneNumber = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    const subNumber = digits.startsWith("244") ? digits.slice(3) : digits;
+    const limited = subNumber.slice(0, 9);
+    
+    const parts = [];
+    if (limited.length > 0) parts.push(limited.slice(0, 3));
+    if (limited.length > 3) parts.push(limited.slice(3, 6));
+    if (limited.length > 6) parts.push(limited.slice(6, 9));
+    
+    return limited.length > 0 ? "+244 " + parts.join(" ") : "";
+  };
+
   // New Medicine Form
   const [newMedicine, setNewMedicine] = useState("");
   const [newDuration, setNewDuration] = useState("7");
@@ -207,6 +224,71 @@ export default function AccountSettings() {
 
           {/* Content Area */}
           <div className="md:col-span-2 space-y-6">
+            {activeTab === 'profile' && (
+              <Card className="dark:bg-slate-800 dark:border-slate-700">
+                <CardHeader>
+                  <CardTitle className="dark:text-white">Perfil do Usuário</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {isChangingPhone ? (
+                    <AuthOneHealth 
+                      emailToVerify={user?.email}
+                      onSuccess={async () => {
+                        try {
+                          const res = await fetch("/api/auth/profile", {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ 
+                              userId: user.id, 
+                              phone: newPhoneNumber.replace(/\s/g, "") 
+                            }),
+                          });
+                          
+                          if (!res.ok) throw new Error("Erro ao atualizar");
+                          
+                          const data = await res.json();
+                          localStorage.setItem("user", JSON.stringify(data.user));
+                          setIsChangingPhone(false);
+                          toast({ title: "Sucesso", description: "E-mail validado e telemóvel atualizado!" });
+                        } catch (err) {
+                          toast({ title: "Erro", description: "Não foi possível confirmar a alteração.", variant: "destructive" });
+                        }
+                      }}
+                      onCancel={() => setIsChangingPhone(false)}
+                    />
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-700">
+                        <div>
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Telefone Atual</p>
+                          <p className="text-lg font-bold text-slate-900 dark:text-white">{user?.phone || 'Não definido'}</p>
+                        </div>
+                        <Badge variant="outline" className="text-green-600 border-green-200">Validado</Badge>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Novo Número de Telemóvel</Label>
+                        <div className="flex gap-2">
+                          <Input 
+                            placeholder="+244 9XX XXX XXX" 
+                            value={newPhoneNumber}
+                            onChange={(e) => setNewPhoneNumber(formatPhoneNumber(e.target.value))}
+                            className="dark:bg-slate-900"
+                          />
+                          <Button 
+                            disabled={!newPhoneNumber || newPhoneNumber.length < 9}
+                            onClick={() => setIsChangingPhone(true)}
+                          >
+                            Validar e Alterar
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {activeTab === 'meds' && (
               <>
                 <Card className="border-blue-100 dark:border-blue-800 shadow-blue-900/5 dark:shadow-blue-900/20">
@@ -219,30 +301,33 @@ export default function AccountSettings() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Nome do Medicamento</Label>
+                  <Label className="dark:text-slate-300">Nome do Medicamento</Label>
                   <Input 
                     placeholder="Ex: Paracetamol 500mg" 
                     value={newMedicine}
                     onChange={(e) => setNewMedicine(e.target.value)}
+                    className="dark:bg-slate-900 dark:border-slate-700 dark:text-white"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Duração (Dias)</Label>
+                    <Label className="dark:text-slate-300">Duração (Dias)</Label>
                     <Input 
                       type="number" 
                       value={newDuration}
                       onChange={(e) => setNewDuration(e.target.value)}
+                      className="dark:bg-slate-900 dark:border-slate-700 dark:text-white"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Adicionar Horário</Label>
+                    <Label className="dark:text-slate-300">Adicionar Horário</Label>
                     <div className="flex gap-2">
                       <Input 
                         type="time" 
                         value={newHour}
                         onChange={(e) => setNewHour(e.target.value)}
+                        className="dark:bg-slate-900 dark:border-slate-700 dark:text-white"
                       />
                       <Button size="icon" onClick={addHour} type="button">
                         <Plus size={18} />
