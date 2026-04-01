@@ -148,7 +148,7 @@ export function registerAdminRoutes(app: Express) {
   // Create a new pharmacy
   app.post("/api/admin/pharmacies", async (req: Request, res: Response) => {
     try {
-      const { name, email, phone, address, lat, lng, iban, multicaixaExpress } = req.body;
+      const { name, email, phone, address, lat, lng, iban, multicaixaExpress, accountName } = req.body;
 
       if (!name || !email || !phone || !address) {
         return res.status(400).json({ message: "All fields are required" });
@@ -166,6 +166,7 @@ export function registerAdminRoutes(app: Express) {
           status: 'active',
           iban: iban || null,
           multicaixaExpress: multicaixaExpress || null,
+          accountName: accountName || null,
         })
         .returning();
 

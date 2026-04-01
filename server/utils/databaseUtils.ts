@@ -93,3 +93,30 @@ export async function ensureProductColumns() {
     throw error;
   }
 }
+
+export async function ensurePharmacyColumns() {
+  try {
+    // Add pharmacy bank details columns
+    await db.execute(sql`
+      ALTER TABLE pharmacies 
+      ADD COLUMN IF NOT EXISTS iban TEXT
+    `);
+    console.log('Column iban ensured in pharmacies table');
+
+    await db.execute(sql`
+      ALTER TABLE pharmacies 
+      ADD COLUMN IF NOT EXISTS multicaixa_express TEXT
+    `);
+    console.log('Column multicaixa_express ensured in pharmacies table');
+
+    await db.execute(sql`
+      ALTER TABLE pharmacies 
+      ADD COLUMN IF NOT EXISTS account_name TEXT
+    `);
+    console.log('Column account_name ensured in pharmacies table');
+
+    console.log('Pharmacy columns ensured successfully');
+  } catch (error) {
+    console.error('Error ensuring pharmacy columns:', error);
+  }
+}

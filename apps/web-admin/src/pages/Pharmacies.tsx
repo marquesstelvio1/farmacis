@@ -213,6 +213,7 @@ export default function Pharmacies() {
       lng: markerPosition ? markerPosition[1].toString() : '13.2344',
       iban: formData.get('iban') as string || null,
       multicaixaExpress: formData.get('multicaixaExpress') as string || null,
+      accountName: formData.get('accountName') as string || null,
     }
     registerMutation.mutate(data)
     setMarkerPosition(null)
@@ -556,6 +557,15 @@ export default function Pharmacies() {
                       className="w-full px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm"
                     />
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-green-700">Nome Associado à Conta</label>
+                  <input
+                    name="accountName"
+                    type="text"
+                    placeholder="Nome da farmácia ou titular da conta"
+                    className="w-full px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm"
+                  />
                 </div>
               </div>
             </form>

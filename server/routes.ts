@@ -21,7 +21,7 @@ import { registerPrescriptionRoutes } from "./routes/prescriptions";
 import { registerSettingsRoutes } from "./routes/settings";
 import { registerLocationRoutes } from "./routes/location";
 import { registerMedicalRoutes } from "./routes/medical";
-import { ensureProductColumns, ensureOrderColumns } from "./utils/databaseUtils";
+import { ensureProductColumns, ensureOrderColumns, ensurePharmacyColumns } from "./utils/databaseUtils";
 
 // OpenAI configuration from the AI integration blueprint
 const openai = new OpenAI({
@@ -173,7 +173,14 @@ export async function registerRoutes(
       const orders = await storage.getUserOrders(userId);
       res.json(orders);
     } catch (err) {
-      res.status(500).json({ message: "Erro ao buscar pedidos do usuário" });
+      console.error("[API] Error fetching user orders:", err);
+      if (err instanceof Error) {
+        console.error("[API] Error stack:", err.stack);
+      }
+      res.status(500).json({ 
+        message: "Erro ao buscar pedidos do usuário",
+        error: err instanceof Error ? err.message : String(err)
+      });
     }
   });
 
@@ -389,6 +396,7 @@ async function seedDatabase() {
   try {
     await ensureProductColumns();
     await ensureOrderColumns();
+    await ensurePharmacyColumns();
     console.log("Database columns ensured successfully");
   } catch (error) {
     console.error("Error ensuring database columns:", error);
