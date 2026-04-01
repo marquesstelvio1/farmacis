@@ -159,25 +159,6 @@ export default function UserOrders() {
             return;
         }
 
-        // Validate required fields based on payment method
-        if (selectedOrderForProof.paymentMethod === "transferencia" && !clientPaymentDetails.iban) {
-            toast({
-                title: "IBAN Necessário",
-                description: "Por favor, informe o IBAN utilizado para a transferência.",
-                variant: "destructive",
-            });
-            return;
-        }
-
-        if (selectedOrderForProof.paymentMethod === "multicaixa_express" && !clientPaymentDetails.multicaixaExpress) {
-            toast({
-                title: "Número Necessário",
-                description: "Por favor, informe o número Multicaixa Express utilizado.",
-                variant: "destructive",
-            });
-            return;
-        }
-
         try {
             const res = await fetch(`/api/user/orders/${selectedOrderForProof.id}/payment-proof`, {
                 method: "PATCH",
@@ -186,10 +167,6 @@ export default function UserOrders() {
                     paymentProof: paymentProof,
                     status: "proof_submitted",
                     paymentStatus: "paid",
-                    // Include client's payment details
-                    clientIban: clientPaymentDetails.iban,
-                    clientMulticaixaExpress: clientPaymentDetails.multicaixaExpress,
-                    clientAccountName: clientPaymentDetails.accountName
                 }),
             });
             if (res.ok) {
@@ -201,7 +178,6 @@ export default function UserOrders() {
                 setSelectedOrderForProof(null);
                 setPaymentProof(null);
                 setProofFile(null);
-                setClientPaymentDetails({ iban: "", multicaixaExpress: "", accountName: "" });
                 fetchOrders();
             }
         } catch (err) {
@@ -491,7 +467,7 @@ export default function UserOrders() {
             {/* Payment Proof Modal */}
             {showProofModal && selectedOrderForProof && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
                         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-blue-50 dark:bg-blue-900/20">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
@@ -510,7 +486,7 @@ export default function UserOrders() {
                             </button>
                         </div>
                         
-                        <div className="p-6 space-y-4">
+                        <div className="p-6 space-y-4 overflow-y-auto">
                             {/* Pharmacy Payment Details */}
                             {selectedOrderForProof.pharmacyIban && (
                                 <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4">
@@ -524,57 +500,6 @@ export default function UserOrders() {
                                     <p className="text-sm font-mono font-semibold text-green-800 dark:text-green-300">{selectedOrderForProof.pharmacyMulticaixaExpress}</p>
                                 </div>
                             )}
-
-                            {/* Client Payment Details */}
-                            <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-                                <p className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">
-                                    Dados do Pagamento Efectuado
-                                </p>
-                                
-                                {selectedOrderForProof.paymentMethod === "transferencia" && (
-                                    <div className="space-y-3">
-                                        <div>
-                                            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
-                                                IBAN da Transferência *
-                                            </label>
-                                            <input
-                                                type="text"
-                                                placeholder="AO06 0040 0000 1234 5678 9012 3"
-                                                value={clientPaymentDetails.iban}
-                                                onChange={(e) => setClientPaymentDetails({ ...clientPaymentDetails, iban: e.target.value })}
-                                                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
-                                                Nome da Conta (Opcional)
-                                            </label>
-                                            <input
-                                                type="text"
-                                                placeholder="Nome associado à conta"
-                                                value={clientPaymentDetails.accountName}
-                                                onChange={(e) => setClientPaymentDetails({ ...clientPaymentDetails, accountName: e.target.value })}
-                                                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-
-                                {selectedOrderForProof.paymentMethod === "multicaixa_express" && (
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
-                                            Número Multicaixa Express Utilizado *
-                                        </label>
-                                        <input
-                                            type="text"
-                                            placeholder="+244 9XX XXX XXX"
-                                            value={clientPaymentDetails.multicaixaExpress}
-                                            onChange={(e) => setClientPaymentDetails({ ...clientPaymentDetails, multicaixaExpress: e.target.value })}
-                                            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                        />
-                                    </div>
-                                )}
-                            </div>
 
                             {/* File Upload */}
                             <div className="border-t border-slate-200 dark:border-slate-700 pt-4">

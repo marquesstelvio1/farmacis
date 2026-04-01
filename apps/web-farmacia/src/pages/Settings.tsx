@@ -23,11 +23,13 @@ const markerIcon = new L.Icon({
 });
 
 function formatIBAN(value: string): string {
-  // Remove all non-alphanumeric characters
-  const cleaned = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+  // Remove all non-digit characters
+  const digits = value.replace(/\D/g, '')
+  // Limit to 25 digits
+  const limited = digits.slice(0, 25)
   // Group by 4 characters
-  const groups = cleaned.match(/.{1,4}/g)
-  return groups ? groups.join(' ') : cleaned
+  const groups = limited.match(/.{1,4}/g)
+  return groups ? groups.join(' ') : limited
 }
 
 function formatPhoneNumber(value: string): string {
@@ -317,15 +319,21 @@ export default function Settings() {
               </label>
               <div className="relative">
                 <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  value={formData.iban}
-                  onChange={(e) => setFormData({ ...formData, iban: formatIBAN(e.target.value) })}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                  placeholder="AO06 0040 0000 1234 5678 9012 3"
-                />
+                <div className="flex">
+                  <span className="inline-flex items-center px-3 py-2 border border-r-0 border-gray-300 bg-gray-100 text-gray-600 rounded-l-lg text-sm font-mono">
+                    AO06
+                  </span>
+                  <input
+                    type="text"
+                    value={formData.iban}
+                    onChange={(e) => setFormData({ ...formData, iban: formatIBAN(e.target.value) })}
+                    className="flex-1 pl-3 pr-4 py-2 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none font-mono"
+                    placeholder="0040 0000 1234 5678 9012 3"
+                    maxLength={29}
+                  />
+                </div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Número IBAN para transferências bancárias</p>
+              <p className="text-xs text-gray-500 mt-1">25 dígitos após AO06</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
