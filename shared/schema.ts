@@ -134,6 +134,7 @@ export const pharmacies = pgTable("pharmacies", {
   openingHours: text("opening_hours"), // JSON string
   iban: text("iban"), // IBAN for bank transfer
   multicaixaExpress: text("multicaixa_express"), // Multicaixa Express number
+  accountName: text("account_name"), // Account name for bank transfer
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

@@ -290,8 +290,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserOrders(userId: number): Promise<any[]> {
+    console.log(`[Storage] getUserOrders called for userId: ${userId}`);
     try {
-      return await db
+      const result = await db
         .select({
           id: orders.id,
           userId: orders.userId,
@@ -301,10 +302,11 @@ export class DatabaseStorage implements IStorage {
           paymentMethod: orders.paymentMethod,
           total: orders.total,
           deliveryFee: orders.deliveryFee,
-          subtotal: orders.subtotal,
-          deliveryAddress: orders.deliveryAddress,
-          deliveryPhone: orders.deliveryPhone,
-          deliveryInstructions: orders.deliveryInstructions,
+          customerName: orders.customerName,
+          customerPhone: orders.customerPhone,
+          customerAddress: orders.customerAddress,
+          customerLat: orders.customerLat,
+          customerLng: orders.customerLng,
           paymentProof: orders.paymentProof,
           clientIban: orders.clientIban,
           clientMulticaixaExpress: orders.clientMulticaixaExpress,
@@ -323,10 +325,14 @@ export class DatabaseStorage implements IStorage {
         .leftJoin(pharmacies, eq(orders.pharmacyId, pharmacies.id))
         .where(eq(orders.userId, userId))
         .orderBy(sql`${orders.createdAt} DESC`);
+      console.log(`[Storage] getUserOrders success: ${result.length} orders found`);
+      return result;
     } catch (error: any) {
-      // Fallback if columns don't exist
-      if (error.message?.includes('does not exist')) {
-        console.log('[Storage] Using fallback for getUserOrders without bank columns');
+      console.error('[Storage] getUserOrders error:', error.message);
+      console.error('[Storage] Full error:', error);
+      // Fallback for any database error (missing columns, connection issues, etc.)
+      console.log('[Storage] Using fallback for getUserOrders due to error');
+      try {
         const basicOrders = await db
           .select()
           .from(orders)
@@ -343,8 +349,10 @@ export class DatabaseStorage implements IStorage {
           pharmacyMulticaixaExpress: null,
           pharmacyAccountName: null,
         }));
+      } catch (fallbackError) {
+        console.error('[Storage] Fallback also failed:', fallbackError);
+        throw fallbackError;
       }
-      throw error;
     }
   }
 

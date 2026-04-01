@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
-import { X, MapPin, Navigation, CheckCircle2, Building2, CreditCard, User } from 'lucide-react'
+import { X, MapPin, Navigation, CheckCircle2, Building2, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
