@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Switch, Route, useLocation } from "wouter";
+import { useState } from "react";
+import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -25,16 +25,15 @@ import Insurance from "@/pages/Insurance";
 import MedicalInfo from "@/pages/MedicalInfo";
 import AccountSettings from "@/pages/Settings";
 import EmergencyContacts from "@/pages/EmergencyContacts";
-import { EmergencyButton } from "@/components/EmergencyButton";
 import { useCart } from "@/hooks/use-cart";
 
 interface RouterProps {
   onLogout: () => void;
 }
 
-function Router({ onLogout }: RouterProps) {
+function Router({ onLogout: _onLogout }: RouterProps) {
   return (
-    <Layout onLogout={onLogout}>
+    <Layout>
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/catalogo" component={Catalog} />
@@ -99,7 +98,6 @@ function App() {
         ) : (
           <Login onLogin={handleLogin} onShowRegister={handleShowRegister} />
         )}
-        {isAuthenticated && <EmergencyButton />}
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>

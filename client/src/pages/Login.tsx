@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, Lock, Mail, Pill } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface LoginProps {
   onLogin: () => void;
@@ -51,105 +49,126 @@ export default function Login({ onLogin, onShowRegister }: LoginProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-4">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" />
-        <div className="absolute top-40 -left-20 w-72 h-72 bg-teal-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse delay-1000" />
-      </div>
-
+    <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ backgroundColor: '#f7f7f7' }}>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="w-full max-w-md relative z-10"
+        className="w-full max-w-md"
       >
-        <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-sm">
-          <CardHeader className="space-y-1 text-center pb-8">
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-teal-500 flex items-center justify-center mb-4 shadow-lg">
-              <Pill className="w-8 h-8 text-white" />
+        {/* Logo + Título */}
+        <div className="text-center mb-12">
+          {/* Logo with Healthcare Icon */}
+          <div className="flex items-center justify-center gap-2 mb-8">
+            <img src="/logo.png" alt="Brócolis" className="w-10 h-10" />
+            <span className="text-xl font-bold text-slate-900">Brócolis - Saúde e Vida</span>
+          </div>
+        </div>
+
+        {/* Login Form Card */}
+        <div className="rounded-3xl p-8 shadow-lg border border-slate-100" style={{ backgroundColor: '#fof5ee' }}>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Email Field */}
+            <div className="space-y-3">
+              <label htmlFor="email" className="block text-sm font-semibold" style={{ color: '#607369' }}>
+                E-mail
+              </label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="ex: example@gmail.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-12 border border-slate-200 rounded-2xl focus:border-green-500 focus:ring-green-500/20 placeholder:text-slate-400 text-slate-900"
+                required
+              />
             </div>
-            <CardTitle className="text-2xl font-bold text-slate-900">
-              Entrar
-            </CardTitle>
-            <CardDescription className="text-slate-500">
-              Acesse sua conta para continuar
-            </CardDescription>
-          </CardHeader>
 
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-slate-700">
-                  Email
-                </Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Digite seu email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 h-12 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-slate-700">
+            {/* Password Field */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label htmlFor="password" className="block text-sm font-semibold" style={{ color: '#607369' }}>
                   Senha
-                </Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Digite sua senha"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10 h-12 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </div>
-              </div>
-
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm text-center"
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {}}
+                  className="text-sm text-green-600 hover:text-green-700 font-medium transition-colors"
                 >
-                  {error}
-                </motion.div>
-              )}
-
-              <Button
-                type="submit"
-                className="w-full h-12 bg-gradient-to-r from-blue-600 to-teal-500 hover:from-blue-700 hover:to-teal-600 text-white font-semibold rounded-xl transition-all hover:shadow-lg hover:shadow-blue-500/25"
-                disabled={isLoading}
-              >
-                {isLoading ? "Entrando..." : "Entrar"}
-              </Button>
-            </form>
-
-            <div className="mt-6 text-center">
-              <button
-                onClick={onShowRegister}
-                className="text-sm text-slate-500 hover:text-slate-700 transition-colors"
-              >
-                Ainda nao tem conta? Criar conta
-              </button>
+                  Esqueceu a senha?
+                </button>
+              </div>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-12 border border-slate-200 rounded-2xl focus:border-green-500 focus:ring-green-500/20 placeholder:text-slate-400 text-slate-900 pr-10"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+
+            {/* Error Message */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm text-center"
+              >
+                {error}
+              </motion.div>
+            )}
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              className="w-full h-12 text-white font-bold rounded-full transition-all hover:shadow-lg"
+              style={{ backgroundColor: '#072a1c' }}
+              disabled={isLoading}
+            >
+              {isLoading ? "Entrando..." : "Entrar"}
+            </Button>
+          </form>
+
+          {/* Register Section */}
+          <div className="mt-8 text-center space-y-3 pt-6 border-t border-slate-100">
+            <p className="text-sm" style={{ color: '#607369' }}>
+              Ainda não tem conta?
+            </p>
+            <button
+              onClick={onShowRegister}
+              className="w-full h-10 font-bold rounded-full transition-all text-sm"
+              style={{ backgroundColor: '#b5f176', color: '#8bc14a' }}
+            >
+              Cadastre-se Agora!
+            </button>
+          </div>
+        </div>
+
+        {/* Footer Links */}
+        <div className="mt-12 text-center space-y-4">
+          <div className="flex items-center justify-center gap-4 text-xs text-slate-500">
+            <button className="hover:text-slate-700 transition-colors font-medium">PRIVACIDADE</button>
+            <span>•</span>
+            <button className="hover:text-slate-700 transition-colors font-medium">SUPORTE TÉCNICO</button>
+            <span>•</span>
+            <button className="hover:text-slate-700 transition-colors font-medium">TERMOS</button>
+          </div>
+          <p className="text-[10px] text-slate-400">
+            © 2026 Brócolis - Saúde e Vida. Plataforma Cautionada pela Uldão 8 ou<br />
+            Fado advindice da Angola
+          </p>
+        </div>
       </motion.div>
     </div>
   );

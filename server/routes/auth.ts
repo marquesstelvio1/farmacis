@@ -176,7 +176,7 @@ export function registerAuthRoutes(app: Express) {
       const isDevelopment = process.env.NODE_ENV === "development" || !process.env.EMAIL_USER;
 
       // Create user
-      const [newUser] = await db
+      const result = await db
         .insert(users)
         .values({
           name: validatedData.name,
@@ -186,6 +186,9 @@ export function registerAuthRoutes(app: Express) {
           emailVerified: isDevelopment,
         })
         .returning();
+
+      if (result.length === 0) throw new Error("Failed to create user");
+      const newUser = result[0];
 
       // Send verification email (only in production)
       if (!isDevelopment) {
@@ -218,15 +221,16 @@ export function registerAuthRoutes(app: Express) {
         return res.status(400).json({ message: "Token inválido" });
       }
 
-      const [user] = await db
+      const result = await db
         .select()
         .from(users)
         .where(eq(users.verificationToken, token))
         .limit(1);
 
-      if (!user) {
+      if (result.length === 0) {
         return res.status(400).json({ message: "Token inválido ou expirado" });
       }
+      const user = result[0];
 
       await db
         .update(users)
@@ -252,11 +256,13 @@ export function registerAuthRoutes(app: Express) {
 
       // Find user
       console.log("Querying database for user:", validatedData.email);
-      const [user] = await db
+      const result = await db
         .select()
         .from(users)
         .where(eq(users.email, validatedData.email))
         .limit(1);
+      
+      const user = result.length > 0 ? result[0] : undefined;
       
       console.log("User found:", user ? "yes" : "no");
 
@@ -316,11 +322,13 @@ export function registerAuthRoutes(app: Express) {
     try {
       const { email } = req.body;
 
-      const [user] = await db
+      const result = await db
         .select()
         .from(users)
         .where(eq(users.email, email))
         .limit(1);
+
+      const user = result.length > 0 ? result[0] : undefined;
 
       if (!user || user.emailVerified) {
         return res.status(400).json({ message: "Email inválido ou já verificado" });
@@ -359,15 +367,16 @@ export function registerAuthRoutes(app: Express) {
         return res.status(400).json({ message: "Nenhum dado para actualizar" });
       }
 
-      const [updatedUser] = await db
+      const result = await db
         .update(users)
         .set(updateData)
         .where(eq(users.id, userId))
         .returning();
 
-      if (!updatedUser) {
+      if (result.length === 0) {
         return res.status(404).json({ message: "Utilizador não encontrado" });
       }
+      const updatedUser = result[0];
 
       const { password: _, ...userWithoutPassword } = updatedUser;
       res.json({ message: "Perfil actualizado com sucesso", user: userWithoutPassword });

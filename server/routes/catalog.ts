@@ -5,6 +5,7 @@ import { z } from "zod";
 
 export function registerCatalogRoutes(app: express.Application) {
   // Get all products (with optional search and pharmacy filter)
+  // Groups variants (Portuguese/Indian) under main product cards
   app.get("/api/products", async (req: Request, res: Response) => {
     try {
       const search = req.query.search as string;
@@ -24,7 +25,51 @@ export function registerCatalogRoutes(app: express.Application) {
         products = products.filter((product) => product.status === status);
       }
 
-      res.json(products);
+      // Group products by name to combine variants (Portuguese/Indian)
+      const groupedProducts = new Map();
+      
+      products.forEach(product => {
+        const key = product.name.toLowerCase().trim();
+        
+        if (!groupedProducts.has(key)) {
+          // Create main product entry
+          groupedProducts.set(key, {
+            ...product,
+            variants: []
+          });
+        }
+        
+        const mainProduct = groupedProducts.get(key);
+        
+        // If this product has an origin different from default, add as variant
+        if (product.origin && product.origin !== 'default') {
+          mainProduct.variants.push({
+            id: product.id,
+            origin: product.origin,
+            dosage: product.dosage,
+            price: product.price,
+            precoBase: product.precoBase,
+            stock: product.stock,
+            pharmacyId: product.pharmacyId,
+            pharmacyName: product.pharmacyName,
+          });
+        } else if (product.isMainVariant || !product.origin) {
+          // This is the main variant, update main product details
+          mainProduct.id = product.id;
+          mainProduct.price = product.price;
+          mainProduct.precoBase = product.precoBase;
+          mainProduct.stock = product.stock;
+          mainProduct.origin = product.origin;
+          mainProduct.pharmacyId = product.pharmacyId;
+          mainProduct.pharmacyName = product.pharmacyName;
+        }
+      });
+
+      // Convert map to array
+      const result = Array.from(groupedProducts.values());
+      console.log('🔍 Products after grouping:', result.length, 'cards with variants');
+
+      res.json(result);
     } catch (error) {
       console.error("Get products error:", error);
       res.status(500).json({ message: "Failed to fetch products" });
@@ -101,6 +146,22 @@ export function registerCatalogRoutes(app: express.Application) {
         if (!isNaN(base)) {
           data.precoBase = base.toString();
           data.price = (base * 1.15).toFixed(2).toString();
+        }
+      }
+
+      // Calculate 15% commission for Portuguese origin price if provided
+      if (data.precoPortugues) {
+        const basePt = parseFloat(String(data.precoPortugues));
+        if (!isNaN(basePt)) {
+          data.precoPortugues = basePt.toFixed(2).toString();
+        }
+      }
+
+      // Calculate 15% commission for Indian origin price if provided
+      if (data.precoIndiano) {
+        const baseIn = parseFloat(String(data.precoIndiano));
+        if (!isNaN(baseIn)) {
+          data.precoIndiano = baseIn.toFixed(2).toString();
         }
       }
 
@@ -197,6 +258,22 @@ export function registerCatalogRoutes(app: express.Application) {
         if (!isNaN(base)) {
           data.precoBase = base.toString();
           data.price = (base * 1.15).toFixed(2).toString();
+        }
+      }
+
+      // Calculate 15% commission for Portuguese origin price if provided
+      if (data.precoPortugues) {
+        const basePt = parseFloat(String(data.precoPortugues));
+        if (!isNaN(basePt)) {
+          data.precoPortugues = basePt.toFixed(2).toString();
+        }
+      }
+
+      // Calculate 15% commission for Indian origin price if provided
+      if (data.precoIndiano) {
+        const baseIn = parseFloat(String(data.precoIndiano));
+        if (!isNaN(baseIn)) {
+          data.precoIndiano = baseIn.toFixed(2).toString();
         }
       }
 

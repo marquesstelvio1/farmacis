@@ -20,7 +20,7 @@ import { and, eq, ilike, or, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Product methods
-  getProducts(search?: string, pharmacyId?: number): Promise<Product[]>;
+  getProducts(search?: string, pharmacyId?: number, category?: string, status?: string): Promise<Product[]>;
   getProduct(id: number): Promise<Product | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: number, product: Partial<InsertProduct>): Promise<Product>;
@@ -51,7 +51,7 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  async getProducts(search?: string, pharmacyId?: number): Promise<any[]> {
+  async getProducts(search?: string, pharmacyId?: number, category?: string, status?: string): Promise<any[]> {
     try {
       console.log('💾 Storage.getProducts called with:', { search, pharmacyId });
       const conditions = [];
@@ -74,6 +74,13 @@ export class DatabaseStorage implements IStorage {
           ]);
           conditions.push(or(...termConditions));
         }
+      }
+      
+      if (category) {
+        conditions.push(eq(products.category, category));
+      }
+      if (status) {
+        conditions.push(eq(products.status, status));
       }
 
       // Join with pharmacies to get pharmacy name and ensure pharmacy exists
@@ -167,36 +174,43 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProduct(id: number): Promise<Product | undefined> {
-    const [product] = await db.select().from(products).where(eq(products.id, id));
-    return product;
+    const result = await db.select().from(products).where(eq(products.id, id));
+    return result.length > 0 ? result[0] as Product : undefined;
   }
 
   async createProduct(product: InsertProduct): Promise<Product> {
-    const [newProduct] = await db.insert(products).values({
+    const result = (await db.insert(products).values({
       ...product,
       diseases: product.diseases || [],
       activeIngredient: product.activeIngredient || "",
       imageUrl: product.imageUrl || "",
       createdAt: new Date(),
       updatedAt: new Date(),
-    }).returning();
+    }).returning()) as Product[];
+    
+    if (result.length === 0) {
+      throw new Error("Failed to create product");
+    }
+    
+    const newProduct = result[0];
     return newProduct;
   }
 
   async updateProduct(id: number, product: Partial<InsertProduct>): Promise<Product> {
-    const [updatedProduct] = await db
+    const result = (await db
       .update(products)
       .set({
         ...product,
         updatedAt: new Date(),
       })
       .where(eq(products.id, id))
-      .returning();
+      .returning()) as Product[];
 
-    if (!updatedProduct) {
+    if (result.length === 0) {
       throw new Error("Product not found");
     }
 
+    const updatedProduct = result[0];
     return updatedProduct;
   }
 
@@ -211,9 +225,10 @@ export class DatabaseStorage implements IStorage {
         conditions.push(eq(products.pharmacyId, pharmacyId));
       }
 
-      return await db.select().from(products)
+      const result = await db.select().from(products)
         .where(and(...conditions))
         .orderBy(products.name);
+      return result as Product[];
     } catch (error: any) {
       // If category column doesn't exist, return all products
       if (error.message?.includes('does not exist')) {
@@ -244,18 +259,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPharmacy(pharmacy: any): Promise<Pharmacy> {
-    const [newPharmacy] = await db.insert(pharmacies).values(pharmacy).returning();
-    return newPharmacy;
+    const result = (await db.insert(pharmacies).values(pharmacy).returning()) as Pharmacy[];
+    if (result.length === 0) throw new Error("Failed to create pharmacy");
+    return result[0];
   }
 
   async createOrder(order: InsertOrder): Promise<Order> {
-    const [newOrder] = await db.insert(orders).values(order).returning();
-    return newOrder;
+    const result = (await db.insert(orders).values(order).returning()) as Order[];
+    if (result.length === 0) throw new Error("Failed to create order");
+    return result[0];
   }
 
   async getOrder(id: number): Promise<Order | undefined> {
-    const [order] = await db.select().from(orders).where(eq(orders.id, id));
-    return order;
+    const result = (await db.select().from(orders).where(eq(orders.id, id))) as Order[];
+    return result.length > 0 ? result[0] : undefined;
   }
 
   async createOrderItems(items: InsertOrderItem[]): Promise<OrderItem[]> {
@@ -282,11 +299,12 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    const [updated] = await db.update(orders)
+    const result = (await db.update(orders)
       .set({ status })
       .where(eq(orders.id, id))
-      .returning();
-    return updated;
+      .returning()) as Order[];
+    if (result.length === 0) throw new Error("Failed to update order status");
+    return result[0];
   }
 
   async getUserOrders(userId: number): Promise<any[]> {
@@ -311,6 +329,9 @@ export class DatabaseStorage implements IStorage {
           clientIban: orders.clientIban,
           clientMulticaixaExpress: orders.clientMulticaixaExpress,
           clientAccountName: orders.clientAccountName,
+          reviewRating: orders.reviewRating,
+          reviewComment: orders.reviewComment,
+          reviewedAt: orders.reviewedAt,
           isLocked: orders.isLocked,
           createdAt: orders.createdAt,
           updatedAt: orders.updatedAt,
@@ -348,6 +369,9 @@ export class DatabaseStorage implements IStorage {
           pharmacyIban: null,
           pharmacyMulticaixaExpress: null,
           pharmacyAccountName: null,
+          reviewRating: null,
+          reviewComment: null,
+          reviewedAt: null,
         }));
       } catch (fallbackError) {
         console.error('[Storage] Fallback also failed:', fallbackError);
@@ -361,8 +385,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAdminUser(admin: any): Promise<AdminUser> {
-    const [newAdmin] = await db.insert(adminUsers).values(admin).returning();
-    return newAdmin;
+    const result = (await db.insert(adminUsers).values(admin).returning()) as AdminUser[];
+    if (result.length === 0) throw new Error("Failed to create admin user");
+    return result[0];
   }
 
   async getPharmacyAdmins(): Promise<PharmacyAdmin[]> {
@@ -370,8 +395,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPharmacyAdmin(pharmacyAdmin: any): Promise<PharmacyAdmin> {
-    const [newPharmacyAdmin] = await db.insert(pharmacyAdmins).values(pharmacyAdmin).returning();
-    return newPharmacyAdmin;
+    const result = (await db.insert(pharmacyAdmins).values(pharmacyAdmin).returning()) as PharmacyAdmin[];
+    if (result.length === 0) throw new Error("Failed to create pharmacy admin");
+    return result[0];
   }
 }
 

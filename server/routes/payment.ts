@@ -48,7 +48,7 @@ export function registerPaymentRoutes(app: Express) {
       }
 
       // Create payment record
-      const [payment] = await db
+      const result = await db
         .insert(payments)
         .values({
           userId,
@@ -60,6 +60,11 @@ export function registerPaymentRoutes(app: Express) {
         })
         .returning();
 
+      if (result.length === 0) {
+        return res.status(500).json({ message: "Erro ao criar pagamento" });
+      }
+
+      const payment = result[0];
       // Simulate M-Pesa API call
       // In production, integrate with actual M-Pesa API
       const transactionId = `MP${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
@@ -97,7 +102,7 @@ export function registerPaymentRoutes(app: Express) {
       }
 
       // Create payment record
-      const [payment] = await db
+      const result = await db
         .insert(payments)
         .values({
           userId,
@@ -109,6 +114,11 @@ export function registerPaymentRoutes(app: Express) {
         })
         .returning();
 
+      if (result.length === 0) {
+        return res.status(500).json({ message: "Erro ao criar pagamento" });
+      }
+
+      const payment = result[0];
       // Generate reference number
       const referenceNumber = `TR${Date.now()}${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
@@ -135,15 +145,17 @@ export function registerPaymentRoutes(app: Express) {
     try {
       const paymentId = parseInt(req.params.id as string);
 
-      const [payment] = await db
+      const result = await db
         .select()
         .from(payments)
         .where(eq(payments.id, paymentId))
         .limit(1);
 
-      if (!payment) {
+      if (result.length === 0) {
         return res.status(404).json({ message: "Pagamento não encontrado" });
       }
+
+      const payment = result[0];
 
       res.json({
         id: payment.id,

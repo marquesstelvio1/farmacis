@@ -529,6 +529,7 @@ export default function Catalog() {
               >
                 <ProductCard
                   product={product as any}
+                  variants={(product as any).variants}
                   distance={product.distance}
                 />
               </motion.div>

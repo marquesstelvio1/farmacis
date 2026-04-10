@@ -86,23 +86,23 @@ export function CartDrawer() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-slate-800 shadow-2xl z-50 flex flex-col border-l border-slate-100 dark:border-slate-700"
+            className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 flex flex-col border-l border-slate-100"
           >
-            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-white dark:bg-slate-800">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400">
+                <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center text-green-600">
                   <ShoppingBag size={20} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-slate-800 dark:text-white">Seu Carrinho</h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                  <h2 className="text-xl font-bold text-slate-800">Seu Carrinho</h2>
+                  <p className="text-sm text-slate-500">
                     {totalItems()} {totalItems() === 1 ? 'item' : 'itens'} adicionados
                   </p>
                 </div>
               </div>
               <button
                 onClick={handleClose}
-                className="p-2 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 rounded-full transition-colors"
+                className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-full transition-colors"
               >
                 <X size={24} />
               </button>
@@ -138,7 +138,7 @@ export function CartDrawer() {
 
                         <div className="flex-1">
                           <h4 className="font-semibold text-slate-800 dark:text-slate-200 line-clamp-1">{item.product.name}</h4>
-                          <p className="text-blue-600 dark:text-blue-400 font-bold mt-1">
+                          <p className="text-green-600 font-bold mt-1">
                             {Number(item.product.price).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
                           </p>
                           
@@ -175,7 +175,7 @@ export function CartDrawer() {
                             <div className="flex items-center bg-slate-50 dark:bg-slate-700 rounded-lg border border-slate-100 dark:border-slate-600">
                               <button
                                 onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                                className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors disabled:opacity-50"
+                                className="p-1.5 text-slate-500 hover:text-green-600 transition-colors disabled:opacity-50"
                                 disabled={item.quantity <= 1}
                               >
                                 <Minus size={14} />
@@ -185,7 +185,7 @@ export function CartDrawer() {
                               </span>
                               <button
                                 onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                                className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                className="p-1.5 text-slate-500 hover:text-green-600 transition-colors"
                               >
                                 <Plus size={14} />
                               </button>
@@ -254,7 +254,7 @@ export function CartDrawer() {
 
                 <div className="flex items-center justify-between mb-6 pt-4 border-t border-slate-100 dark:border-slate-700">
                   <span className="text-lg font-bold text-slate-800 dark:text-white">Total</span>
-                  <span className="text-2xl font-extrabold text-blue-600 dark:text-blue-400">
+                  <span className="text-2xl font-extrabold text-green-600">
                     {grandTotal.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
                   </span>
                 </div>

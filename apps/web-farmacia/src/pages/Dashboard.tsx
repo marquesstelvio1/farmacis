@@ -22,12 +22,12 @@ interface DashboardStats {
 }
 
 const statusColors: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-300',
-  accepted: 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300',
-  preparing: 'bg-purple-100 text-purple-800 dark:bg-purple-500/15 dark:text-purple-300',
-  ready: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-500/15 dark:text-indigo-300',
-  out_for_delivery: 'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-300',
-  delivered: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300',
+  pending: 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
+  accepted: 'bg-lime-100 text-lime-800 dark:bg-lime-500/15 dark:text-lime-300',
+  preparing: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300',
+  ready: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300',
+  out_for_delivery: 'bg-teal-100 text-teal-800 dark:bg-teal-500/15 dark:text-teal-300',
+  delivered: 'bg-lime-100 text-lime-800 dark:bg-lime-500/15 dark:text-lime-300',
 }
 
 const statusLabels: Record<string, string> = {
@@ -66,7 +66,7 @@ export default function Dashboard() {
       label: 'Pedidos Hoje',
       value: stats?.todayOrders || 0,
       icon: ShoppingBag,
-      color: 'bg-blue-500',
+      color: 'bg-green-600',
     },
     {
       label: 'Receita Hoje',
@@ -81,21 +81,21 @@ export default function Dashboard() {
       label: 'Pendentes',
       value: stats?.pendingOrders || 0,
       icon: Clock,
-      color: 'bg-yellow-500',
+      color: 'bg-green-700',
     },
     {
       label: 'Produtos',
       value: stats?.totalProducts || 0,
       icon: Package,
-      color: 'bg-purple-500',
+      color: 'bg-emerald-500',
     },
   ]
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Dashboard</h1>
-        <p className="text-gray-500 dark:text-slate-400">Visão geral da sua farmácia</p>
+        <h1 className="text-2xl font-bold text-green-900">Dashboard</h1>
+        <p className="text-green-600/70">Visão geral da sua farmácia</p>
       </div>
 
       {/* Stats Grid */}
@@ -103,13 +103,13 @@ export default function Dashboard() {
         {statCards.map((stat) => {
           const Icon = stat.icon
           return (
-            <div key={stat.label} className="bg-white dark:bg-slate-900/70 p-6 rounded-xl shadow-sm dark:shadow-none border border-gray-100 dark:border-slate-800">
-              <div className={`p-3 rounded-lg ${stat.color} bg-opacity-10 dark:bg-opacity-20 w-fit`}>
-                <Icon className={`w-6 h-6 ${stat.color.replace('bg-', 'text-')} dark:opacity-95`} />
+            <div key={stat.label} className="bg-white p-6 rounded-xl shadow-sm border border-green-100">
+              <div className={`p-3 rounded-xl ${stat.color} bg-opacity-10 w-fit`}>
+                <Icon className={`w-6 h-6 ${stat.color.replace('bg-', 'text-')}`} />
               </div>
               <div className="mt-4">
-                <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">{stat.value}</p>
-                <p className="text-sm text-gray-500 dark:text-slate-400">{stat.label}</p>
+                <p className="text-2xl font-bold text-green-900">{stat.value}</p>
+                <p className="text-sm text-green-600/70">{stat.label}</p>
               </div>
             </div>
           )
@@ -117,44 +117,44 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Orders */}
-      <div className="bg-white dark:bg-slate-900/70 rounded-xl shadow-sm dark:shadow-none border border-gray-100 dark:border-slate-800">
-        <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Pedidos Recentes</h2>
-          <a href="/orders" className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium">
+      <div className="bg-white rounded-xl shadow-sm border border-green-100">
+        <div className="p-6 border-b border-green-100 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-green-900">Pedidos Recentes</h2>
+          <a href="/orders" className="text-sm text-green-600 hover:text-green-700 font-medium">
             Ver todos
           </a>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-slate-800/60">
+            <thead className="bg-green-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-green-700 uppercase tracking-wider">
                   Pedido
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-green-700 uppercase tracking-wider">
                   Cliente
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-green-700 uppercase tracking-wider">
                   Total
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-green-700 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-green-700 uppercase tracking-wider">
                   Hora
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-green-100">
               {stats?.recentOrders?.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/40 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-slate-100">
+                <tr key={order.id} className="hover:bg-green-50/50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-900">
                     #{order.id}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-100">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-green-900">
                     {order.customerName}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-200">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-green-900">
                     {Number(order.total).toLocaleString('pt-AO', {
                       style: 'currency',
                       currency: 'AOA'
@@ -165,7 +165,7 @@ export default function Dashboard() {
                       {statusLabels[order.status]}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">
                     {new Date(order.createdAt).toLocaleTimeString('pt-BR', {
                       hour: '2-digit',
                       minute: '2-digit'

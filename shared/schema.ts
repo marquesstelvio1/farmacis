@@ -77,6 +77,8 @@ export const products = pgTable("products", {
   description: text("description").notNull(),
   price: numeric("price").notNull(),
   precoBase: numeric("preco_base"),
+  precoPortugues: numeric("preco_portugues"), // Price for Portuguese origin variant
+  precoIndiano: numeric("preco_indiano"),   // Price for Indian origin variant
   imageUrl: text("image_url").default("").notNull(),
   diseases: text("diseases").array().default([]).notNull(),
   activeIngredient: text("active_ingredient").default("").notNull(),
@@ -87,9 +89,13 @@ export const products = pgTable("products", {
   stock: integer("stock").default(0).notNull(),
   pharmacyId: integer("pharmacy_id").references(() => pharmacies.id),
   status: text("status").notNull().default("active"), // active, inactive, discontinued
+  // Origin variant support - for grouping Portuguese vs Indian medications
+  origin: text("origin"), // "portugues", "indiano", or null for default
+  parentProductId: integer("parent_product_id").references((): any => products.id), // link to main product variant
+  isMainVariant: boolean("is_main_variant").default(false).notNull(), // indicates if this is the primary product card
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}) as any;
 
 export const insertProductSchema = createInsertSchema(products).omit({
   id: true,
@@ -113,8 +119,11 @@ export const productCategoryEnum = z.enum([
 ]);
 
 export const productStatusEnum = z.enum(["active", "inactive", "discontinued"]);
+
+export const productOriginEnum = z.enum(["portugues", "indiano", "default"]);
 export type ProductCategory = z.infer<typeof productCategoryEnum>;
 export type ProductStatus = z.infer<typeof productStatusEnum>;
+export type ProductOrigin = z.infer<typeof productOriginEnum>;
 
 export const pharmacyStatusEnum = z.enum(["pending", "active", "suspended", "rejected"]);
 export type PharmacyStatus = z.infer<typeof pharmacyStatusEnum>;
@@ -167,6 +176,9 @@ export const orders = pgTable("orders", {
   clientIban: text("client_iban"), // Client's IBAN used for transfer
   clientMulticaixaExpress: text("client_multicaixa_express"), // Client's MCX number used
   clientAccountName: text("client_account_name"), // Client's account name
+  reviewRating: integer("review_rating"), // 0-5 stars
+  reviewComment: text("review_comment"),
+  reviewedAt: timestamp("reviewed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

@@ -1,4 +1,4 @@
-import { useState, useEffect, ReactNode } from "react";
+import { useState, useEffect } from "react";
 import { io } from "socket.io-client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,15 +9,10 @@ import {
   CheckCircle,
   XCircle,
   Calendar,
-  ShoppingBag,
   Clock,
   DollarSign,
   TrendingUp,
-  Users,
   Search,
-  Filter,
-  ChevronDown,
-  ChevronUp,
   Truck,
   RotateCcw,
   MapPin,
@@ -147,7 +142,7 @@ interface Stats {
 
 const statusConfig = {
   pending: { label: "Pendente", color: "bg-yellow-100 text-yellow-700", icon: Clock },
-  accepted: { label: "Aceito", color: "bg-blue-100 text-blue-700", icon: CheckCircle },
+  accepted: { label: "Aceito", color: "bg-green-100 text-green-700", icon: CheckCircle },
   proof_submitted: { label: "Comprovativo Recebido", color: "bg-indigo-100 text-indigo-700", icon: FileText },
   rejected: { label: "Recusado", color: "bg-red-100 text-red-700", icon: XCircle },
   paid: { label: "Pago", color: "bg-green-100 text-green-700", icon: DollarSign },
@@ -227,7 +222,7 @@ export default function PharmacyAdmin() {
   };
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
     let socket: any;
 
     // Don't connect until we have a valid pharmacyId
@@ -258,7 +253,7 @@ export default function PharmacyAdmin() {
         toast({
           title: "🚨 Novo Pedido Recebido!",
           description: `Pedido #${orderData.id} de ${orderData.customerName} - Total: ${orderData.total} AOA`,
-          className: "bg-blue-600 text-white border-none",
+          className: "bg-green-600 text-white border-none",
         });
 
         // Play notification sound
@@ -406,22 +401,22 @@ export default function PharmacyAdmin() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full" />
+        <div className="animate-spin h-12 w-12 border-4 border-green-600 border-t-transparent rounded-full" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors">
+    <div className="min-h-screen bg-slate-50 transition-colors">
       {/* Header */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-teal-400 flex items-center justify-center">
               <Store className="text-white w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-bold text-slate-900 dark:text-white">Painel da Farmácia</h1>
+              <h1 className="font-bold text-slate-900">Painel da Farmácia</h1>
               <p className="text-xs text-slate-500">{adminSession?.pharmacyName || "Gerenciamento de Pedidos"} • ID {pharmacyId}</p>
             </div>
           </div>
@@ -444,14 +439,14 @@ export default function PharmacyAdmin() {
         {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <Card className="dark:bg-slate-900 dark:border-slate-800">
+            <Card className="">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Total Pedidos</p>
-                    <p className="text-2xl font-bold dark:text-white">{stats.total}</p>
+                    <p className="text-sm text-slate-500">Total Pedidos</p>
+                    <p className="text-2xl font-bold">{stats.total}</p>
                   </div>
-                  <Package className="w-8 h-8 text-blue-500" />
+                  <Package className="w-8 h-8 text-green-500" />
                 </div>
               </CardContent>
             </Card>
@@ -604,18 +599,18 @@ export default function PharmacyAdmin() {
               </div>
 
               {selectedOrder.scheduledTime && (
-                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-center gap-3">
-                  <Calendar className="text-blue-600 w-5 h-5" />
+                <div className="bg-green-50 border border-green-100 rounded-lg p-3 flex items-center gap-3">
+                  <Calendar className="text-green-600 w-5 h-5" />
                   <div>
-                    <p className="text-xs font-bold text-blue-700 uppercase">AGENDAMENTO</p>
-                    <p className="text-sm font-semibold text-blue-900">{formatDate(selectedOrder.scheduledTime)}</p>
+                    <p className="text-xs font-bold text-green-700 uppercase">AGENDAMENTO</p>
+                    <p className="text-sm font-semibold text-green-900">{formatDate(selectedOrder.scheduledTime)}</p>
                   </div>
                 </div>
               )}
 
               <div className="bg-slate-50 rounded-lg p-3">
                 <p className="text-sm text-slate-500 flex items-center gap-2 mb-1">
-                  <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                  <MapPin className="w-3.5 h-3.5 text-green-600" />
                   Endereço de Entrega
                 </p>
                 <p className="text-sm font-medium">{selectedOrder.customerAddress}</p>
@@ -623,7 +618,7 @@ export default function PharmacyAdmin() {
                 {selectedOrder.customerLat && selectedOrder.customerLng && (
                   <Button
                     variant="ghost"
-                    className="h-auto p-0 mt-2 text-xs text-blue-600 flex items-center gap-1"
+                    className="h-auto p-0 mt-2 text-xs text-green-600 flex items-center gap-1"
                     onClick={() => window.open(`https://www.google.com/maps?q=${selectedOrder.customerLat},${selectedOrder.customerLng}`, '_blank')}
                   >
                     <NavigationIcon className="w-3 h-3" />
@@ -642,13 +637,13 @@ export default function PharmacyAdmin() {
                       initial={{ opacity: 0, scale: 0.8 }} 
                       animate={{ opacity: 1, scale: 1 }}
                     >
-                      <Badge className="bg-blue-600 text-white border-none flex items-center gap-1 shadow-sm">
+                      <Badge className="bg-green-600 text-white border-none flex items-center gap-1 shadow-sm">
                         🔒 Transação Garantida - MCX
                       </Badge>
                     </motion.div>
                   )}
                 </AnimatePresence>
-                <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100">
+                <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-100">
                   {selectedOrder.bookingType === 'pickup' ? 'Levantamento (Reserva)' : 'Entrega Domicílio'}
                 </Badge>
                 {selectedOrder.bookingType === 'pickup' && (
@@ -667,9 +662,16 @@ export default function PharmacyAdmin() {
                 <div className="bg-slate-50 rounded-lg p-3 space-y-2">
                   {selectedOrder.items && Array.isArray(selectedOrder.items) && selectedOrder.items.length > 0 ? (
                     selectedOrder.items.map((item: any, idx: number) => (
-                      <div key={idx} className="flex justify-between text-sm">
-                        <span className="text-slate-700">{item.productName || item.name} x{item.quantity}</span>
-                        <span className="font-medium">{formatCurrency((parseFloat(item.unitPrice || item.price || "0") * item.quantity).toString())}</span>
+                      <div key={idx} className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-700 font-medium">{item.productName || item.name} x{item.quantity}</span>
+                          <span className="font-medium">{formatCurrency((parseFloat(item.unitPrice || item.price || "0") * item.quantity).toString())}</span>
+                        </div>
+                        {item.dosage && (
+                          <div className="text-xs text-slate-500 pl-0">
+                            Dosagem: <span className="text-slate-700 font-medium">{item.dosage}</span>
+                          </div>
+                        )}
                       </div>
                     ))
                   ) : (
@@ -745,8 +747,8 @@ export default function PharmacyAdmin() {
               )}
 
               {selectedOrder.status === "accepted" && (
-                <div className="bg-blue-50 p-3 rounded-lg text-center">
-                  <p className="text-sm text-blue-700">
+                <div className="bg-green-50 p-3 rounded-lg text-center">
+                  <p className="text-sm text-green-700">
                     Aguardando pagamento do cliente...
                   </p>
                 </div>
@@ -792,7 +794,8 @@ export default function PharmacyAdmin() {
                 </Button>
               )}
             </div>
-          )}
+            );
+          })()} 
         </DialogContent>
       </Dialog>
 

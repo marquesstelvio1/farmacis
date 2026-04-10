@@ -13,7 +13,7 @@ export function registerPrescriptionRoutes(app: express.Application) {
         return res.status(400).json({ message: "orderId, productId e imageUrl são obrigatórios" });
       }
 
-      const [prescription] = await db
+      const result = await db
         .insert(prescriptions)
         .values({
           orderId,
@@ -24,6 +24,11 @@ export function registerPrescriptionRoutes(app: express.Application) {
         })
         .returning();
 
+      if (result.length === 0) {
+        return res.status(500).json({ message: "Erro ao criar receita" });
+      }
+
+      const prescription = result[0];
       res.status(201).json(prescription);
     } catch (error) {
       console.error("Error uploading prescription:", error);
@@ -137,7 +142,7 @@ export function registerPrescriptionRoutes(app: express.Application) {
         return res.status(400).json({ message: "Motivo da recusa é obrigatório" });
       }
 
-      const [prescription] = await db
+      const result = await db
         .update(prescriptions)
         .set({
           status,
@@ -148,9 +153,11 @@ export function registerPrescriptionRoutes(app: express.Application) {
         .where(eq(prescriptions.id, prescriptionId))
         .returning();
 
-      if (!prescription) {
+      if (result.length === 0) {
         return res.status(404).json({ message: "Receita não encontrada" });
       }
+
+      const prescription = result[0];
 
       res.json({
         message: status === "approved" ? "Receita aprovada" : "Receita recusada",
@@ -167,15 +174,17 @@ export function registerPrescriptionRoutes(app: express.Application) {
     try {
       const prescriptionId = parseInt(req.params.id as string);
 
-      const [prescription] = await db
+      const result = await db
         .select()
         .from(prescriptions)
         .where(eq(prescriptions.id, prescriptionId))
         .limit(1);
 
-      if (!prescription) {
+      if (result.length === 0) {
         return res.status(404).json({ message: "Receita não encontrada" });
       }
+
+      const prescription = result[0];
 
       res.json(prescription);
     } catch (error) {

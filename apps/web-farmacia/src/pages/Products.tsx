@@ -16,6 +16,8 @@ interface Product {
   description: string
   price: string
   precoBase?: string
+  precoPortugues?: string
+  precoIndiano?: string
   imageUrl: string
   diseases: string[]
   stock: number
@@ -23,6 +25,7 @@ interface Product {
   brand?: string
   dosage?: string
   prescriptionRequired?: boolean
+  origin?: string
 }
 
 export default function Products() {
@@ -34,9 +37,12 @@ export default function Products() {
     name: '',
     description: '',
     price: '',
+    pricePortuguese: '',
+    priceIndian: '',
     category: 'medicamento',
     brand: '',
     dosage: '',
+    origin: 'default',
     diseasesInput: '',
     prescriptionRequired: false,
     imageUrl: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=60'
@@ -48,17 +54,30 @@ export default function Products() {
 
   const addProductMutation = useMutation({
     mutationFn: async (formData: typeof newProduct) => {
+      // Validate that at least one price is filled
+      const hasBasePrice = formData.price && parseFloat(formData.price) > 0;
+      const hasPortuguesePrice = formData.pricePortuguese && parseFloat(formData.pricePortuguese) > 0;
+      const hasIndianPrice = formData.priceIndian && parseFloat(formData.priceIndian) > 0;
+      
+      if (!hasBasePrice && !hasPortuguesePrice && !hasIndianPrice) {
+        throw new Error('Pelo menos um preço deve ser preenchido (Padrão, Português ou Indiano)');
+      }
+
       // Map frontend model to schema.ts model
       const productData = {
         name: formData.name,
         description: formData.description,
-        precoBase: formData.price, // Send as precoBase to trigger backend commission logic
+        precoBase: formData.price || null,
+        precoPortugues: formData.pricePortuguese || null,
+        precoIndiano: formData.priceIndian || null,
         category: formData.category,
         brand: formData.brand,
         dosage: formData.dosage,
+        origin: formData.origin,
+        isMainVariant: formData.origin === 'default',
         diseases: formData.diseasesInput.split(',').map(s => s.trim()).filter(Boolean),
         prescriptionRequired: formData.prescriptionRequired,
-        stock: 100, // Default to in stock when adding
+        stock: 100,
         imageUrl: formData.imageUrl
       };
 
@@ -87,13 +106,26 @@ export default function Products() {
 
   const editProductMutation = useMutation({
     mutationFn: async (data: { id: number, formData: any }) => {
+      // Validate that at least one price is filled
+      const hasBasePrice = data.formData.price && parseFloat(data.formData.price) > 0;
+      const hasPortuguesePrice = data.formData.pricePortuguese && parseFloat(data.formData.pricePortuguese) > 0;
+      const hasIndianPrice = data.formData.priceIndian && parseFloat(data.formData.priceIndian) > 0;
+      
+      if (!hasBasePrice && !hasPortuguesePrice && !hasIndianPrice) {
+        throw new Error('Pelo menos um preço deve ser preenchido (Padrão, Português ou Indiano)');
+      }
+
       const productData = {
         ...data.formData,
         diseases: data.formData.diseasesInput.split(',').map((s: string) => s.trim()).filter(Boolean),
-        precoBase: data.formData.price
+        precoBase: data.formData.price || null,
+        precoPortugues: data.formData.pricePortuguese || null,
+        precoIndiano: data.formData.priceIndian || null,
       };
       delete productData.diseasesInput;
       delete productData.price;
+      delete productData.pricePortuguese;
+      delete productData.priceIndian;
 
       const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/products/${data.id}`, {
         method: 'PUT',
@@ -188,23 +220,25 @@ export default function Products() {
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="price">Preço de Custo (AOA) *</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    step="0.01"
-                    placeholder="Ex: 1000"
-                    value={newProduct.price}
-                    onChange={(e) => setNewProduct(prev => ({ ...prev, price: e.target.value }))}
-                    required
-                  />
-                  {newProduct.price && !isNaN(parseFloat(newProduct.price)) && (
-                    <p className="text-sm text-green-600 mt-1 font-medium">
-                      Preço de venda final: {(parseFloat(newProduct.price) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })} (+15% taxa)
-                    </p>
-                  )}
-                </div>
+                {newProduct.category !== 'medicamento' && (
+                  <div>
+                    <Label htmlFor="price-top">Preço de Custo (AOA) *</Label>
+                    <Input
+                      id="price-top"
+                      type="number"
+                      step="0.01"
+                      placeholder="Ex: 1000"
+                      value={newProduct.price}
+                      onChange={(e) => setNewProduct(prev => ({ ...prev, price: e.target.value }))}
+                      required
+                    />
+                    {newProduct.price && !isNaN(parseFloat(newProduct.price)) && (
+                      <p className="text-sm text-green-600 mt-1 font-medium">
+                        Preço de venda final: {(parseFloat(newProduct.price) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })} (+15% taxa)
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -256,16 +290,91 @@ export default function Products() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="dosage">Dosagem</Label>
-                  <Input
-                    id="dosage"
-                    value={newProduct.dosage}
-                    onChange={(e) => setNewProduct(prev => ({ ...prev, dosage: e.target.value }))}
-                  />
-                </div>
-              </div>
+              {newProduct.category === 'medicamento' && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="dosage">Dosagem</Label>
+                      <Input
+                        id="dosage"
+                        value={newProduct.dosage}
+                        onChange={(e) => setNewProduct(prev => ({ ...prev, dosage: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="origin">Origem</Label>
+                      <Select value={newProduct.origin} onValueChange={(value) => setNewProduct(prev => ({ ...prev, origin: value }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a origem" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="default">Padrão</SelectItem>
+                          <SelectItem value="portugues">Português</SelectItem>
+                          <SelectItem value="indiano">Indiano</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-gray-500 mt-1">Selecione Português ou Indiano para criar variantes</p>
+                    </div>
+                  </div>
+
+                  {/* Preços por Origem - Apenas para Medicamentos */}
+                  <div className="border border-gray-200 dark:border-slate-700 rounded-lg p-4 space-y-4">
+                    <Label className="font-semibold text-gray-700 dark:text-slate-300">Preços por Origem (AOA)</Label>
+                    <p className="text-xs text-gray-500">Preencha pelo menos um preço</p>
+                    
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor="pricePortuguese" className="text-sm text-blue-600 dark:text-blue-400">Português</Label>
+                        <Input
+                          id="pricePortuguese"
+                          type="number"
+                          step="0.01"
+                          placeholder="Ex: 1500"
+                          value={newProduct.pricePortuguese}
+                          onChange={(e) => setNewProduct(prev => ({ ...prev, pricePortuguese: e.target.value }))}
+                        />
+                        {newProduct.pricePortuguese && !isNaN(parseFloat(newProduct.pricePortuguese)) && (
+                          <p className="text-xs text-green-600 mt-1">
+                            Venda: {(parseFloat(newProduct.pricePortuguese) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <Label htmlFor="priceIndian" className="text-sm text-emerald-600 dark:text-emerald-400">Indiano</Label>
+                        <Input
+                          id="priceIndian"
+                          type="number"
+                          step="0.01"
+                          placeholder="Ex: 800"
+                          value={newProduct.priceIndian}
+                          onChange={(e) => setNewProduct(prev => ({ ...prev, priceIndian: e.target.value }))}
+                        />
+                        {newProduct.priceIndian && !isNaN(parseFloat(newProduct.priceIndian)) && (
+                          <p className="text-xs text-green-600 mt-1">
+                            Venda: {(parseFloat(newProduct.priceIndian) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <Label htmlFor="price" className="text-sm text-gray-600 dark:text-gray-400">Padrão</Label>
+                        <Input
+                          id="price"
+                          type="number"
+                          step="0.01"
+                          placeholder="Ex: 1000"
+                          value={newProduct.price}
+                          onChange={(e) => setNewProduct(prev => ({ ...prev, price: e.target.value }))}
+                        />
+                        {newProduct.price && !isNaN(parseFloat(newProduct.price)) && (
+                          <p className="text-xs text-green-600 mt-1">
+                            Venda: {(parseFloat(newProduct.price) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
 
               <div>
                 <Label htmlFor="imageUrl">URL da Imagem</Label>
@@ -319,22 +428,25 @@ export default function Products() {
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="edit-price">Preço de Custo (AOA) *</Label>
-                  <Input
-                    id="edit-price"
-                    type="number"
-                    step="0.01"
-                    value={newProduct.price}
-                    onChange={(e) => setNewProduct(prev => ({ ...prev, price: e.target.value }))}
-                    required
-                  />
-                  {newProduct.price && !isNaN(parseFloat(newProduct.price)) && (
-                    <p className="text-sm text-green-600 mt-1 font-medium">
-                      Preço de venda final: {(parseFloat(newProduct.price) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })} (+15% taxa)
-                    </p>
-                  )}
-                </div>
+                {newProduct.category !== 'medicamento' && (
+                  <div>
+                    <Label htmlFor="edit-price-top">Preço de Custo (AOA) *</Label>
+                    <Input
+                      id="edit-price-top"
+                      type="number"
+                      step="0.01"
+                      placeholder="Ex: 1000"
+                      value={newProduct.price}
+                      onChange={(e) => setNewProduct(prev => ({ ...prev, price: e.target.value }))}
+                      required
+                    />
+                    {newProduct.price && !isNaN(parseFloat(newProduct.price)) && (
+                      <p className="text-sm text-green-600 mt-1 font-medium">
+                        Preço de venda final: {(parseFloat(newProduct.price) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })} (+15% taxa)
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -386,16 +498,110 @@ export default function Products() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              {newProduct.category === 'medicamento' && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="edit-dosage">Dosagem</Label>
+                      <Input
+                        id="edit-dosage"
+                        value={newProduct.dosage}
+                        onChange={(e) => setNewProduct(prev => ({ ...prev, dosage: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-origin">Origem</Label>
+                      <Select value={newProduct.origin || 'default'} onValueChange={(value) => setNewProduct(prev => ({ ...prev, origin: value }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a origem" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="default">Padrão</SelectItem>
+                          <SelectItem value="portugues">Português</SelectItem>
+                          <SelectItem value="indiano">Indiano</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Preços por Origem - Edit - Apenas para Medicamentos */}
+                  <div className="border border-gray-200 dark:border-slate-700 rounded-lg p-4 space-y-4">
+                    <Label className="font-semibold text-gray-700 dark:text-slate-300">Preços por Origem (AOA)</Label>
+                    <p className="text-xs text-gray-500">Preencha pelo menos um preço</p>
+                    
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor="edit-pricePortuguese" className="text-sm text-blue-600 dark:text-blue-400">Português</Label>
+                        <Input
+                          id="edit-pricePortuguese"
+                          type="number"
+                          step="0.01"
+                          placeholder="Ex: 1500"
+                          value={newProduct.pricePortuguese}
+                          onChange={(e) => setNewProduct(prev => ({ ...prev, pricePortuguese: e.target.value }))}
+                        />
+                        {newProduct.pricePortuguese && !isNaN(parseFloat(newProduct.pricePortuguese)) && (
+                          <p className="text-xs text-green-600 mt-1">
+                            Venda: {(parseFloat(newProduct.pricePortuguese) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-priceIndian" className="text-sm text-emerald-600 dark:text-emerald-400">Indiano</Label>
+                        <Input
+                          id="edit-priceIndian"
+                          type="number"
+                          step="0.01"
+                          placeholder="Ex: 800"
+                          value={newProduct.priceIndian}
+                          onChange={(e) => setNewProduct(prev => ({ ...prev, priceIndian: e.target.value }))}
+                        />
+                        {newProduct.priceIndian && !isNaN(parseFloat(newProduct.priceIndian)) && (
+                          <p className="text-xs text-green-600 mt-1">
+                            Venda: {(parseFloat(newProduct.priceIndian) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-price" className="text-sm text-gray-600 dark:text-gray-400">Padrão</Label>
+                        <Input
+                          id="edit-price"
+                          type="number"
+                          step="0.01"
+                          placeholder="Ex: 1000"
+                          value={newProduct.price}
+                          onChange={(e) => setNewProduct(prev => ({ ...prev, price: e.target.value }))}
+                        />
+                        {newProduct.price && !isNaN(parseFloat(newProduct.price)) && (
+                          <p className="text-xs text-green-600 mt-1">
+                            Venda: {(parseFloat(newProduct.price) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {newProduct.category !== 'medicamento' && (
                 <div>
-                  <Label htmlFor="edit-dosage">Dosagem</Label>
+                  <Label htmlFor="edit-price">Preço de Custo (AOA) *</Label>
                   <Input
-                    id="edit-dosage"
-                    value={newProduct.dosage}
-                    onChange={(e) => setNewProduct(prev => ({ ...prev, dosage: e.target.value }))}
+                    id="edit-price"
+                    type="number"
+                    step="0.01"
+                    placeholder="Ex: 1000"
+                    value={newProduct.price}
+                    onChange={(e) => setNewProduct(prev => ({ ...prev, price: e.target.value }))}
+                    required={newProduct.category !== 'medicamento'}
                   />
+                  {newProduct.price && !isNaN(parseFloat(newProduct.price)) && (
+                    <p className="text-sm text-green-600 mt-1 font-medium">
+                      Preço de venda final: {(parseFloat(newProduct.price) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })} (+15% taxa)
+                    </p>
+                  )}
                 </div>
-              </div>
+              )}
 
               <div>
                 <Label htmlFor="edit-imageUrl">URL da Imagem</Label>
@@ -492,10 +698,13 @@ export default function Products() {
                     setNewProduct({
                       name: product.name,
                       description: product.description,
-                      price: product.price,
+                      price: product.precoBase || product.price || '',
+                      pricePortuguese: (product as any).precoPortugues || '',
+                      priceIndian: (product as any).precoIndiano || '',
                       category: product.category || 'medicamento',
                       brand: (product as any).brand || '',
                       dosage: (product as any).dosage || '',
+                      origin: (product as any).origin || 'default',
                       diseasesInput: (product.diseases || []).join(', '),
                       prescriptionRequired: (product as any).prescriptionRequired || false,
                       imageUrl: product.imageUrl || ''

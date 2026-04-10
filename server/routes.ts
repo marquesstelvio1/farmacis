@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { db } from "./db";
 import { prescriptions, orders, systemSettings } from "@shared/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import OpenAI from "openai";
 import bcrypt from "bcryptjs";
@@ -95,14 +95,14 @@ export async function registerRoutes(
   // Register user payment method routes
   registerUserPaymentMethodRoutes(app);
 
+  // Register pharmacy portal routes (must be before pharmacyAdmin for specific routes like /pending-count)
+  registerPharmacyRoutes(app);
+
   // Register pharmacy admin routes
   registerPharmacyAdminRoutes(app);
 
   // Register admin routes
   registerAdminRoutes(app);
-
-  // Register pharmacy portal routes
-  registerPharmacyRoutes(app);
 
   // Register catalog routes
   registerCatalogRoutes(app);
@@ -232,6 +232,94 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/user/orders/:orderId/review", async (req, res) => {
+    try {
+      const orderId = parseInt(req.params.orderId);
+      const { userId, rating, comment } = req.body;
+
+      if (!orderId || !userId) {
+        return res.status(400).json({ message: "Order ID e User ID são obrigatórios" });
+      }
+
+      const numericRating = Number(rating);
+      if (Number.isNaN(numericRating) || numericRating < 0 || numericRating > 5) {
+        return res.status(400).json({ message: "A avaliação deve estar entre 0 e 5" });
+      }
+
+      const existing = await db
+        .select({
+          id: orders.id,
+          userId: orders.userId,
+          status: orders.status,
+          reviewRating: orders.reviewRating,
+        })
+        .from(orders)
+        .where(eq(orders.id, orderId))
+        .limit(1);
+
+      const order = existing[0];
+      if (!order) {
+        return res.status(404).json({ message: "Pedido não encontrado" });
+      }
+      if (order.userId !== Number(userId)) {
+        return res.status(403).json({ message: "Sem permissão para avaliar este pedido" });
+      }
+      if (order.status !== "delivered") {
+        return res.status(400).json({ message: "Só é possível avaliar pedidos entregues" });
+      }
+      if (order.reviewRating !== null && order.reviewRating !== undefined) {
+        return res.status(400).json({ message: "Este pedido já foi avaliado" });
+      }
+
+      await db
+        .update(orders)
+        .set({
+          reviewRating: numericRating,
+          reviewComment: typeof comment === "string" ? comment.trim().slice(0, 500) : "",
+          reviewedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(orders.id, orderId));
+
+      res.json({ message: "Avaliação enviada com sucesso" });
+    } catch (err) {
+      console.error("Error submitting order review:", err);
+      res.status(500).json({ message: "Erro ao enviar avaliação" });
+    }
+  });
+
+  app.get("/api/pharmacies/:pharmacyId/reviews/summary", async (req, res) => {
+    try {
+      const pharmacyId = parseInt(req.params.pharmacyId);
+      if (!pharmacyId) {
+        return res.status(400).json({ message: "Pharmacy ID é obrigatório" });
+      }
+
+      const summary = await db
+        .select({
+          averageRating: sql<number>`COALESCE(AVG(${orders.reviewRating}), 0)`,
+          ratingsCount: sql<number>`COUNT(${orders.reviewRating})`,
+        })
+        .from(orders)
+        .where(
+          and(
+            eq(orders.pharmacyId, pharmacyId),
+            eq(orders.status, "delivered"),
+            isNotNull(orders.reviewRating),
+          ),
+        );
+
+      const result = summary[0] || { averageRating: 0, ratingsCount: 0 };
+      res.json({
+        averageRating: Number(result.averageRating || 0),
+        ratingsCount: Number(result.ratingsCount || 0),
+      });
+    } catch (err) {
+      console.error("Error fetching pharmacy reviews summary:", err);
+      res.status(500).json({ message: "Erro ao obter resumo de avaliações" });
+    }
+  });
+
   app.post(api.orders.create.path, async (req, res) => {
     try {
       console.log("Creating order with data:", req.body);
@@ -261,11 +349,12 @@ export async function registerRoutes(
       };
 
       // Validate minimum order amount
-      const [minOrderSetting] = await db
+      const minOrderSettingResult = await db
         .select()
         .from(systemSettings)
         .where(sql`key = 'min_order_amount'`)
         .limit(1);
+      const minOrderSetting = minOrderSettingResult.length > 0 ? minOrderSettingResult[0] : null;
       const minOrderAmount = minOrderSetting ? parseFloat(minOrderSetting.value) : 500;
       const orderSubtotal = parseFloat(orderData.total || "0") - parseFloat(orderData.deliveryFee || "0");
       
@@ -295,7 +384,7 @@ export async function registerRoutes(
           // If item has prescription data, create prescription record
           if (item.prescription && prescriptionRequired) {
             try {
-              const [prescription] = await db
+              const prescriptionResult = await db
                 .insert(prescriptions)
                 .values({
                   orderId: order.id,
@@ -305,6 +394,12 @@ export async function registerRoutes(
                   status: "pending",
                 })
                 .returning();
+              
+              if (prescriptionResult.length === 0) {
+                throw new Error("Failed to create prescription");
+              }
+              
+              const prescription = prescriptionResult[0];
               prescriptionId = prescription.id;
               console.log(`Created prescription #${prescription.id} for order #${order.id}, product #${productId}`);
             } catch (prescriptionError) {

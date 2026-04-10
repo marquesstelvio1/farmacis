@@ -27,15 +27,17 @@ export function registerPharmacyAdminRoutes(app: Express) {
     try {
       const { email, password } = req.body;
 
-      const [admin] = await db
+      const adminResult = await db
         .select()
         .from(pharmacyAdmins)
         .where(eq(pharmacyAdmins.email, email))
         .limit(1);
 
-      if (!admin) {
+      if (adminResult.length === 0) {
         return res.status(401).json({ message: "Email ou senha incorretos" });
       }
+
+      const admin = adminResult[0];
 
       const isValidPassword = await bcrypt.compare(password, admin.password);
 
@@ -44,11 +46,17 @@ export function registerPharmacyAdminRoutes(app: Express) {
       }
 
       // Get pharmacy info
-      const [pharmacy] = await db
+      const pharmacyResult = await db
         .select()
         .from(pharmacies)
         .where(eq(pharmacies.id, admin.pharmacyId))
         .limit(1);
+
+      if (pharmacyResult.length === 0) {
+        throw new Error("Farmácia não encontrada");
+      }
+
+      const pharmacy = pharmacyResult[0];
 
       const { password: _, ...adminWithoutPassword } = admin;
 
@@ -113,15 +121,17 @@ export function registerPharmacyAdminRoutes(app: Express) {
     try {
       const orderId = parseInt(req.params.orderId as string);
 
-      const [order] = await db
+      const orderResult = await db
         .select()
         .from(orders)
         .where(eq(orders.id, orderId))
         .limit(1);
 
-      if (!order) {
+      if (orderResult.length === 0) {
         return res.status(404).json({ message: "Pedido não encontrado" });
       }
+
+      const order = orderResult[0];
 
       const history = await db
         .select()
@@ -146,15 +156,17 @@ export function registerPharmacyAdminRoutes(app: Express) {
       const { adminId, notes } = req.body;
 
       // Update order status
-      const [order] = await db
+      const orderResult = await db
         .update(orders)
         .set({ status: "accepted" })
         .where(eq(orders.id, orderId))
         .returning();
 
-      if (!order) {
+      if (orderResult.length === 0) {
         return res.status(404).json({ message: "Pedido não encontrado" });
       }
+
+      const order = orderResult[0];
 
       // Add to history
       await db.insert(orderStatusHistory).values({
@@ -185,15 +197,17 @@ export function registerPharmacyAdminRoutes(app: Express) {
       }
 
       // Update order status
-      const [order] = await db
+      const orderResult = await db
         .update(orders)
         .set({ status: "rejected" })
         .where(eq(orders.id, orderId))
         .returning();
 
-      if (!order) {
+      if (orderResult.length === 0) {
         return res.status(404).json({ message: "Pedido não encontrado" });
       }
+
+      const order = orderResult[0];
 
       // Add to history
       await db.insert(orderStatusHistory).values({
@@ -220,15 +234,17 @@ export function registerPharmacyAdminRoutes(app: Express) {
       const { adminId, paymentMethod, transactionId } = req.body;
 
       // Update order status
-      const [order] = await db
+      const orderResult = await db
         .update(orders)
         .set({ status: "paid" })
         .where(eq(orders.id, orderId))
         .returning();
 
-      if (!order) {
+      if (orderResult.length === 0) {
         return res.status(404).json({ message: "Pedido não encontrado" });
       }
+
+      const order = orderResult[0];
 
       // Add to history
       await db.insert(orderStatusHistory).values({
@@ -260,7 +276,7 @@ export function registerPharmacyAdminRoutes(app: Express) {
       }
 
       // Update order status with optional payment info
-      const [order] = await db
+      const orderResult = await db
         .update(orders)
         .set({ 
           status,
@@ -272,9 +288,11 @@ export function registerPharmacyAdminRoutes(app: Express) {
         .where(eq(orders.id, orderId))
         .returning();
 
-      if (!order) {
+      if (orderResult.length === 0) {
         return res.status(404).json({ message: "Pedido não encontrado" });
       }
+
+      const order = orderResult[0];
 
       // Add to history
       await db.insert(orderStatusHistory).values({

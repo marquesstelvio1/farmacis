@@ -45,7 +45,7 @@ export function registerUserPaymentMethodRoutes(app: Express) {
           .where(eq(userPaymentMethods.userId, userId));
       }
 
-      const [method] = await db
+      const result = await db
         .insert(userPaymentMethods)
         .values({
           userId,
@@ -59,6 +59,11 @@ export function registerUserPaymentMethodRoutes(app: Express) {
         })
         .returning();
 
+      if (result.length === 0) {
+        return res.status(500).json({ message: "Erro ao adicionar método de pagamento" });
+      }
+
+      const method = result[0];
       res.status(201).json({
         message: "Método de pagamento adicionado com sucesso",
         method,
@@ -83,7 +88,7 @@ export function registerUserPaymentMethodRoutes(app: Express) {
           .where(eq(userPaymentMethods.userId, userId));
       }
 
-      const [method] = await db
+      const result = await db
         .update(userPaymentMethods)
         .set({
           name,
@@ -99,9 +104,11 @@ export function registerUserPaymentMethodRoutes(app: Express) {
         ))
         .returning();
 
-      if (!method) {
+      if (result.length === 0) {
         return res.status(404).json({ message: "Método de pagamento não encontrado" });
       }
+
+      const method = result[0];
 
       res.json({
         message: "Método de pagamento atualizado",
@@ -121,7 +128,7 @@ export function registerUserPaymentMethodRoutes(app: Express) {
       const userIdStr = Array.isArray(userIdRaw) ? userIdRaw[0] : userIdRaw;
       const userId = parseInt(userIdStr as string);
 
-      const [method] = await db
+      const result = await db
         .delete(userPaymentMethods)
         .where(and(
           eq(userPaymentMethods.id, methodId),
@@ -129,10 +136,11 @@ export function registerUserPaymentMethodRoutes(app: Express) {
         ))
         .returning();
 
-      if (!method) {
+      if (result.length === 0) {
         return res.status(404).json({ message: "Método de pagamento não encontrado" });
       }
 
+      const method = result[0];
       res.json({ message: "Método de pagamento removido" });
     } catch (error) {
       console.error("Error deleting payment method:", error);

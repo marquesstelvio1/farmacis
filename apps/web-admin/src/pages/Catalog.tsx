@@ -68,7 +68,8 @@ export default function Catalog() {
   const [selectedPharmacy, setSelectedPharmacy] = useState('')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
-  const [viewingProduct, setViewingProduct] = useState<Product | null>(null)
+  const [isVariantModalOpen, setIsVariantModalOpen] = useState(false)
+  const [selectedProductForVariant, setSelectedProductForVariant] = useState<Product | null>(null)
 
   const queryClient = useQueryClient()
 

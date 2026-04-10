@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
+  ArrowLeft,
   User, 
   Bell, 
   Pill, 
@@ -47,8 +48,13 @@ export default function AccountSettings() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isChangingPhone, setIsChangingPhone] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [newPhoneNumber, setNewPhoneNumber] = useState("");
-  const [activeTab, setActiveTab] = useState<'profile' | 'meds' | 'appointments'>('meds');
+  const [profileName, setProfileName] = useState("");
+  const [profileAddress, setProfileAddress] = useState("");
+  const [profileNeighborhood, setProfileNeighborhood] = useState("");
+  const [profileReference, setProfileReference] = useState("");
+  const [activeTab, setActiveTab] = useState<'profile' | 'meds' | 'appointments'>('profile');
   
   const formatPhoneNumber = (value: string) => {
     const digits = value.replace(/\D/g, "");
@@ -71,6 +77,11 @@ export default function AccountSettings() {
 
   const userString = localStorage.getItem("user");
   const user = userString ? JSON.parse(userString) : null;
+
+  useEffect(() => {
+    setProfileName(user?.name || "");
+    setProfileAddress(user?.address || "");
+  }, [user?.name, user?.address]);
 
   useEffect(() => {
     const fetchReminders = async () => {
@@ -174,6 +185,50 @@ export default function AccountSettings() {
     }
   };
 
+  const handleSaveProfile = async () => {
+    if (!user?.id) return;
+    if (!profileName.trim() && !profileAddress.trim() && !profileNeighborhood.trim() && !profileReference.trim()) {
+      toast({ title: "Dados incompletos", description: "Preencha pelo menos um campo para atualizar." });
+      return;
+    }
+
+    const composedAddress = [profileAddress, profileNeighborhood, profileReference]
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join(", ");
+
+    setIsSavingProfile(true);
+    try {
+      const payload: Record<string, any> = { userId: user.id };
+      if (profileName.trim()) payload.name = profileName.trim();
+      if (composedAddress) payload.address = composedAddress;
+
+      const res = await fetch("/api/auth/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        throw new Error("Falha ao atualizar perfil");
+      }
+
+      const data = await res.json();
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      setProfileName(data.user?.name || "");
+      setProfileAddress(data.user?.address || composedAddress);
+      setProfileNeighborhood("");
+      setProfileReference("");
+
+      toast({ title: "Perfil atualizado", description: "Os dados do seu perfil foram guardados." });
+    } catch (error) {
+      toast({ title: "Erro", description: "Não foi possível atualizar o perfil agora.", variant: "destructive" });
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
   const addHour = () => {
     if (newHour && !tempHours.includes(newHour)) {
       setNewTempHours([...tempHours, newHour].sort());
@@ -181,18 +236,31 @@ export default function AccountSettings() {
     }
   };
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" /></div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" style={{ color: "#8bc14a" }} /></div>;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-12">
-      <div className="max-w-4xl mx-auto px-4">
+    <div className="min-h-screen" style={{ backgroundColor: "#f7faf5" }}>
+      <div className="max-w-4xl mx-auto px-4 pt-4">
+        <button
+          type="button"
+          onClick={() => window.location.assign("/?tab=profile")}
+          className="inline-flex items-center gap-2 rounded-xl px-3 py-2 border transition"
+          style={{ borderColor: "#dce4d7", color: "#072a1c", backgroundColor: "#ffffff" }}
+        >
+          <ArrowLeft size={16} />
+          Voltar
+        </button>
+      </div>
+
+      <div className="max-w-4xl mx-auto px-4 py-10">
+
         <div className="flex items-center gap-4 mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white shadow-lg" style={{ backgroundColor: "#072a1c" }}>
             <User size={32} />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Configurações da Conta</h1>
-            <p className="text-slate-500 dark:text-slate-400">Gerencie seu perfil e lembretes de saúde</p>
+            <h1 className="text-3xl font-bold" style={{ color: "#072a1c" }}>Configurações da Conta</h1>
+            <p style={{ color: "#607369" }}>Gerencie seu perfil e lembretes de saúde</p>
           </div>
         </div>
 
@@ -202,21 +270,30 @@ export default function AccountSettings() {
             <Button 
               variant="ghost" 
               onClick={() => setActiveTab('profile')}
-              className={`w-full justify-start gap-2 ${activeTab === 'profile' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold border-blue-100 dark:border-blue-800' : 'bg-white dark:bg-slate-800 shadow-sm border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300'}`}
+              className={`w-full justify-start gap-2 ${activeTab === 'profile' ? 'font-bold border' : 'shadow-sm border'}`}
+              style={activeTab === 'profile'
+                ? { backgroundColor: "rgba(181, 241, 118, 0.25)", color: "#072a1c", borderColor: "#dce4d7" }
+                : { backgroundColor: "#ffffff", color: "#607369", borderColor: "#e0e0e0" }}
             >
               <User size={18} /> Perfil do Usuário
             </Button>
             <Button 
               variant="ghost" 
               onClick={() => setActiveTab('meds')}
-              className={`w-full justify-start gap-2 ${activeTab === 'meds' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold border-blue-100 dark:border-blue-800' : 'bg-white dark:bg-slate-800 shadow-sm border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300'}`}
+              className={`w-full justify-start gap-2 ${activeTab === 'meds' ? 'font-bold border' : 'shadow-sm border'}`}
+              style={activeTab === 'meds'
+                ? { backgroundColor: "rgba(181, 241, 118, 0.25)", color: "#072a1c", borderColor: "#dce4d7" }
+                : { backgroundColor: "#ffffff", color: "#607369", borderColor: "#e0e0e0" }}
             >
               <Pill size={18} /> Modo Receita
             </Button>
             <Button 
               variant="ghost" 
               onClick={() => setActiveTab('appointments')}
-              className={`w-full justify-start gap-2 ${activeTab === 'appointments' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold border-blue-100 dark:border-blue-800' : 'bg-white dark:bg-slate-800 shadow-sm border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300'}`}
+              className={`w-full justify-start gap-2 ${activeTab === 'appointments' ? 'font-bold border' : 'shadow-sm border'}`}
+              style={activeTab === 'appointments'
+                ? { backgroundColor: "rgba(181, 241, 118, 0.25)", color: "#072a1c", borderColor: "#dce4d7" }
+                : { backgroundColor: "#ffffff", color: "#607369", borderColor: "#e0e0e0" }}
             >
               <Calendar size={18} /> Meus Agendamentos
             </Button>
@@ -225,9 +302,9 @@ export default function AccountSettings() {
           {/* Content Area */}
           <div className="md:col-span-2 space-y-6">
             {activeTab === 'profile' && (
-              <Card className="dark:bg-slate-800 dark:border-slate-700">
+              <Card className="border" style={{ backgroundColor: "#ffffff", borderColor: "#e0e0e0" }}>
                 <CardHeader>
-                  <CardTitle className="dark:text-white">Perfil do Usuário</CardTitle>
+                  <CardTitle style={{ color: "#072a1c" }}>Perfil do Usuário</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {isChangingPhone ? (
@@ -258,12 +335,78 @@ export default function AccountSettings() {
                     />
                   ) : (
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-700">
-                        <div>
-                          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Telefone Atual</p>
-                          <p className="text-lg font-bold text-slate-900 dark:text-white">{user?.phone || 'Não definido'}</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label>Nome completo</Label>
+                          <Input
+                            placeholder="Ex: Ana Catarina Gomes"
+                            value={profileName}
+                            onChange={(e) => setProfileName(e.target.value)}
+                            className="border"
+                            style={{ borderColor: "#dce4d7" }}
+                          />
                         </div>
-                        <Badge variant="outline" className="text-green-600 border-green-200">Validado</Badge>
+                        <div className="space-y-2">
+                          <Label>E-mail</Label>
+                          <Input
+                            value={user?.email || ""}
+                            disabled
+                            className="border opacity-80 cursor-not-allowed"
+                            style={{ borderColor: "#dce4d7", backgroundColor: "#f7faf5" }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Endereço principal</Label>
+                        <Input
+                          placeholder="Ex: Rua do Kinaxixi, Luanda"
+                          value={profileAddress}
+                          onChange={(e) => setProfileAddress(e.target.value)}
+                          className="border"
+                          style={{ borderColor: "#dce4d7" }}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label>Bairro</Label>
+                          <Input
+                            placeholder="Ex: Rangel"
+                            value={profileNeighborhood}
+                            onChange={(e) => setProfileNeighborhood(e.target.value)}
+                            className="border"
+                            style={{ borderColor: "#dce4d7" }}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Ponto de referência</Label>
+                          <Input
+                            placeholder="Ex: Próximo ao CTT"
+                            value={profileReference}
+                            onChange={(e) => setProfileReference(e.target.value)}
+                            className="border"
+                            style={{ borderColor: "#dce4d7" }}
+                          />
+                        </div>
+                      </div>
+
+                      <Button
+                        onClick={handleSaveProfile}
+                        disabled={isSavingProfile}
+                        className="w-full md:w-auto font-bold"
+                        style={{ backgroundColor: "#072a1c", color: "#b5f176" }}
+                      >
+                        {isSavingProfile ? <Loader2 className="animate-spin mr-2" size={16} /> : <Save size={16} className="mr-2" />}
+                        Guardar dados do perfil
+                      </Button>
+
+                      <div className="flex items-center justify-between p-4 rounded-2xl border" style={{ backgroundColor: "#f7faf5", borderColor: "#dce4d7" }}>
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "#607369" }}>Telefone Atual</p>
+                          <p className="text-lg font-bold" style={{ color: "#072a1c" }}>{user?.phone || 'Não definido'}</p>
+                        </div>
+                        <Badge variant="outline" style={{ color: "#8bc14a", borderColor: "#dce4d7" }}>Validado</Badge>
                       </div>
                       
                       <div className="space-y-2">
@@ -273,7 +416,8 @@ export default function AccountSettings() {
                             placeholder="+244 9XX XXX XXX" 
                             value={newPhoneNumber}
                             onChange={(e) => setNewPhoneNumber(formatPhoneNumber(e.target.value))}
-                            className="dark:bg-slate-900"
+                            className="border"
+                            style={{ borderColor: "#dce4d7", backgroundColor: "#f7faf5", color: "#072a1c" }}
                           />
                           <Button 
                             disabled={!newPhoneNumber || newPhoneNumber.length < 9}
@@ -291,13 +435,13 @@ export default function AccountSettings() {
 
             {activeTab === 'meds' && (
               <>
-                <Card className="border-blue-100 dark:border-blue-800 shadow-blue-900/5 dark:shadow-blue-900/20">
+                <Card className="border shadow-sm" style={{ borderColor: "#dce4d7", backgroundColor: "#ffffff" }}>
               <CardHeader>
                 <CardTitle className="text-xl flex items-center gap-2">
-                  <Clock className="text-blue-600 dark:text-blue-400" />
+                  <Clock style={{ color: "#8bc14a" }} />
                   Adicionar Novo Medicamento
                 </CardTitle>
-                <CardDescription className="text-slate-500 dark:text-slate-400">Configure os horários para receber alertas automáticos.</CardDescription>
+                <CardDescription style={{ color: "#607369" }}>Configure os horários para receber alertas automáticos.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -306,7 +450,8 @@ export default function AccountSettings() {
                     placeholder="Ex: Paracetamol 500mg" 
                     value={newMedicine}
                     onChange={(e) => setNewMedicine(e.target.value)}
-                    className="dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                    className="border"
+                    style={{ borderColor: "#dce4d7", backgroundColor: "#f7faf5", color: "#072a1c" }}
                   />
                 </div>
 
@@ -317,7 +462,8 @@ export default function AccountSettings() {
                       type="number" 
                       value={newDuration}
                       onChange={(e) => setNewDuration(e.target.value)}
-                      className="dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                      className="border"
+                      style={{ borderColor: "#dce4d7", backgroundColor: "#f7faf5", color: "#072a1c" }}
                     />
                   </div>
                   <div className="space-y-2">
@@ -327,7 +473,8 @@ export default function AccountSettings() {
                         type="time" 
                         value={newHour}
                         onChange={(e) => setNewHour(e.target.value)}
-                        className="dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                        className="border"
+                        style={{ borderColor: "#dce4d7", backgroundColor: "#f7faf5", color: "#072a1c" }}
                       />
                       <Button size="icon" onClick={addHour} type="button">
                         <Plus size={18} />
@@ -350,7 +497,8 @@ export default function AccountSettings() {
                 <Button 
                   onClick={handleAddMedicine} 
                   disabled={isSaving}
-                  className="w-full bg-blue-600 hover:bg-blue-700 h-12 rounded-xl font-bold"
+                  className="w-full h-12 rounded-xl font-bold"
+                  style={{ backgroundColor: "#072a1c", color: "#b5f176" }}
                 >
                   {isSaving ? <Loader2 className="animate-spin mr-2" /> : <Save size={18} className="mr-2" />}
                   Ativar Lembretes para este Medicamento
@@ -409,8 +557,8 @@ export default function AccountSettings() {
 
             {activeTab === 'appointments' && (
               <div className="space-y-4">
-                <h3 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                  <Calendar size={18} className="text-blue-600 dark:text-blue-400" />
+                <h3 className="font-bold flex items-center gap-2" style={{ color: "#072a1c" }}>
+                  <Calendar size={18} style={{ color: "#8bc14a" }} />
                   Consultas Marcadas
                 </h3>
                 
@@ -471,9 +619,12 @@ export default function AccountSettings() {
                 </AnimatePresence>
 
                 {appointments.length === 0 && (
-                  <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700">
-                    <Calendar size={40} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" />
-                    <p className="text-slate-500 dark:text-slate-400">Nenhuma consulta agendada.</p>
+                  <div
+                    className="text-center py-12 rounded-3xl border-2 border-dashed"
+                    style={{ backgroundColor: "#ffffff", borderColor: "#dce4d7" }}
+                  >
+                    <Calendar size={40} className="mx-auto mb-3" style={{ color: "#8bc14a" }} />
+                    <p style={{ color: "#607369" }}>Nenhuma consulta agendada.</p>
                   </div>
                 )}
               </div>

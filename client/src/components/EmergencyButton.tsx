@@ -80,8 +80,6 @@ export function EmergencyButton() {
             Precisa de ajuda?
           </span>
 
-          {/* Ripple effect */}
-          <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-75" />
         </button>
       </motion.div>
 
@@ -184,11 +182,11 @@ export function EmergencyButton() {
                   </Button>
 
                   {/* Instructions */}
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                    <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <h3 className="font-semibold text-green-900 mb-2">
                       Como funciona:
                     </h3>
-                    <ul className="text-sm text-blue-800 dark:text-blue-400 space-y-1">
+                    <ul className="text-sm text-green-800 space-y-1">
                       <li>• Ligar Ambulância: Liga imediatamente para o 112</li>
                       <li>• Enviar Mensagem: Envia sua localização para os contactos</li>
                       <li>• Mantenha a calma e aguarde ajuda</li>

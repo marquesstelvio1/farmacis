@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   MessageSquareText, Search, Camera, X, Send, Loader2, User, Bot, 
@@ -194,27 +194,28 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-2xl shadow-blue-900/10 border border-white/40 dark:border-slate-700 overflow-hidden min-h-[100px] sm:min-h-[130px] flex items-stretch"
+        className="bg-white/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-2xl shadow-green-900/10 border border-white/40 overflow-visible min-h-[100px] sm:min-h-[130px] flex items-stretch"
       >
-        <div className="flex w-full divide-x divide-slate-200/50 dark:divide-slate-700/50">
+        <div className="flex w-full divide-x divide-slate-200/50">
             {searchSections.map((section, index) => {
               const Icon = section.icon;
               const isActive = activeSection === section.id;
-              const isInactive = activeSection !== null && !isActive;
+              const isFirst = index === 0;
+              const isLast = index === searchSections.length - 1;
               
               return (
                 <motion.div
                   key={section.id}
-                  layout
                   animate={{ 
-                    flex: isActive ? 1 : (isInactive ? 0 : 1),
-                    opacity: isInactive ? 0 : 1,
-                    width: isInactive ? 0 : "auto",
+                    flex: isActive ? 2 : 1,
+                    opacity: 1,
                   }}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className={`relative overflow-hidden flex flex-col items-center justify-center transition-all duration-300 ${
-                    isActive ? 'bg-white dark:bg-slate-800' : isInactive ? 'pointer-events-none' : 'hover:bg-slate-50/50 dark:hover:bg-slate-700/50 cursor-pointer'
-                  }`}
+                  className={`relative flex flex-col items-center justify-center transition-all duration-300 ${
+                    isActive 
+                      ? 'bg-white' 
+                      : 'hover:bg-slate-50/50 cursor-pointer'
+                  } ${isFirst ? 'rounded-l-2xl sm:rounded-l-3xl' : ''} ${isLast ? 'rounded-r-2xl sm:rounded-r-3xl' : ''}`}
                   onClick={() => !isActive && handleSectionClick(section.id)}
                 >
                   <AnimatePresence mode="wait">
@@ -231,14 +232,14 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
                           <div className="flex-1 flex items-center justify-center gap-3 sm:gap-8">
                             <button 
                               onClick={() => fileInputRef.current?.click()}
-                              className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 bg-slate-50 dark:bg-slate-700 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-2xl border border-slate-100 dark:border-slate-600 hover:border-teal-200 dark:hover:border-teal-800 transition-all group/btn"
+                              className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 bg-slate-50 hover:bg-teal-50 rounded-2xl border border-slate-100 hover:border-teal-200 transition-all group/btn"
                             >
-                              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 rounded-xl flex items-center justify-center group-hover/btn:scale-110 transition-transform">
+                              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-teal-100 text-teal-600 rounded-xl flex items-center justify-center group-hover/btn:scale-110 transition-transform">
                                 <FileImage size={20} />
                               </div>
                               <div className="text-left">
-                                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Explorador</p>
-                                <p className="text-[10px] text-slate-400 dark:text-slate-500 hidden sm:block">Arquivos</p>
+                                <p className="text-xs font-bold text-slate-700">Explorador</p>
+                                <p className="text-[10px] text-slate-400 hidden sm:block">Arquivos</p>
                               </div>
                             </button>
                             
@@ -246,21 +247,21 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
 
                             <button 
                               onClick={() => cameraInputRef.current?.click()}
-                              className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 bg-slate-50 dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-2xl border border-slate-100 dark:border-slate-600 hover:border-emerald-200 dark:hover:border-emerald-800 transition-all group/btn"
+                              className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 bg-slate-50 hover:bg-emerald-50 rounded-2xl border border-slate-100 hover:border-emerald-200 transition-all group/btn"
                             >
-                              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center group-hover/btn:scale-110 transition-transform">
+                              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center group-hover/btn:scale-110 transition-transform">
                                 <Camera size={20} />
                               </div>
                               <div className="text-left">
-                                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Câmera</p>
-                                <p className="text-[10px] text-slate-400 dark:text-slate-500 hidden sm:block">Tirar Foto</p>
+                                <p className="text-xs font-bold text-slate-700">Câmera</p>
+                                <p className="text-[10px] text-slate-400 hidden sm:block">Tirar Foto</p>
                               </div>
                             </button>
                           </div>
                         ) : (
                           <>
-                            <div className={`flex-1 flex items-center bg-slate-50 dark:bg-slate-700 rounded-2xl border border-slate-100 dark:border-slate-600 px-4 focus-within:ring-2 transition-all ${section.id === 'chat' ? 'focus-within:ring-indigo-500/20 focus-within:border-indigo-500 dark:focus-within:border-indigo-400' : 'focus-within:ring-blue-500/20 focus-within:border-blue-500 dark:focus-within:border-blue-400'}`}>
-                          {section.id === 'chat' ? <Sparkles size={18} className="text-indigo-400 dark:text-indigo-300 mr-2" /> : <Search size={18} className="text-slate-400 dark:text-slate-500 mr-2" />}
+                            <div className={`flex-1 flex items-center bg-slate-50 rounded-2xl border border-slate-100 px-4 focus-within:ring-2 transition-all ${section.id === 'chat' ? 'focus-within:ring-indigo-500/20 focus-within:border-indigo-500' : 'focus-within:ring-green-500/20 focus-within:border-green-500'}`}>
+                          {section.id === 'chat' ? <Sparkles size={18} className="text-indigo-400 mr-2" /> : <Search size={18} className="text-slate-400 mr-2" />}
                           <input
                             ref={section.id === 'chat' ? assistantInputRef : searchInputRef}
                             type="text"
@@ -269,18 +270,18 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
                             onChange={(e) => section.id === 'chat' ? setAssistantQuery(e.target.value) : setSearchQuery(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && (section.id === 'chat' ? handleStartChat() : handleMultiSearch())}
                             placeholder={section.id === 'chat' ? "Pergunte algo ao assistente..." : "O que você procura hoje?"}
-                            className="flex-1 bg-transparent border-none focus:ring-0 py-4 text-sm sm:text-base outline-none text-slate-700 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                            className="flex-1 bg-transparent border-none focus:ring-0 py-4 text-sm sm:text-base outline-none text-slate-700 placeholder:text-slate-400"
                           />
                           {(section.id === 'chat' ? assistantQuery : searchQuery) && (
-                            <button onClick={() => section.id === 'chat' ? setAssistantQuery("") : setSearchQuery("")} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-full">
-                              <X size={14} className="text-slate-400 dark:text-slate-500" />
+                            <button onClick={() => section.id === 'chat' ? setAssistantQuery("") : setSearchQuery("")} className="p-1 hover:bg-slate-200 rounded-full">
+                              <X size={14} className="text-slate-400" />
                             </button>
                           )}
                         </div>
                         <Button 
                           onClick={section.id === 'chat' ? handleStartChat : handleMultiSearch}
                           disabled={section.id === 'chat' ? !assistantQuery.trim() : !searchQuery.trim()}
-                          className={`${section.id === 'chat' ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200 dark:shadow-indigo-900/30' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200 dark:shadow-blue-900/30'} text-white rounded-xl px-6 h-[52px] font-bold hidden sm:flex shadow-lg transition-all`}
+                          className={`${section.id === 'chat' ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200' : 'bg-green-600 hover:bg-green-700 shadow-green-200'} text-white rounded-xl px-6 h-[52px] font-bold hidden sm:flex shadow-lg transition-all`}
                         >
                           {section.id === 'chat' ? <Send size={18} /> : 'Buscar'}
                         </Button>
@@ -288,7 +289,7 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
                         )}
                         <button 
                           onClick={() => setActiveSection(null)}
-                          className="p-3 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors"
+                          className="p-3 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
                         >
                           <X size={24} />
                         </button>
@@ -305,14 +306,14 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
                           className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center mb-3 shadow-sm transition-all duration-300 group-hover:scale-110 group-hover:shadow-md ${
                             isActive
                               ? `bg-gradient-to-br ${section.gradient} text-white`
-                              : section.id === 'chat' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white' :
-                                section.id === 'photo' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white' :
-                                'bg-slate-50 dark:bg-slate-700 text-slate-600 dark:text-slate-400 group-hover:bg-slate-800 group-hover:text-white'
+                              : section.id === 'chat' ? 'bg-green-50 text-green-600 group-hover:bg-green-600 group-hover:text-white' :
+                                section.id === 'photo' ? 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white' :
+                                'bg-slate-50 text-slate-600 group-hover:bg-slate-800 group-hover:text-white'
                           }`}
                         >
                           <Icon size={26} strokeWidth={2.5} className="transition-colors" />
                         </div>
-                        <p className="font-bold text-[10px] sm:text-xs md:text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        <p className="font-bold text-[10px] sm:text-xs md:text-sm text-slate-700 whitespace-nowrap">
                           {section.title}
                         </p>
                       </motion.div>
@@ -324,29 +325,27 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
           </div>
         </motion.div>
 
-        {/* Quick Actions Hints - hidden when a section is active */}
-        {!activeSection && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center justify-center gap-3 sm:gap-6 mt-3 sm:mt-4 text-[10px] sm:text-xs text-slate-400 dark:text-slate-500"
-          >
-            <span className="flex items-center gap-1">
-              <Sparkles size={10} className="sm:size-12" />
-              <span className="hidden sm:inline">IA</span>
-            </span>
-            <span className="w-1 h-1 bg-slate-300 rounded-full" />
-            <span className="flex items-center gap-1">
-              <Pill size={10} className="sm:size-12" />
-              <span className="hidden sm:inline">Medicamentos</span>
-            </span>
-            <span className="w-1 h-1 bg-slate-300 rounded-full" />
-            <span className="flex items-center gap-1">
-              <FileImage size={10} className="sm:size-12" />
-              <span className="hidden sm:inline">Receitas</span>
-            </span>
-          </motion.div>
-        )}
+        {/* Quick Actions Hints - always visible */}
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex items-center justify-center gap-3 sm:gap-6 mt-3 sm:mt-4 text-[10px] sm:text-xs text-slate-400"
+        >
+          <span className="flex items-center gap-1">
+            <Sparkles size={10} className="sm:size-12" />
+            <span className="hidden sm:inline">IA</span>
+          </span>
+          <span className="w-1 h-1 bg-slate-300 rounded-full" />
+          <span className="flex items-center gap-1">
+            <Pill size={10} className="sm:size-12" />
+            <span className="hidden sm:inline">Medicamentos</span>
+          </span>
+          <span className="w-1 h-1 bg-slate-300 rounded-full" />
+          <span className="flex items-center gap-1">
+            <FileImage size={10} className="sm:size-12" />
+            <span className="hidden sm:inline">Receitas</span>
+          </span>
+        </motion.div>
 
         <input
           ref={fileInputRef}
@@ -383,10 +382,10 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-slate-800 shadow-2xl z-[101] flex flex-col"
+              className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-[101] flex flex-col"
             >
               {/* Chat Header */}
-              <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600">
                 <div className="flex items-center gap-4">
                   <div className="relative">
                     <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
@@ -396,7 +395,7 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
                   </div>
                   <div>
                     <h3 className="font-bold text-white text-lg">Assistente IA</h3>
-                    <p className="text-blue-100 text-sm flex items-center gap-1">
+                    <p className="text-green-100 text-sm flex items-center gap-1">
                       <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400"></span>
@@ -414,14 +413,14 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
               </div>
 
               {/* Chat Messages */}
-              <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-gradient-to-b from-slate-50 dark:from-slate-900 to-white dark:to-slate-800">
+              <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-white">
                 {chatMessages.length === 0 && (
                   <div className="text-center py-10">
-                    <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-100 dark:from-blue-900/30 to-indigo-100 dark:to-indigo-900/30 flex items-center justify-center mx-auto mb-5 shadow-lg">
-                      <Bot size={40} className="text-blue-600 dark:text-blue-400" />
+                    <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center mx-auto mb-5 shadow-lg">
+                      <Bot size={40} className="text-green-600" />
                     </div>
-                    <h4 className="font-bold text-slate-800 dark:text-slate-200 text-lg mb-2">Olá! Sou seu assistente de saúde 🤖</h4>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm max-w-xs mx-auto leading-relaxed">
+                    <h4 className="font-bold text-slate-800 text-lg mb-2">Olá! Sou seu assistente de saúde 🤖</h4>
+                    <p className="text-slate-500 text-sm max-w-xs mx-auto leading-relaxed">
                       Posso ajudá-lo a identificar medicamentos, tirar dúvidas sobre sintomas, dosagem ou interações medicamentosas.
                     </p>
                     
@@ -435,7 +434,7 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
                         <button
                           key={i}
                           onClick={() => setChatInput(q)}
-                          className="px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-full text-sm text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm"
+                          className="px-4 py-2 bg-white border border-slate-200 rounded-full text-sm text-slate-600 hover:bg-green-50 hover:border-green-200 hover:text-green-600 transition-all shadow-sm"
                         >
                           {q}
                         </button>
@@ -456,19 +455,19 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
                     }`}>
                       <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm ${
                         message.role === "user" 
-                          ? "bg-gradient-to-br from-blue-500 to-blue-600" 
-                          : "bg-gradient-to-br from-slate-100 dark:from-slate-700 to-slate-200 dark:to-slate-800"
+                          ? "bg-gradient-to-br from-green-500 to-green-600" 
+                          : "bg-gradient-to-br from-slate-100 to-slate-200"
                       }`}>
                         {message.role === "user" ? (
                           <User size={18} className="text-white" />
                         ) : (
-                          <Bot size={18} className="text-slate-600 dark:text-slate-400" />
+                          <Bot size={18} className="text-slate-600" />
                         )}
                       </div>
                       <div className={`px-5 py-4 rounded-3xl shadow-sm ${
                         message.role === "user"
-                          ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-br-md"
-                          : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-bl-md border border-slate-100 dark:border-slate-600"
+                          ? "bg-gradient-to-br from-green-500 to-green-600 text-white rounded-br-md"
+                          : "bg-white text-slate-700 rounded-bl-md border border-slate-100"
                       }`}>
                         <p className="text-[15px] leading-relaxed">{message.content}</p>
                       </div>
@@ -481,14 +480,14 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
                     <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-slate-100 dark:from-slate-700 to-slate-200 dark:to-slate-800 flex items-center justify-center">
                       <Bot size={18} className="text-slate-600 dark:text-slate-400" />
                     </div>
-                    <div className="px-5 py-4 bg-white dark:bg-slate-700 rounded-3xl rounded-bl-md border border-slate-100 dark:border-slate-600 shadow-sm">
+                    <div className="px-5 py-4 bg-white rounded-3xl rounded-bl-md border border-slate-100 shadow-sm">
                       <div className="flex items-center gap-2">
                         <div className="flex gap-1.5">
-                          <span className="w-2.5 h-2.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                          <span className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                          <span className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                          <span className="w-2.5 h-2.5 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                          <span className="w-2.5 h-2.5 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                          <span className="w-2.5 h-2.5 bg-green-600 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
                         </div>
-                        <span className="text-slate-500 dark:text-slate-400 text-sm ml-1">a digitar...</span>
+                        <span className="text-slate-500 text-sm ml-1">a digitar...</span>
                       </div>
                     </div>
                   </div>

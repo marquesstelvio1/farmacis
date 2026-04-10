@@ -36,14 +36,14 @@ interface Order {
 }
 
 const statusColors: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  accepted: 'bg-blue-100 text-blue-800',
-  preparing: 'bg-purple-100 text-purple-800',
-  ready: 'bg-indigo-100 text-indigo-800',
-  out_for_delivery: 'bg-orange-100 text-orange-800',
-  delivered: 'bg-green-100 text-green-800',
+  pending: 'bg-amber-100 text-amber-800',
+  accepted: 'bg-lime-100 text-lime-800',
+  preparing: 'bg-emerald-100 text-emerald-800',
+  ready: 'bg-green-100 text-green-800',
+  out_for_delivery: 'bg-teal-100 text-teal-800',
+  delivered: 'bg-lime-100 text-lime-800',
   rejected: 'bg-red-100 text-red-800',
-  cancelled: 'bg-gray-100 text-gray-800',
+  cancelled: 'bg-slate-100 text-slate-700',
 }
 
 const statusLabels: Record<string, string> = {
@@ -66,11 +66,11 @@ const nextStatusMap: Record<string, string> = {
 }
 
 const statusActions: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-  pending: { label: 'Aceitar Pedido', icon: CheckCircle, color: 'bg-green-600 hover:bg-green-700' },
-  accepted: { label: 'Iniciar Preparo', icon: Package, color: 'bg-purple-600 hover:bg-purple-700' },
-  preparing: { label: 'Pronto para Entrega', icon: CheckCircle, color: 'bg-indigo-600 hover:bg-indigo-700' },
-  ready: { label: 'Saiu para Entrega', icon: MapPin, color: 'bg-orange-600 hover:bg-orange-700' },
-  out_for_delivery: { label: 'Marcar Entregue', icon: CheckCircle, color: 'bg-green-600 hover:bg-green-700' },
+  pending: { label: 'Aceitar Pedido', icon: CheckCircle, color: 'bg-[#072a1c] hover:bg-[#0a3a26]' },
+  accepted: { label: 'Iniciar Preparo', icon: Package, color: 'bg-emerald-600 hover:bg-emerald-700' },
+  preparing: { label: 'Pronto para Entrega', icon: CheckCircle, color: 'bg-green-600 hover:bg-green-700' },
+  ready: { label: 'Saiu para Entrega', icon: MapPin, color: 'bg-teal-600 hover:bg-teal-700' },
+  out_for_delivery: { label: 'Marcar Entregue', icon: CheckCircle, color: 'bg-[#8bc14a] hover:bg-[#77aa3f]' },
 }
 
 export default function Orders() {
@@ -128,28 +128,28 @@ export default function Orders() {
   return (
     <div className="space-y-6 dark:bg-slate-950 min-h-screen transition-colors">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Pedidos</h1>
-        <p className="text-gray-500">Gerencie os pedidos da sua farmácia</p>
+        <h1 className="text-2xl font-bold text-[#072a1c] dark:text-white">Pedidos</h1>
+        <p className="text-[#607369]">Gerencie os pedidos da sua farmácia</p>
       </div>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#607369]" />
           <input
             type="text"
             placeholder="Buscar pedido..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+            className="w-full pl-10 pr-4 py-2 border border-[#dce4d7] dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-[#8bc14a] focus:border-transparent outline-none"
           />
         </div>
         <div className="flex items-center gap-2">
-          <Filter className="w-5 h-5 text-gray-400" />
+          <Filter className="w-5 h-5 text-[#607369]" />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+            className="px-4 py-2 border border-[#dce4d7] dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-[#8bc14a] focus:border-transparent outline-none"
           >
             <option value="all">Todos os status</option>
             <option value="pending">Pendentes</option>
@@ -169,32 +169,32 @@ export default function Orders() {
           const ActionIcon = action?.icon
 
           return (
-            <div key={order.id} className={`bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 p-6 transition-all ${order.isLocked ? 'border-l-4 border-l-green-500' : ''}`}>
+            <div key={order.id} className={`bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-[#dce4d7] dark:border-slate-800 p-6 transition-all ${order.isLocked ? 'border-l-4 border-l-[#8bc14a]' : ''}`}>
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <ShoppingBag className="w-6 h-6 text-green-600 dark:text-green-400" />
+                  <div className="w-12 h-12 bg-[#eef7e8] dark:bg-green-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <ShoppingBag className="w-6 h-6 text-[#8bc14a] dark:text-green-400" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-gray-900 dark:text-slate-100">Pedido #{order.id}</h3>
+                      <h3 className="font-semibold text-[#072a1c] dark:text-slate-100">Pedido #{order.id}</h3>
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[order.status]}`}>
                         {statusLabels[order.status]}
                       </span>
                       {order.isLocked && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-[#eef7e8] text-[#072a1c] dark:bg-green-900/30 dark:text-green-400">
                           <Lock className="w-3 h-3" />
                           Transação Garantida - MCX
                         </span>
                       )}
                     </div>
-                    <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">
+                    <p className="text-lg font-bold text-[#072a1c] dark:text-white mt-1">
                       {Number(order.total).toLocaleString('pt-AO', {
                         style: 'currency',
                         currency: 'AOA'
                       })}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-[#607369]">
                       {new Date(order.createdAt).toLocaleString('pt-BR')}
                     </p>
                   </div>
@@ -229,36 +229,36 @@ export default function Orders() {
                   )}
                   <Link
                     to={`/orders/${order.id}`}
-                    className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                    className="p-2 text-[#607369] hover:text-[#072a1c] hover:bg-[#f7faf5] dark:hover:bg-green-900/20 rounded-lg transition-colors"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </Link>
                 </div>
               </div>
 
-              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="mt-4 pt-4 border-t border-[#eef3ec] dark:border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">Cliente</p>
-                  <p className="text-sm text-gray-900 dark:text-slate-200">{order.customerName}</p>
-                  <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
+                  <p className="text-sm font-medium text-[#607369] dark:text-slate-400 mb-1">Cliente</p>
+                  <p className="text-sm text-[#072a1c] dark:text-slate-200">{order.customerName}</p>
+                  <p className="text-sm text-[#607369] flex items-center gap-1 mt-1">
                     <Phone className="w-3 h-3" />
                     {order.customerPhone}
                   </p>
                 </div>
                 <div className="md:col-span-2">
-                  <p className="text-sm font-medium text-gray-700 dark:text-slate-400 mb-1">Endereço</p>
-                  <p className="text-sm text-gray-900 dark:text-slate-200 flex items-start gap-1">
+                  <p className="text-sm font-medium text-[#607369] dark:text-slate-400 mb-1">Endereço</p>
+                  <p className="text-sm text-[#072a1c] dark:text-slate-200 flex items-start gap-1">
                     <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     {order.customerAddress}
                   </p>
                 </div>
               </div>
 
-              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-slate-800">
-                <p className="text-sm font-medium text-gray-700 dark:text-slate-400 mb-2">Itens</p>
+              <div className="mt-4 pt-4 border-t border-[#eef3ec] dark:border-slate-800">
+                <p className="text-sm font-medium text-[#607369] dark:text-slate-400 mb-2">Itens</p>
                 <div className="flex flex-wrap gap-2">
                   {order.items?.map((item, index) => (
-                    <span key={index} className="px-3 py-1 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 text-sm rounded-full">
+                    <span key={index} className="px-3 py-1 bg-[#f7faf5] dark:bg-slate-800 text-[#072a1c] dark:text-slate-300 text-sm rounded-full border border-[#dce4d7]">
                       {item.quantity}x {item.productName}
                     </span>
                   ))}
@@ -271,9 +271,9 @@ export default function Orders() {
 
       {filteredOrders?.length === 0 && (
         <div className="text-center py-12">
-          <ShoppingBag className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">Nenhum pedido encontrado</h3>
-          <p className="text-gray-500">Os pedidos aparecerão aqui quando os clientes fizerem compras</p>
+          <ShoppingBag className="w-12 h-12 text-[#8bc14a] mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-[#072a1c]">Nenhum pedido encontrado</h3>
+          <p className="text-[#607369]">Os pedidos aparecerão aqui quando os clientes fizerem compras</p>
         </div>
       )}
     </div>

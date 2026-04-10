@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { User, LogOut, Settings, Package, Heart, Phone, AlertCircle } from "lucide-react";
+import { LogOut, Settings, Package, Heart, AlertCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,8 +37,8 @@ export function UserMenu({ onLogout }: UserMenuProps) {
   const [, setLocation] = useLocation();
   const [user, setUser] = useState<UserData | null>(null);
   const [showLogoutWarning, setShowLogoutWarning] = useState(false);
-  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -90,7 +90,7 @@ export function UserMenu({ onLogout }: UserMenuProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 hover:bg-slate-100">
-            <Avatar className="h-10 w-10 border-2 border-blue-200">
+            <Avatar className="h-10 w-10 border-2 border-green-200">
               <AvatarFallback className="bg-gradient-to-br from-blue-500 to-teal-400 text-white font-semibold">
                 {getUserInitials()}
               </AvatarFallback>

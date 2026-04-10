@@ -35,6 +35,29 @@ export async function ensureOrderColumns() {
     `);
     console.log('Column client_account_name ensured in orders table');
 
+    await db.execute(sql`
+      ALTER TABLE orders 
+      ADD COLUMN IF NOT EXISTS review_rating INTEGER
+    `);
+    console.log('Column review_rating ensured in orders table');
+
+    await db.execute(sql`
+      ALTER TABLE orders 
+      ADD COLUMN IF NOT EXISTS review_comment TEXT
+    `);
+    console.log('Column review_comment ensured in orders table');
+
+    await db.execute(sql`
+      ALTER TABLE orders 
+      ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP
+    `);
+    console.log('Column reviewed_at ensured in orders table');
+
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_orders_review_rating ON orders(review_rating)
+    `);
+    console.log('Index idx_orders_review_rating created/verified');
+
     console.log('Order columns and indexes ensured successfully');
   } catch (error) {
     console.error('Error ensuring order columns:', error);
@@ -54,6 +77,11 @@ export async function ensureProductColumns() {
       { name: 'pharmacy_id', type: 'INTEGER' },
       { name: 'status', type: 'TEXT DEFAULT \'active\'' },
       { name: 'preco_base', type: 'NUMERIC' },
+      { name: 'preco_portugues', type: 'NUMERIC' },
+      { name: 'preco_indiano', type: 'NUMERIC' },
+      { name: 'origin', type: 'TEXT' },
+      { name: 'parent_product_id', type: 'INTEGER' },
+      { name: 'is_main_variant', type: 'BOOLEAN DEFAULT false' },
       { name: 'created_at', type: 'TIMESTAMP DEFAULT NOW()' },
       { name: 'updated_at', type: 'TIMESTAMP DEFAULT NOW()' }
     ];

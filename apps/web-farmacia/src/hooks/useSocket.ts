@@ -74,5 +74,5 @@ export function useSocket(pharmacyId: number | undefined) {
     }
   }, [])
 
-  return { emitOrderStatus }
+  return { emitOrderStatus, socket: socketRef.current }
 }

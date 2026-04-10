@@ -8,12 +8,13 @@ export function registerMedicalRoutes(app: Express) {
   app.get("/api/user/:userId/medical-info", async (req: Request, res: Response) => {
     try {
       const userId = parseInt(String(req.params.userId));
-      const [record] = await db
+      const result = await db
         .select()
         .from(medicalRecords)
         .where(eq(medicalRecords.userId, userId))
         .limit(1);
       
+      const record = result.length > 0 ? result[0] : null;
       res.json(record || {});
     } catch (error) {
       res.status(500).json({ message: "Erro ao buscar dados médicos" });
@@ -26,25 +27,38 @@ export function registerMedicalRoutes(app: Express) {
       const userId = parseInt(String(req.params.userId));
       const data = req.body;
 
-      const [existing] = await db
+      const existingResult = await db
         .select()
         .from(medicalRecords)
         .where(eq(medicalRecords.userId, userId))
         .limit(1);
 
+      const existing = existingResult.length > 0 ? existingResult[0] : null;
       if (existing) {
-        const [updated] = await db
+        const updatedResult = await db
           .update(medicalRecords)
           .set({ ...data, updatedAt: new Date() })
           .where(eq(medicalRecords.userId, userId))
           .returning();
+        
+        if (updatedResult.length === 0) {
+          return res.status(500).json({ message: "Erro ao atualizar dados médicos" });
+        }
+        
+        const updated = updatedResult[0];
         return res.json(updated);
       }
 
-      const [newRecord] = await db
+      const newRecordResult = await db
         .insert(medicalRecords)
         .values({ ...data, userId })
         .returning();
+      
+      if (newRecordResult.length === 0) {
+        return res.status(500).json({ message: "Erro ao salvar dados médicos" });
+      }
+      
+      const newRecord = newRecordResult[0];
       res.status(201).json(newRecord);
     } catch (error) {
       res.status(500).json({ message: "Erro ao salvar dados médicos" });
@@ -70,10 +84,16 @@ export function registerMedicalRoutes(app: Express) {
     try {
       const userId = parseInt(String(req.params.userId));
       const data = req.body;
-      const [newReminder] = await db
+      const newReminderResult = await db
         .insert(medicationReminders)
         .values({ ...data, userId })
         .returning();
+      
+      if (newReminderResult.length === 0) {
+        return res.status(500).json({ message: "Erro ao adicionar medicamento" });
+      }
+      
+      const newReminder = newReminderResult[0];
       res.status(201).json(newReminder);
     } catch (error) {
       res.status(500).json({ message: "Erro ao adicionar medicamento" });

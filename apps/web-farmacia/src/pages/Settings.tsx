@@ -25,8 +25,8 @@ const markerIcon = new L.Icon({
 function formatIBAN(value: string): string {
   // Remove all non-digit characters
   const digits = value.replace(/\D/g, '')
-  // Limit to 25 digits
-  const limited = digits.slice(0, 25)
+  // Limit to 21 digits (after AO06)
+  const limited = digits.slice(0, 21)
   // Group by 4 characters
   const groups = limited.match(/.{1,4}/g)
   return groups ? groups.join(' ') : limited
@@ -328,12 +328,12 @@ export default function Settings() {
                     value={formData.iban}
                     onChange={(e) => setFormData({ ...formData, iban: formatIBAN(e.target.value) })}
                     className="flex-1 pl-3 pr-4 py-2 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none font-mono"
-                    placeholder="0040 0000 1234 5678 9012 3"
-                    maxLength={29}
+                    placeholder="0040 0000 1234 5678 901"
+                    maxLength={25}
                   />
                 </div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">25 dígitos após AO06</p>
+              <p className="text-xs text-gray-500 mt-1">21 dígitos após AO06</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">

@@ -28,15 +28,17 @@ export function registerSettingsRoutes(app: express.Application) {
   app.get("/api/admin/settings/:key", async (req: Request, res: Response) => {
     try {
       const key = String(req.params.key);
-      const [setting] = await db
+      const result = await db
         .select()
         .from(systemSettings)
         .where(sql`key = ${key}`)
         .limit(1);
       
-      if (!setting) {
+      if (result.length === 0) {
         return res.status(404).json({ message: "Configuração não encontrada" });
       }
+
+      const setting = result[0];
       
       res.json(setting);
     } catch (error) {
@@ -55,15 +57,17 @@ export function registerSettingsRoutes(app: express.Application) {
         return res.status(400).json({ message: "Valor é obrigatório" });
       }
 
-      const [setting] = await db
+      const result = await db
         .update(systemSettings)
         .set({ value: String(value), updatedAt: new Date() })
         .where(sql`key = ${key}`)
         .returning();
 
-      if (!setting) {
+      if (result.length === 0) {
         return res.status(404).json({ message: "Configuração não encontrada" });
       }
+
+      const setting = result[0];
 
       res.json({ message: "Configuração atualizada", setting });
     } catch (error) {
@@ -75,12 +79,13 @@ export function registerSettingsRoutes(app: express.Application) {
   // Get platform fee
   app.get("/api/platform-fee", async (req: Request, res: Response) => {
     try {
-      const [setting] = await db
+      const result = await db
         .select()
         .from(systemSettings)
         .where(sql`key = 'platform_fee_percent'`)
         .limit(1);
       
+      const setting = result.length > 0 ? result[0] : null;
       const feePercent = setting ? parseFloat(setting.value) : 15;
       res.json({ feePercent });
     } catch (error) {

@@ -53,32 +53,40 @@ export function registerAdminRoutes(app: Express) {
   // Get dashboard stats
   app.get("/api/admin/dashboard-stats", async (req: Request, res: Response) => {
     try {
-      const [pharmacyStats] = await db
+      const pharmacyStatsResult = await db
         .select({
           total: sql<number>`count(*)`,
           active: sql<number>`count(case when ${pharmacies.status} = 'active' then 1 end)`,
           pending: sql<number>`count(case when ${pharmacies.status} = 'pending' then 1 end)`,
         })
         .from(pharmacies);
+      if (pharmacyStatsResult.length === 0) throw new Error("Failed to fetch pharmacy statistics");
+      const pharmacyStats = pharmacyStatsResult[0];
 
-      const [orderStats] = await db
+      const orderStatsResult = await db
         .select({
           total: sql<number>`count(*)`,
         })
         .from(orders);
+      if (orderStatsResult.length === 0) throw new Error("Failed to fetch order statistics");
+      const orderStats = orderStatsResult[0];
 
-      const [todayOrderStats] = await db
+      const todayOrderStatsResult = await db
         .select({
           total: sql<number>`count(*)`,
         })
         .from(orders)
         .where(sql`${orders.createdAt} >= (now()::date)`);
+      if (todayOrderStatsResult.length === 0) throw new Error("Failed to fetch today's order statistics");
+      const todayOrderStats = todayOrderStatsResult[0];
 
-      const [userStats] = await db
+      const userStatsResult = await db
         .select({
           total: sql<number>`count(*)`,
         })
         .from(users);
+      if (userStatsResult.length === 0) throw new Error("Failed to fetch user statistics");
+      const userStats = userStatsResult[0];
 
       const recentOrders = await db
         .select({
@@ -94,12 +102,14 @@ export function registerAdminRoutes(app: Express) {
         .orderBy(desc(orders.createdAt))
         .limit(10);
 
-      const [revenueStats] = await db
+      const revenueStatsResult = await db
         .select({
           total: sql<string>`coalesce(sum(${orders.total}), 0)`,
         })
         .from(orders)
         .where(eq(orders.status, 'delivered'));
+      if (revenueStatsResult.length === 0) throw new Error("Failed to fetch revenue statistics");
+      const revenueStats = revenueStatsResult[0];
 
       const totalRevenue = parseFloat(revenueStats.total);
       const totalProfit = (totalRevenue * (0.15 / 1.15)).toFixed(2);
@@ -154,7 +164,7 @@ export function registerAdminRoutes(app: Express) {
         return res.status(400).json({ message: "All fields are required" });
       }
 
-      const [pharmacy] = await db
+      const pharmacyResult = await db
         .insert(pharmacies)
         .values({
           name,
@@ -169,6 +179,8 @@ export function registerAdminRoutes(app: Express) {
           accountName: accountName || null,
         })
         .returning();
+      if (pharmacyResult.length === 0) throw new Error("Failed to create pharmacy");
+      const pharmacy = pharmacyResult[0];
 
       // Create a default admin for the pharmacy
       const hashedPassword = await bcrypt.hash("farm123", 10);
@@ -222,41 +234,42 @@ export function registerAdminRoutes(app: Express) {
       // If no admin exists (for older pharmacies), create a default one
       if (admins.length === 0) {
         console.log(`[Admin] No admins found for pharmacy ${pharmacyId}, attempting to create default...`);
-        const [pharmacy] = await db
+        const pharmacyResult = await db
           .select()
           .from(pharmacies)
           .where(eq(pharmacies.id, pharmacyId))
           .limit(1);
-
-        if (pharmacy) {
-          console.log(`[Admin] Creating default admin for pharmacy: ${pharmacy.name} (${pharmacy.email})`);
-          const hashedPassword = await bcrypt.hash("farm123", 10);
-          try {
-            await db.insert(pharmacyAdmins).values({
-              pharmacyId: pharmacy.id,
-              email: pharmacy.email,
-              password: hashedPassword,
-              name: `Admin ${pharmacy.name}`,
-              role: 'admin',
-            });
-            console.log(`[Admin] Default admin created successfully`);
-          } catch (insertErr: any) {
-            console.error(`[Admin] Failed to insert default admin:`, insertErr.message);
-          }
-
-          // Fetch again
-          admins = await db
-            .select({
-              id: pharmacyAdmins.id,
-              email: pharmacyAdmins.email,
-              name: pharmacyAdmins.name,
-              role: pharmacyAdmins.role,
-            })
-            .from(pharmacyAdmins)
-            .where(eq(pharmacyAdmins.pharmacyId, pharmacyId));
-        } else {
+        if (pharmacyResult.length === 0) {
           console.warn(`[Admin] Pharmacy with ID ${pharmacyId} not found in database`);
+          return res.json([]);
         }
+        const pharmacy = pharmacyResult[0];
+
+        console.log(`[Admin] Creating default admin for pharmacy: ${pharmacy.name} (${pharmacy.email})`);
+        const hashedPassword = await bcrypt.hash("farm123", 10);
+        try {
+          await db.insert(pharmacyAdmins).values({
+            pharmacyId: pharmacy.id,
+            email: pharmacy.email,
+            password: hashedPassword,
+            name: `Admin ${pharmacy.name}`,
+            role: 'admin',
+          });
+          console.log(`[Admin] Default admin created successfully`);
+        } catch (insertErr: any) {
+          console.error(`[Admin] Failed to insert default admin:`, insertErr.message);
+        }
+
+        // Fetch again
+        admins = await db
+          .select({
+            id: pharmacyAdmins.id,
+            email: pharmacyAdmins.email,
+            name: pharmacyAdmins.name,
+            role: pharmacyAdmins.role,
+          })
+          .from(pharmacyAdmins)
+          .where(eq(pharmacyAdmins.pharmacyId, pharmacyId));
       }
 
       res.json(admins);
@@ -297,23 +310,25 @@ export function registerAdminRoutes(app: Express) {
     try {
       const pharmacyId = parseInt(req.params.id as string);
 
-      const [pharmacy] = await db
+      const pharmacyResult = await db
         .select()
         .from(pharmacies)
         .where(eq(pharmacies.id, pharmacyId))
         .limit(1);
-
-      if (!pharmacy) {
+      if (pharmacyResult.length === 0) {
         return res.status(404).json({ message: "Pharmacy not found" });
       }
+      const pharmacy = pharmacyResult[0];
 
-      const [orderStats] = await db
+      const orderStatsResult = await db
         .select({
           count: sql<number>`count(*)`,
           revenue: sql<string>`coalesce(sum(${orders.total}), '0')`,
         })
         .from(orders)
         .where(eq(orders.pharmacyId, pharmacyId));
+      if (orderStatsResult.length === 0) throw new Error("Failed to fetch order stats");
+      const orderStats = orderStatsResult[0];
 
       res.json({
         ...pharmacy,
@@ -331,7 +346,7 @@ export function registerAdminRoutes(app: Express) {
     try {
       const pharmacyId = parseInt(req.params.id as string);
 
-      const [pharmacy] = await db
+      const pharmacyResult = await db
         .select({
           id: pharmacies.id,
           name: pharmacies.name,
@@ -341,10 +356,10 @@ export function registerAdminRoutes(app: Express) {
         .from(pharmacies)
         .where(eq(pharmacies.id, pharmacyId))
         .limit(1);
-
-      if (!pharmacy) {
+      if (pharmacyResult.length === 0) {
         return res.status(404).json({ message: "Pharmacy not found" });
       }
+      const pharmacy = pharmacyResult[0];
 
       res.json({
         hasIban: !!pharmacy.iban,
@@ -365,7 +380,7 @@ export function registerAdminRoutes(app: Express) {
       const pharmacyId = parseInt(req.params.id as string);
       const { iban, multicaixaExpress } = req.body;
 
-      const [pharmacy] = await db
+      const pharmacyResult = await db
         .update(pharmacies)
         .set({
           iban: iban || null,
@@ -373,10 +388,10 @@ export function registerAdminRoutes(app: Express) {
         })
         .where(eq(pharmacies.id, pharmacyId))
         .returning();
-
-      if (!pharmacy) {
+      if (pharmacyResult.length === 0) {
         return res.status(404).json({ message: "Pharmacy not found" });
       }
+      const pharmacy = pharmacyResult[0];
 
       res.json({ message: "Dados de pagamento atualizados", pharmacy });
     } catch (error) {
@@ -467,10 +482,11 @@ export function registerAdminRoutes(app: Express) {
       // Get order count for each user
       const usersWithOrders = await Promise.all(
         allUsers.map(async (user) => {
-          const [result] = await db
+          const resultArray = await db
             .select({ count: sql<number>`count(*)` })
             .from(orders)
             .where(eq(orders.userId, user.id));
+          const result = resultArray.length > 0 ? resultArray[0] : null;
           return { ...user, ordersCount: result?.count || 0 };
         })
       );
@@ -514,7 +530,7 @@ export function registerAdminRoutes(app: Express) {
 
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      const [adminUser] = await db
+      const adminUserResult = await db
         .insert(adminUsers)
         .values({
           email,
@@ -523,6 +539,8 @@ export function registerAdminRoutes(app: Express) {
           role: role || 'admin',
         })
         .returning();
+      if (adminUserResult.length === 0) throw new Error("Failed to create admin user");
+      const adminUser = adminUserResult[0];
 
       res.status(201).json({
         id: adminUser.id,
@@ -556,15 +574,15 @@ export function registerAdminRoutes(app: Express) {
         updateData.password = await bcrypt.hash(password, 10);
       }
 
-      const [updatedAdmin] = await db
+      const updatedAdminResult = await db
         .update(adminUsers)
         .set(updateData)
         .where(eq(adminUsers.id, adminId))
         .returning();
-
-      if (!updatedAdmin) {
+      if (updatedAdminResult.length === 0) {
         return res.status(404).json({ message: "Admin user not found" });
       }
+      const updatedAdmin = updatedAdminResult[0];
 
       res.json({
         id: updatedAdmin.id,
@@ -589,26 +607,25 @@ export function registerAdminRoutes(app: Express) {
       console.log(`[Admin] Attempting to delete admin user with ID: ${adminId}`);
 
       // First, check if the admin exists
-      const [existingAdmin] = await db
+      const existingAdminResult = await db
         .select()
         .from(adminUsers)
         .where(eq(adminUsers.id, adminId))
         .limit(1);
-
-      if (!existingAdmin) {
+      if (existingAdminResult.length === 0) {
         console.log(`[Admin] Admin user with ID ${adminId} not found`);
         return res.status(404).json({ message: "Administrador não encontrado" });
       }
 
-      const [deletedAdmin] = await db
+      const deletedAdminResult = await db
         .delete(adminUsers)
         .where(eq(adminUsers.id, adminId))
         .returning();
-
-      if (!deletedAdmin) {
+      if (deletedAdminResult.length === 0) {
         console.log(`[Admin] Failed to delete admin user with ID ${adminId}`);
         return res.status(500).json({ message: "Falha ao excluir administrador" });
       }
+      const deletedAdmin = deletedAdminResult[0];
 
       console.log(`[Admin] Successfully deleted admin user: ${deletedAdmin.email}`);
       res.json({ message: "Administrador excluído com sucesso" });
@@ -626,15 +643,16 @@ export function registerAdminRoutes(app: Express) {
       startDate.setDate(startDate.getDate() - days);
 
       // Fetch platform fee from settings
-      const [feeSetting] = await db
+      const feeSettingResult = await db
         .select()
         .from(systemSettings)
         .where(sql`key = 'platform_fee_percent'`)
         .limit(1);
+      const feeSetting = feeSettingResult.length > 0 ? feeSettingResult[0] : null;
       const feePercent = feeSetting ? parseFloat(feeSetting.value) / 100 : 0.15;
 
       // Total system revenue
-      const [systemRevenue] = await db
+      const systemRevenueResult = await db
         .select({
           total: sql<string>`coalesce(sum(${orders.total}), '0')`,
           count: sql<number>`count(*)`,
@@ -642,6 +660,8 @@ export function registerAdminRoutes(app: Express) {
         })
         .from(orders)
         .where(sql`${orders.createdAt} >= ${startDate}`);
+      if (systemRevenueResult.length === 0) throw new Error("Failed to fetch system revenue");
+      const systemRevenue = systemRevenueResult[0];
 
       // Revenue breakdown by pharmacy
       const pharmacyBreakdown = await db

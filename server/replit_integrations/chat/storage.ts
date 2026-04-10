@@ -13,8 +13,8 @@ export interface IChatStorage {
 
 export const chatStorage: IChatStorage = {
   async getConversation(id: number) {
-    const [conversation] = await db.select().from(conversations).where(eq(conversations.id, id));
-    return conversation;
+    const result = await db.select().from(conversations).where(eq(conversations.id, id));
+    return result.length > 0 ? result[0] : undefined;
   },
 
   async getAllConversations() {
@@ -22,8 +22,11 @@ export const chatStorage: IChatStorage = {
   },
 
   async createConversation(title: string) {
-    const [conversation] = await db.insert(conversations).values({ title }).returning();
-    return conversation;
+    const result = await db.insert(conversations).values({ title }).returning();
+    if (result.length === 0) {
+      throw new Error("Failed to create conversation");
+    }
+    return result[0];
   },
 
   async deleteConversation(id: number) {
@@ -36,8 +39,11 @@ export const chatStorage: IChatStorage = {
   },
 
   async createMessage(conversationId: number, role: string, content: string) {
-    const [message] = await db.insert(messages).values({ conversationId, role, content }).returning();
-    return message;
+    const result = await db.insert(messages).values({ conversationId, role, content }).returning();
+    if (result.length === 0) {
+      throw new Error("Failed to create message");
+    }
+    return result[0];
   },
 };
 

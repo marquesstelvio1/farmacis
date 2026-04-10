@@ -34,11 +34,16 @@ export function registerPharmacyRoutes(app: Express) {
       }
 
       // Get pharmacy info
-      const [pharmacy] = await db
+      const pharmacyResult = await db
         .select()
         .from(pharmacies)
         .where(eq(pharmacies.id, admin.pharmacyId))
         .limit(1);
+      
+      if (pharmacyResult.length === 0) {
+        throw new Error("Pharmacy not found");
+      }
+      const pharmacy = pharmacyResult[0];
 
       // In production, create a proper session/JWT
       res.json({
@@ -47,7 +52,7 @@ export function registerPharmacyRoutes(app: Express) {
           email: admin.email,
           name: admin.name,
           pharmacyId: admin.pharmacyId,
-          pharmacyName: pharmacy?.name || '',
+          pharmacyName: pharmacy.name || '',
           role: admin.role,
         },
       });
@@ -70,7 +75,7 @@ export function registerPharmacyRoutes(app: Express) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const [todayStats] = await db
+      const todayResults = await db
         .select({
           count: sql<number>`count(*)`,
           revenue: sql<string>`coalesce(sum(${orders.total}), '0')`,
@@ -83,7 +88,9 @@ export function registerPharmacyRoutes(app: Express) {
           )
         );
 
-      const [pendingStats] = await db
+      const todayStats = todayResults.length > 0 ? todayResults[0] : { count: 0, revenue: '0' };
+
+      const pendingResults = await db
         .select({ count: sql<number>`count(*)` })
         .from(orders)
         .where(
@@ -92,6 +99,8 @@ export function registerPharmacyRoutes(app: Express) {
             eq(orders.status, 'pending')
           )
         );
+
+      const pendingStats = pendingResults.length > 0 ? pendingResults[0] : { count: 0 };
 
       const recentOrders = await db
         .select({
@@ -129,7 +138,7 @@ export function registerPharmacyRoutes(app: Express) {
         return res.status(400).json({ message: "Pharmacy ID required" });
       }
 
-      const [result] = await db
+      const results = await db
         .select({ count: sql<number>`count(*)` })
         .from(orders)
         .where(
@@ -139,7 +148,8 @@ export function registerPharmacyRoutes(app: Express) {
           )
         );
 
-      res.json({ count: result.count });
+      const count = results.length > 0 ? results[0].count : 0;
+      res.json({ count });
     } catch (error) {
       console.error("Pending count error:", error);
       res.status(500).json({ message: "Failed to fetch count" });
@@ -167,7 +177,7 @@ export function registerPharmacyRoutes(app: Express) {
     }
   });
 
-  // Get all pharmacies for debugging
+  // Get all pharmacies for map display
   app.get("/api/pharmacy/list", async (req: Request, res: Response) => {
     try {
       const allPharmacies = await db
@@ -175,13 +185,28 @@ export function registerPharmacyRoutes(app: Express) {
           id: pharmacies.id,
           name: pharmacies.name,
           email: pharmacies.email,
+          phone: pharmacies.phone,
+          address: pharmacies.address,
           status: pharmacies.status,
+          logoUrl: pharmacies.logoUrl,
+          lat: pharmacies.lat,
+          lng: pharmacies.lng,
+          description: pharmacies.description,
+          openingHours: pharmacies.openingHours,
         })
         .from(pharmacies)
+        .where(eq(pharmacies.status, 'active'))
         .orderBy(pharmacies.name);
 
-      console.log('All pharmacies:', allPharmacies);
-      res.json(allPharmacies);
+      // Convert numeric strings to numbers for map coordinates
+      const formattedPharmacies = allPharmacies.map(pharm => ({
+        ...pharm,
+        latitude: parseFloat(String(pharm.lat || 0)),
+        longitude: parseFloat(String(pharm.lng || 0)),
+      }));
+
+      console.log('Active pharmacies:', formattedPharmacies);
+      res.json(formattedPharmacies);
     } catch (error) {
       console.error("Fetch pharmacies error:", error);
       res.status(500).json({ message: "Failed to fetch pharmacies" });
@@ -257,15 +282,16 @@ export function registerPharmacyRoutes(app: Express) {
       const orderIdParam = req.params.id;
       const orderId = typeof orderIdParam === 'string' ? parseInt(orderIdParam) : NaN;
       
-      const [order] = await db
+      const orderResult = await db
         .select()
         .from(orders)
         .where(eq(orders.id, orderId))
         .limit(1);
 
-      if (!order) {
+      if (orderResult.length === 0) {
         return res.status(404).json({ message: "Order not found" });
       }
+      const order = orderResult[0];
 
       const items = await db
         .select()
@@ -298,15 +324,16 @@ export function registerPharmacyRoutes(app: Express) {
       }
 
       // Fetch current order to check locking status
-      const [existingOrder] = await db
+      const existingOrderResult = await db
         .select()
         .from(orders)
         .where(eq(orders.id, orderId))
         .limit(1);
 
-      if (!existingOrder) {
+      if (existingOrderResult.length === 0) {
         return res.status(404).json({ message: "Order not found" });
       }
+      const existingOrder = existingOrderResult[0];
 
       // Check if order is locked - prevent any modifications
       if (existingOrder.isLocked) {
@@ -370,26 +397,39 @@ export function registerPharmacyRoutes(app: Express) {
       const search = typeof req.query.search === 'string' ? req.query.search : undefined;
       const category = typeof req.query.category === 'string' ? req.query.category : undefined;
       const status = typeof req.query.status === 'string' ? req.query.status : undefined;
-
-      let query = db.select().from(products);
+      const filters: any[] = [];
       if (!Number.isNaN(pharmacyId) && pharmacyId > 0) {
-        query = query.where(eq(products.pharmacyId, pharmacyId));
+        filters.push(eq(products.pharmacyId, pharmacyId));
       }
-
       if (search) {
-        query = query.where(
+        filters.push(
           sql`(${products.name} ILIKE ${`%${search}%`} OR ${products.diseases}::text ILIKE ${`%${search}%`} OR COALESCE(${products.brand}, '') ILIKE ${`%${search}%`})`
         );
       }
       if (category) {
-        query = query.where(eq(products.category, category));
+        filters.push(eq(products.category, category));
       }
       if (status) {
-        query = query.where(eq(products.status, status));
+        filters.push(eq(products.status, status));
       }
 
-      const allProducts = await query.orderBy(products.name);
-      res.json(allProducts.map(p => ({ ...p, inStock: true })));
+      const rows = await db
+        .select({
+          product: products,
+          pharmacyName: pharmacies.name,
+        })
+        .from(products)
+        .leftJoin(pharmacies, eq(products.pharmacyId, pharmacies.id))
+        .where(filters.length > 0 ? and(...filters) : sql`true`)
+        .orderBy(products.name);
+
+      const allProducts = rows.map(({ product, pharmacyName }) => ({
+        ...product,
+        pharmacyName: pharmacyName || "Farmácia sem nome",
+        inStock: true,
+      }));
+
+      res.json(allProducts);
     } catch (error) {
       console.error("Fetch products error:", error);
       res.status(500).json({ message: "Failed to fetch products" });
@@ -434,7 +474,7 @@ export function registerPharmacyRoutes(app: Express) {
       startDate.setDate(startDate.getDate() - days);
 
       // Total revenue for this pharmacy
-      const [revenueStats] = await db
+      const revenueStatsResult = await db
         .select({
           total: sql<string>`coalesce(sum(${orders.total}), '0')`,
           count: sql<number>`count(*)`,
@@ -447,9 +487,14 @@ export function registerPharmacyRoutes(app: Express) {
             sql`${orders.createdAt} >= ${startDate}`
           )
         );
+      
+      if (revenueStatsResult.length === 0) {
+        throw new Error("Failed to calculate revenue stats");
+      }
+      const revenueStats = revenueStatsResult[0];
 
       // Pending revenue (orders not yet delivered)
-      const [pendingStats] = await db
+      const pendingStatsResult = await db
         .select({
           total: sql<string>`coalesce(sum(${orders.total}), '0')`,
         })
@@ -460,6 +505,11 @@ export function registerPharmacyRoutes(app: Express) {
             sql`${orders.status} != 'delivered' AND ${orders.createdAt} >= ${startDate}`
           )
         );
+      
+      if (pendingStatsResult.length === 0) {
+        throw new Error("Failed to calculate pending stats");
+      }
+      const pendingStats = pendingStatsResult[0];
 
       // Order breakdown by day
       const orderBreakdown = await db

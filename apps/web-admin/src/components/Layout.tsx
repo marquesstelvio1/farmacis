@@ -8,14 +8,11 @@ import {
   LogOut,
   Menu,
   X,
-  Moon,
-  Sun,
   Shield,
   DollarSign,
   Settings
 } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
-import { useTheme } from '../hooks/useTheme'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -35,7 +32,6 @@ export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
   const { user, logout } = useAuthStore()
-  const { theme, toggleTheme } = useTheme()
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -136,13 +132,6 @@ export default function Layout({ children }: LayoutProps) {
               </button>
             </div>
             <div className="flex items-center gap-4">
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-                title={theme === 'light' ? 'Modo escuro' : 'Modo claro'}
-              >
-                {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-              </button>
               <span className="text-sm text-muted-foreground">
                 {new Date().toLocaleDateString('pt-BR', { 
                   weekday: 'long', 
