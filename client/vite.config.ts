@@ -5,7 +5,7 @@ import path from 'path'
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    dedupe: ['react', 'react-dom'], // 👈 adiciona isto
+    dedupe: ['react', 'react-dom'], 
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),
       '@shared': path.resolve(import.meta.dirname, '../shared'),
@@ -22,7 +22,19 @@ export default defineConfig({
         target: process.env.VITE_API_URL || 'http://localhost:5001',
         changeOrigin: true,
         ws: true,
-        timeout: 5000,
+        timeout: 30000,
+        proxyTimeout: 30000,
+        onError: (err, req, res) => {
+          res.writeHead(503, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Backend server is not running' }));
+        },
+      },
+      '/pharmacies': {
+        target: process.env.VITE_API_URL || 'http://localhost:5001',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/pharmacies/, '/api/pharmacies'),
+        timeout: 30000,
+        proxyTimeout: 30000,
         onError: (err, req, res) => {
           res.writeHead(503, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Backend server is not running' }));

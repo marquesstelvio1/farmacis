@@ -37,7 +37,7 @@ function MapAutoZoom({ pharmacies }: { pharmacies: Pharmacy[] }) {
         .map(p => {
           const lat = p.latitude ?? p.lat
           const lng = p.longitude ?? p.lng
-          if (typeof lat === "number" && typeof lng === "number") {
+          if (typeof lat === "number" && typeof lng === "number" && !isNaN(lat) && !isNaN(lng)) {
             return [lat, lng] as [number, number]
           }
           return null
@@ -158,6 +158,9 @@ interface Product {
   stock?: number;
   prescriptionRequired?: boolean;
   activeIngredient?: string;
+  diseases?: string[];
+  precoPortugues?: string | number;
+  precoIndiano?: string | number;
 }
 
 interface LocationPoint {
@@ -325,8 +328,10 @@ export default function Home() {
   const [showCheckoutAddressSuggestions, setShowCheckoutAddressSuggestions] = useState(false);
   const [checkoutAddressLoading, setCheckoutAddressLoading] = useState(false);
   const [checkoutPoint, setCheckoutPoint] = useState<LocationPoint | null>(null);
+  const [checkoutMethodsByPharmacy, setCheckoutMethodsByPharmacy] = useState<Record<number, "delivery" | "pickup">>({});
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [showExploreFilters, setShowExploreFilters] = useState(false);
+  const [showCatalogFilters, setShowCatalogFilters] = useState(false);
   const [onlyOpenPharmacies, setOnlyOpenPharmacies] = useState(false);
   const [userLocation, setUserLocation] = useState<LocationPoint>({ lat: -8.85, lng: 13.25 });
   const [locationLabel, setLocationLabel] = useState("Localização atual");
@@ -342,7 +347,7 @@ export default function Home() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [orderNotifications, setOrderNotifications] = useState<UserOrderNotification[]>([]);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
-  const [knownOrderSignatures, setKnownOrderSignatures] = useState<Record<number, string>>({});
+  const [, setKnownOrderSignatures] = useState<Record<number, string>>({});
   const [favoriteProductIds, setFavoriteProductIds] = useState<number[]>([]);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const pharmacySheetRef = useRef<HTMLDivElement | null>(null);
@@ -689,10 +694,12 @@ export default function Home() {
           const productName = String(product.name || "").toLowerCase();
           const productBrand = String(product.brand || "").toLowerCase();
           const productIngredient = String(product.activeIngredient || "").toLowerCase();
+          const productDiseases = (product.diseases || []).map(d => String(d).toLowerCase());
           return (
             productName.includes(query) ||
             productBrand.includes(query) ||
-            productIngredient.includes(query)
+            productIngredient.includes(query) ||
+            productDiseases.some(d => d.includes(query))
           );
         })
         .map((product) => Number(product.pharmacyId))
@@ -934,40 +941,39 @@ export default function Home() {
   }, []);
 
   // Cart functions
-  const addToCart = (product: Product) => {
-    if (!product.pharmacyId) {
-      return;
-    }
-
+  const addToCart = (product: Product, origin: "portugues" | "indiano" | "default" = "default") => {
+    if (!product.pharmacyId) return;
+    const cartKey = `${product.id}-${origin}`;
+    let priceToUse = parseFloat(String(product.price));
+    if (origin === "portugues" && product.precoPortugues) priceToUse = parseFloat(String(product.precoPortugues));
+    if (origin === "indiano" && product.precoIndiano) priceToUse = parseFloat(String(product.precoIndiano));
+    const productWithCorrectPrice = { ...product, price: priceToUse };
     setCart(prevCart => {
       const newCart = { ...prevCart };
-      const existing = newCart[product.id];
-      
+      const existing = newCart[cartKey];
       if (existing) {
-        if (existing.quantity < (product.stock || 1)) {
+        if (existing.quantity < (product.stock || 100)) {
           existing.quantity += 1;
         }
       } else {
-        newCart[product.id] = { product, quantity: 1 };
+        newCart[cartKey] = { product: productWithCorrectPrice, quantity: 1, origin };
       }
-      
       return newCart;
     });
   };
 
-  const removeFromCart = (productId: number) => {
+  const removeFromCart = (productId: number, origin: "portugues" | "indiano" | "default" = "default") => {
+    const cartKey = `${productId}-${origin}`;
     setCart(prevCart => {
       const newCart = { ...prevCart };
-      const item = newCart[productId];
-      
+      const item = newCart[cartKey];
       if (item) {
         if (item.quantity > 1) {
           item.quantity -= 1;
         } else {
-          delete newCart[productId];
+          delete newCart[cartKey];
         }
       }
-      
       return newCart;
     });
   };
@@ -977,7 +983,7 @@ export default function Home() {
   }, 0);
 
   const cartGroups = useMemo(() => {
-    const groups = new Map<number, { pharmacyId: number; pharmacyName: string; items: Array<{ product: Product; quantity: number }>; subtotal: number }>();
+    const groups = new Map<number, { pharmacyId: number; pharmacyName: string; items: Array<{ product: Product; quantity: number; origin?: "portugues" | "indiano" | "default" }>; subtotal: number }>();
 
     Object.values(cart).forEach((entry) => {
       const pharmacyId = Number(entry.product.pharmacyId || 0);
@@ -998,13 +1004,32 @@ export default function Home() {
     return Array.from(groups.values());
   }, [cart]);
 
+  useEffect(() => {
+    setCheckoutMethodsByPharmacy((prev) => {
+      const next: Record<number, "delivery" | "pickup"> = {};
+      for (const group of cartGroups) {
+        next[group.pharmacyId] = prev[group.pharmacyId] || "delivery";
+      }
+      return next;
+    });
+  }, [cartGroups]);
+
+  const hasAnyDeliveryInCheckout = useMemo(
+    () => cartGroups.some((group) => (checkoutMethodsByPharmacy[group.pharmacyId] || "delivery") === "delivery"),
+    [cartGroups, checkoutMethodsByPharmacy]
+  );
+
   const handleCheckout = async () => {
     if (cartGroups.length === 0) {
       setCheckoutError("O carrinho não tem itens válidos por farmácia.");
       return;
     }
-    if (!checkoutName.trim() || !checkoutPhone.trim() || !checkoutAddress.trim()) {
-      setCheckoutError("Preencha nome, telefone e endereço para finalizar.");
+    if (!checkoutName.trim() || !checkoutPhone.trim()) {
+      setCheckoutError("Preencha nome e telefone para finalizar.");
+      return;
+    }
+    if (hasAnyDeliveryInCheckout && !checkoutAddress.trim()) {
+      setCheckoutError("Preencha o endereço para os pedidos com entrega.");
       return;
     }
 
@@ -1025,20 +1050,22 @@ export default function Home() {
       const createdOrders: Array<{ pharmacyId: number; pharmacyName: string; orderId: number }> = [];
 
       for (const group of cartGroups) {
+        const bookingType = checkoutMethodsByPharmacy[group.pharmacyId] || "delivery";
         const payload = {
           pharmacyId: group.pharmacyId,
           userId: currentUser?.id || null,
           customerName: checkoutName.trim(),
           customerPhone: checkoutPhone.trim(),
-          customerAddress: checkoutAddress.trim(),
-          customerLat: checkoutPoint?.lat ? String(checkoutPoint.lat) : undefined,
-          customerLng: checkoutPoint?.lng ? String(checkoutPoint.lng) : undefined,
+          customerAddress: bookingType === "delivery" ? checkoutAddress.trim() : `Levantamento na ${group.pharmacyName}`,
+          customerLat: bookingType === "delivery" && checkoutPoint?.lat ? String(checkoutPoint.lat) : undefined,
+          customerLng: bookingType === "delivery" && checkoutPoint?.lng ? String(checkoutPoint.lng) : undefined,
+          bookingType,
           paymentMethod: checkoutPaymentMethod,
           deliveryFee: "0",
           total: String(group.subtotal.toFixed(2)),
-          items: group.items.map(({ product, quantity }) => ({
+            items: group.items.map(({ product, quantity, origin }) => ({
             productId: product.id,
-            productName: product.name,
+              productName: origin && origin !== 'default' ? `${product.name} (${origin === 'portugues' ? 'Português' : 'Indiano'})` : product.name,
             quantity,
             unitPrice: product.price,
             prescriptionRequired: Boolean(product.prescriptionRequired),
@@ -1106,7 +1133,7 @@ export default function Home() {
                 userId: parsedUser.id,
                 name: checkoutName.trim(),
                 phone: checkoutPhone.trim(),
-                address: checkoutAddress.trim(),
+                address: hasAnyDeliveryInCheckout ? checkoutAddress.trim() : parsedUser.address,
               }),
             });
 
@@ -1116,7 +1143,7 @@ export default function Home() {
                 ...parsedUser,
                 name: checkoutName.trim(),
                 phone: checkoutPhone.trim(),
-                address: checkoutAddress.trim(),
+                address: hasAnyDeliveryInCheckout ? checkoutAddress.trim() : parsedUser.address,
               })
             );
           }
@@ -1777,10 +1804,12 @@ export default function Home() {
 
     // Filter products
     let filteredProducts = products.filter(product => {
+      const query = searchQuery.toLowerCase();
       const matchesSearch = !searchQuery || 
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.activeIngredient?.toLowerCase().includes(searchQuery.toLowerCase());
+        product.name.toLowerCase().includes(query) ||
+        product.description?.toLowerCase().includes(query) ||
+        product.activeIngredient?.toLowerCase().includes(query) ||
+        product.diseases?.some(d => d.toLowerCase().includes(query));
       
       const matchesCategory = !selectedCategory || product.category === selectedCategory;
       const matchesPharmacy = !catalogPharmacyFilterId || Number(product.pharmacyId) === catalogPharmacyFilterId;
@@ -1825,48 +1854,75 @@ export default function Home() {
             </div>
 
             {/* Search Bar */}
-            <input
-              type="text"
-              placeholder="Procurar medicamentos..."
-              className="w-full h-11 px-4 rounded-full border-0 mb-3"
-              style={{ backgroundColor: '#f7f7f7', color: '#072a1c' }}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+            <div className="relative flex items-center mb-3">
+              <input
+                type="text"
+                placeholder="Procurar medicamentos..."
+                className="w-full h-11 px-4 pr-12 rounded-full border-0"
+                style={{ backgroundColor: '#f7f7f7', color: '#072a1c' }}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowCatalogFilters((prev) => !prev)}
+                className="absolute right-2 w-8 h-8 rounded-full flex items-center justify-center transition hover:scale-105"
+                style={{ 
+                  color: '#072a1c', 
+                  background: showCatalogFilters ? '#b5f176' : 'rgba(181, 241, 118, 0.4)' 
+                }}
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                {/* Badge de filtro ativo (aparece quando uma categoria é selecionada) */}
+                {selectedCategory !== "" && (
+                  <span 
+                    className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm"
+                    style={{ backgroundColor: '#ef4444' }}
+                  />
+                )}
+              </button>
+            </div>
 
             {/* Filters */}
             <div className="space-y-3">
               {/* Category Filter */}
-              {categories.length > 0 && (
-                <div>
-                  <p className="text-xs font-bold mb-2" style={{ color: '#b5f176' }}>Categoria</p>
-                  <div className="flex gap-2 overflow-x-auto pb-2">
-                    <button
-                      onClick={() => setSelectedCategory("")}
-                      className="px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition"
-                      style={{
-                        backgroundColor: selectedCategory === "" ? '#b5f176' : 'rgba(181, 241, 118, 0.2)',
-                        color: selectedCategory === "" ? '#072a1c' : '#b5f176'
-                      }}
-                    >
-                      Todas
-                    </button>
-                    {categories.map(cat => (
+              <AnimatePresence>
+                {showCatalogFilters && categories.length > 0 && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0, marginBottom: 0 }}
+                    animate={{ height: "auto", opacity: 1, marginBottom: 8 }}
+                    exit={{ height: 0, opacity: 0, marginBottom: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <p className="text-xs font-bold mb-2" style={{ color: '#b5f176' }}>Categoria</p>
+                    <div className="flex gap-2 overflow-x-auto pb-2">
                       <button
-                        key={cat}
-                        onClick={() => setSelectedCategory(cat || "")}
+                        onClick={() => setSelectedCategory("")}
                         className="px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition"
                         style={{
-                          backgroundColor: selectedCategory === cat ? '#b5f176' : 'rgba(181, 241, 118, 0.2)',
-                          color: selectedCategory === cat ? '#072a1c' : '#b5f176'
+                          backgroundColor: selectedCategory === "" ? '#b5f176' : 'rgba(181, 241, 118, 0.2)',
+                          color: selectedCategory === "" ? '#072a1c' : '#b5f176'
                         }}
                       >
-                        {cat}
+                        Todas
                       </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+                      {categories.map(cat => (
+                        <button
+                          key={cat}
+                          onClick={() => setSelectedCategory(cat || "")}
+                          className="px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition"
+                          style={{
+                            backgroundColor: selectedCategory === cat ? '#b5f176' : 'rgba(181, 241, 118, 0.2)',
+                            color: selectedCategory === cat ? '#072a1c' : '#b5f176'
+                          }}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Counter */}
               <p className="text-xs" style={{ color: '#8bc14a' }}>
@@ -1932,7 +1988,6 @@ export default function Home() {
               </div>
             ) : filteredProducts.length > 0 ? (
               filteredProducts.map((product) => {
-                const cartItem = cart[product.id];
                 const isFavorite = favoriteProductIds.includes(product.id);
                 return (
                   <div 
@@ -2002,46 +2057,102 @@ export default function Home() {
 
                       {/* Price and Buttons */}
                       <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-lg font-black" style={{ color: '#8bc14a' }}>
-                            {product.price} Kz
-                          </p>
-                        </div>
-                        
-                        {/* Cart Controls */}
-                        {cartItem ? (
-                          <div className="flex items-center gap-2 bg-white rounded-lg px-2 py-1" style={{ border: '1px solid #8bc14a' }}>
-                            <button
-                              onClick={() => removeFromCart(product.id)}
-                              className="w-5 h-5 flex items-center justify-center font-bold text-sm transition hover:bg-gray-100 rounded"
-                              style={{ color: '#8bc14a' }}
-                            >
-                              −
-                            </button>
-                            <span className="w-6 text-center text-xs font-bold" style={{ color: '#072a1c' }}>
-                              {cartItem.quantity}
-                            </span>
-                            <button
-                              onClick={() => addToCart(product)}
-                              disabled={!product.stock || product.stock <= 0 || !product.pharmacyId}
-                              className="w-5 h-5 flex items-center justify-center font-bold text-sm transition hover:bg-gray-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                              style={{ color: '#8bc14a' }}
-                            >
-                              +
-                            </button>
+                        {product.precoPortugues && product.precoIndiano ? (
+                          <div className="flex flex-col gap-3 w-full">
+                            {/* Portuguese Variant */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 uppercase tracking-tighter">Português</span>
+                                <p className="text-sm font-bold" style={{ color: '#072a1c' }}>
+                                  {product.precoPortugues} Kz
+                                </p>
+                              </div>
+                              {cart[`${product.id}-portugues`] ? (
+                                <div className="flex items-center gap-2 bg-white rounded-lg px-2 py-1" style={{ border: '1px solid #8bc14a' }}>
+                                  <button onClick={() => removeFromCart(product.id, "portugues")} className="w-5 h-5 flex items-center justify-center font-bold text-sm hover:bg-gray-100 rounded" style={{ color: '#8bc14a' }}>−</button>
+                                  <span className="w-6 text-center text-xs font-bold" style={{ color: '#072a1c' }}>{cart[`${product.id}-portugues`].quantity}</span>
+                                  <button onClick={() => addToCart(product, "portugues")} className="w-5 h-5 flex items-center justify-center font-bold text-sm hover:bg-gray-100 rounded" style={{ color: '#8bc14a' }}>+</button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => addToCart(product, "portugues")}
+                                  disabled={!product.stock || product.stock <= 0 || !product.pharmacyId}
+                                  className="px-3 py-1.5 rounded-lg font-bold text-xs transition"
+                                  style={{ backgroundColor: '#b5f176', color: '#072a1c' }}
+                                >
+                                  Adicionar
+                                </button>
+                              )}
+                            </div>
+                            {/* Indian Variant */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 uppercase tracking-tighter">Indiano</span>
+                                <p className="text-sm font-bold" style={{ color: '#8bc14a' }}>
+                                  {product.precoIndiano} Kz
+                                </p>
+                              </div>
+                              {cart[`${product.id}-indiano`] ? (
+                                <div className="flex items-center gap-2 bg-white rounded-lg px-2 py-1" style={{ border: '1px solid #8bc14a' }}>
+                                  <button onClick={() => removeFromCart(product.id, "indiano")} className="w-5 h-5 flex items-center justify-center font-bold text-sm hover:bg-gray-100 rounded" style={{ color: '#8bc14a' }}>−</button>
+                                  <span className="w-6 text-center text-xs font-bold" style={{ color: '#072a1c' }}>{cart[`${product.id}-indiano`].quantity}</span>
+                                  <button onClick={() => addToCart(product, "indiano")} className="w-5 h-5 flex items-center justify-center font-bold text-sm hover:bg-gray-100 rounded" style={{ color: '#8bc14a' }}>+</button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => addToCart(product, "indiano")}
+                                  disabled={!product.stock || product.stock <= 0 || !product.pharmacyId}
+                                  className="px-3 py-1.5 rounded-lg font-bold text-xs transition"
+                                  style={{ backgroundColor: '#b5f176', color: '#072a1c' }}
+                                >
+                                  Adicionar
+                                </button>
+                              )}
+                            </div>
                           </div>
                         ) : (
-                          <button
-                            onClick={() => addToCart(product)}
-                            disabled={!product.stock || product.stock <= 0 || !product.pharmacyId}
-                            className="px-4 py-2 rounded-lg font-bold text-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{
-                              backgroundColor: (product.stock && product.stock > 0 && product.pharmacyId) ? '#b5f176' : '#ccc',
-                              color: '#072a1c'
-                            }}
-                          >
-                            {product.pharmacyId ? ((product.stock && product.stock > 0) ? 'Adicionar' : 'Indisponível') : 'Sem farmácia'}
-                          </button>
+                          <>
+                            <div className="flex flex-col gap-1">
+                              <p className="text-lg font-black" style={{ color: '#8bc14a' }}>
+                                {product.price} Kz
+                              </p>
+                            </div>
+                            {/* Single Cart Controls */}
+                            {cart[`${product.id}-default`] ? (
+                              <div className="flex items-center gap-2 bg-white rounded-lg px-2 py-1" style={{ border: '1px solid #8bc14a' }}>
+                                <button
+                                  onClick={() => removeFromCart(product.id)}
+                                  className="w-5 h-5 flex items-center justify-center font-bold text-sm transition hover:bg-gray-100 rounded"
+                                  style={{ color: '#8bc14a' }}
+                                >
+                                  −
+                                </button>
+                                <span className="w-6 text-center text-xs font-bold" style={{ color: '#072a1c' }}>
+                                  {cart[`${product.id}-default`].quantity}
+                                </span>
+                                <button
+                                  onClick={() => addToCart(product)}
+                                  disabled={!product.stock || product.stock <= 0 || !product.pharmacyId}
+                                  className="w-5 h-5 flex items-center justify-center font-bold text-sm transition hover:bg-gray-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                  style={{ color: '#8bc14a' }}
+                                >
+                                  +
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => addToCart(product)}
+                                disabled={!product.stock || product.stock <= 0 || !product.pharmacyId}
+                                className="px-4 py-2 rounded-lg font-bold text-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                style={{
+                                  backgroundColor: (product.stock && product.stock > 0 && product.pharmacyId) ? '#b5f176' : '#ccc',
+                                  color: '#072a1c'
+                                }}
+                              >
+                                {product.pharmacyId ? ((product.stock && product.stock > 0) ? 'Adicionar' : 'Indisponível') : 'Sem farmácia'}
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
@@ -2181,18 +2292,54 @@ export default function Home() {
                     {cartGroups.map((group) => (
                       <div key={group.pharmacyId} className="rounded-2xl p-4 border" style={{ borderColor: "#e0e0e0" }}>
                         <p className="text-sm font-black" style={{ color: "#072a1c" }}>{group.pharmacyName}</p>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCheckoutMethodsByPharmacy((prev) => ({ ...prev, [group.pharmacyId]: "delivery" }))
+                            }
+                            className="h-9 rounded-xl text-xs font-bold border transition"
+                            style={{
+                              borderColor: checkoutMethodsByPharmacy[group.pharmacyId] === "delivery" ? "#8bc14a" : "#dce4d7",
+                              backgroundColor:
+                                checkoutMethodsByPharmacy[group.pharmacyId] === "delivery"
+                                  ? "rgba(181, 241, 118, 0.22)"
+                                  : "#f7faf5",
+                              color: "#072a1c",
+                            }}
+                          >
+                            Entrega
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCheckoutMethodsByPharmacy((prev) => ({ ...prev, [group.pharmacyId]: "pickup" }))
+                            }
+                            className="h-9 rounded-xl text-xs font-bold border transition"
+                            style={{
+                              borderColor: checkoutMethodsByPharmacy[group.pharmacyId] === "pickup" ? "#8bc14a" : "#dce4d7",
+                              backgroundColor:
+                                checkoutMethodsByPharmacy[group.pharmacyId] === "pickup"
+                                  ? "rgba(181, 241, 118, 0.22)"
+                                  : "#f7faf5",
+                              color: "#072a1c",
+                            }}
+                          >
+                            Levantamento
+                          </button>
+                        </div>
                         <div className="mt-2 space-y-2">
-                          {group.items.map(({ product, quantity }) => (
-                            <div key={product.id} className="flex items-center justify-between gap-2 text-sm">
-                              <div className="min-w-0">
-                                <p className="truncate" style={{ color: "#072a1c" }}>{product.name}</p>
+                          {group.items.map(({ product, quantity, origin }) => (
+                            <div key={`${product.id}-${origin}`} className="flex items-center justify-between gap-2 text-sm">
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate font-semibold" style={{ color: "#072a1c" }}>{product.name}</p>
                                 <p className="text-xs" style={{ color: "#607369" }}>
                                   {(parseFloat(String(product.price)) * quantity).toFixed(2)} Kz
                                 </p>
                               </div>
                               <div className="flex items-center gap-2 bg-white rounded-lg px-2 py-1" style={{ border: "1px solid #dce4d7" }}>
                                 <button
-                                  onClick={() => removeFromCart(product.id)}
+                                  onClick={() => removeFromCart(product.id, origin || "default")}
                                   className="w-5 h-5 rounded text-sm font-bold"
                                   style={{ color: "#8bc14a" }}
                                 >
@@ -2202,7 +2349,7 @@ export default function Home() {
                                   {quantity}
                                 </span>
                                 <button
-                                  onClick={() => addToCart(product)}
+                                  onClick={() => addToCart(product, origin || "default")}
                                   className="w-5 h-5 rounded text-sm font-bold"
                                   style={{ color: "#8bc14a" }}
                                 >
@@ -2223,7 +2370,9 @@ export default function Home() {
                       <div className="space-y-2">
                         <input value={checkoutName} onChange={(e) => setCheckoutName(e.target.value)} placeholder="Seu nome" className="w-full h-10 px-3 rounded-xl border text-sm" style={{ borderColor: "#dce4d7" }} />
                         <input value={checkoutPhone} onChange={(e) => setCheckoutPhone(e.target.value)} placeholder="Telefone" className="w-full h-10 px-3 rounded-xl border text-sm" style={{ borderColor: "#dce4d7" }} />
-                        <div className="relative">
+                        <div
+                          className={`relative ${!hasAnyDeliveryInCheckout ? "opacity-50 pointer-events-none select-none" : ""}`}
+                        >
                           <input
                             value={checkoutAddress}
                             onChange={(e) => {
@@ -2234,12 +2383,13 @@ export default function Home() {
                             onBlur={() => {
                               window.setTimeout(() => setShowCheckoutAddressSuggestions(false), 120);
                             }}
-                            placeholder="Endereço de entrega"
+                            placeholder={hasAnyDeliveryInCheckout ? "Endereço de entrega" : "Endereço desativado (todos em levantamento)"}
                             className="w-full h-10 px-3 rounded-xl border text-sm"
                             style={{ borderColor: "#dce4d7" }}
+                            disabled={!hasAnyDeliveryInCheckout}
                           />
 
-                          {showCheckoutAddressSuggestions && checkoutAddress.trim().length > 0 && (
+                          {hasAnyDeliveryInCheckout && showCheckoutAddressSuggestions && checkoutAddress.trim().length > 0 && (
                             <div
                               className="absolute z-20 left-0 right-0 mt-1 rounded-xl border max-h-44 overflow-y-auto"
                               style={{ background: "#fff", borderColor: "#dce4d7" }}
@@ -2269,7 +2419,7 @@ export default function Home() {
                             </div>
                           )}
                         </div>
-                        <div className="rounded-xl overflow-hidden border" style={{ borderColor: "#dce4d7" }}>
+                        <div className={`rounded-xl overflow-hidden border ${!hasAnyDeliveryInCheckout ? "opacity-60" : ""}`} style={{ borderColor: "#dce4d7" }}>
                           <MapContainer
                             center={[checkoutPoint?.lat ?? userLocation.lat, checkoutPoint?.lng ?? userLocation.lng]}
                             zoom={13}
@@ -2280,30 +2430,37 @@ export default function Home() {
                               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                             />
-                            <CheckoutMapPicker
-                              point={{ lat: checkoutPoint?.lat ?? userLocation.lat, lng: checkoutPoint?.lng ?? userLocation.lng }}
-                              onPickPoint={async (point) => {
-                                setCheckoutPoint(point);
-                                try {
-                                  const response = await fetch(
-                                    `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(
-                                      String(point.lat)
-                                    )}&lon=${encodeURIComponent(String(point.lng))}`
-                                  );
-                                  if (response.ok) {
-                                    const data = await response.json();
-                                    const displayName = String(data?.display_name || "").trim();
-                                    if (displayName) {
-                                      setCheckoutAddress(displayName);
+                            {hasAnyDeliveryInCheckout && (
+                              <CheckoutMapPicker
+                                point={{ lat: checkoutPoint?.lat ?? userLocation.lat, lng: checkoutPoint?.lng ?? userLocation.lng }}
+                                onPickPoint={async (point) => {
+                                  setCheckoutPoint(point);
+                                  try {
+                                    const response = await fetch(
+                                      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(
+                                        String(point.lat)
+                                      )}&lon=${encodeURIComponent(String(point.lng))}`
+                                    );
+                                    if (response.ok) {
+                                      const data = await response.json();
+                                      const displayName = String(data?.display_name || "").trim();
+                                      if (displayName) {
+                                        setCheckoutAddress(displayName);
+                                      }
                                     }
+                                  } catch (error) {
+                                    console.warn("Falha ao obter endereço por ponto no mapa:", error);
                                   }
-                                } catch (error) {
-                                  console.warn("Falha ao obter endereço por ponto no mapa:", error);
-                                }
-                              }}
-                            />
+                                }}
+                              />
+                            )}
                           </MapContainer>
                         </div>
+                        {!hasAnyDeliveryInCheckout && (
+                          <p className="text-xs font-semibold" style={{ color: "#607369" }}>
+                            Endereço e mapa desativados porque todas as farmácias estão em modo levantamento.
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -2644,10 +2801,9 @@ export default function Home() {
 
       {/* Mobile Smart Suggestions (Explore only) */}
       {activeTab === "explore" && (
-        <button
-          type="button"
+        <div
           onClick={handleSmartSuggestionClick}
-          className="md:hidden fixed left-4 right-4 rounded-2xl p-3 shadow-xl text-left transition-all duration-500 ease-out hover:-translate-y-0.5"
+          className="md:hidden fixed left-4 right-4 rounded-2xl p-3 shadow-xl text-left transition-all duration-500 ease-out hover:-translate-y-0.5 cursor-pointer"
           style={{
             bottom: "calc(5rem + 0.5cm)",
             zIndex: 9998,
@@ -2678,7 +2834,7 @@ export default function Home() {
               →
             </button>
           </div>
-        </button>
+        </div>
       )}
 
       {/* Mobile Bottom Navigation - Fixed across all tabs */}

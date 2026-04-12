@@ -1,11 +1,13 @@
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 import { useAuthStore } from '../stores/authStore'
 import { toast } from 'sonner'
-import { Loader2, Store } from 'lucide-react'
+import { Loader2, Store, Eye, EyeOff } from 'lucide-react'
 
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const { login } = useAuthStore()
 
@@ -30,67 +32,120 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-full max-w-md p-8 bg-card rounded-2xl shadow-lg border border-border">
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-            <Store className="w-8 h-8 text-green-600" />
+    <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ backgroundColor: '#f7f7f7' }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="w-full max-w-md"
+      >
+        {/* Logo + Título */}
+        <div className="text-center mb-12">
+          <div className="flex items-center justify-center gap-2 mb-8">
+            <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
+              <Store className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-xl font-bold text-slate-900">Farmácia - Portal Admin</span>
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Portal da Farmácia</h1>
-          <p className="text-muted-foreground mt-1">Acesse sua conta para gerenciar pedidos</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-input bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-              placeholder="farmacia@exemplo.com"
-              required
-            />
+        {/* Login Form Card */}
+        <div className="rounded-3xl p-8 shadow-lg border border-slate-100 bg-white">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Email Field */}
+            <div className="space-y-3">
+              <label htmlFor="email" className="block text-sm font-semibold text-slate-600">
+                E-mail
+              </label>
+              <input
+                id="email"
+                type="email"
+                placeholder="ex: farmacia@exemplo.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full h-12 px-4 border border-slate-200 rounded-2xl focus:border-green-500 focus:ring-2 focus:ring-green-500/20 placeholder:text-slate-400 text-slate-900 outline-none transition-all"
+                required
+              />
+            </div>
+
+            {/* Password Field */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label htmlFor="password" className="block text-sm font-semibold text-slate-600">
+                  Senha
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {}}
+                  className="text-sm text-green-600 hover:text-green-700 font-medium transition-colors"
+                >
+                  Esqueceu a senha?
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full h-12 px-4 border border-slate-200 rounded-2xl focus:border-green-500 focus:ring-2 focus:ring-green-500/20 placeholder:text-slate-400 text-slate-900 outline-none transition-all pr-10"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full h-12 text-white font-bold rounded-full transition-all hover:shadow-lg"
+              style={{ backgroundColor: '#072a1c' }}
+            >
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Entrando...
+                </span>
+              ) : (
+                'Entrar'
+              )}
+            </button>
+          </form>
+
+          {/* Info Section */}
+          <div className="mt-8 text-center space-y-3 pt-6 border-t border-slate-100">
+            <p className="text-sm text-slate-500">
+              Acesso exclusivo para farmácias parceiras
+            </p>
+            <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
+              <Store className="w-4 h-4" />
+              <span>Gerencie seus produtos e pedidos</span>
+            </div>
           </div>
+        </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
-              Senha
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-input bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-              placeholder="••••••••"
-              required
-            />
+        {/* Footer */}
+        <div className="mt-12 text-center space-y-4">
+          <div className="flex items-center justify-center gap-4 text-xs text-slate-500">
+            <button className="hover:text-slate-700 transition-colors font-medium">SUPORTE</button>
+            <span>•</span>
+            <button className="hover:text-slate-700 transition-colors font-medium">PRIVACIDADE</button>
+            <span>•</span>
+            <button className="hover:text-slate-700 transition-colors font-medium">TERMOS</button>
           </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Entrando...
-              </>
-            ) : (
-              'Entrar'
-            )}
-          </button>
-        </form>
-
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          Acesso exclusivo para farmácias cadastradas.
-        </p>
-      </div>
+          <p className="text-[10px] text-slate-400">
+            © 2026 Farmácia Admin Portal. Todos os direitos reservados.
+          </p>
+        </div>
+      </motion.div>
     </div>
   )
 }

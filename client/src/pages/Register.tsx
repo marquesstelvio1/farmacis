@@ -83,6 +83,7 @@ export default function Register({ onRegister }: RegisterProps) {
     setIsLoading(true);
 
     try {
+      const normalizedEmail = formData.email.trim().toLowerCase();
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
@@ -90,7 +91,7 @@ export default function Register({ onRegister }: RegisterProps) {
         },
         body: JSON.stringify({
           name: formData.name,
-         email: formData.email,
+         email: normalizedEmail,
         phone: formData.phone || null,
           password: formData.password,
         confirmPassword: formData.confirmPassword,
@@ -117,28 +118,23 @@ export default function Register({ onRegister }: RegisterProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4">
-      {/* Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" />
-        <div className="absolute top-40 -left-20 w-72 h-72 bg-teal-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse delay-1000" />
-      </div>
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: "#f7f7f7" }}>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="w-full max-w-md relative z-10"
+        className="w-full max-w-md"
       >
-        <Card className="border-0 shadow-2xl bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm">
+        <Card className="rounded-3xl p-2 shadow-lg border border-slate-100 bg-white">
           <CardHeader className="space-y-1 text-center pb-8">
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-teal-500 flex items-center justify-center mb-4 shadow-lg">
+            <div className="mx-auto w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-sm" style={{ backgroundColor: "#b5f176" }}>
               <Pill className="w-8 h-8 text-white" />
             </div>
-            <CardTitle className="text-2xl font-bold text-slate-900 dark:text-white">
+            <CardTitle className="text-2xl font-bold text-slate-900">
               Criar Conta
             </CardTitle>
-            <CardDescription className="text-slate-500 dark:text-slate-400">
+            <CardDescription className="text-slate-500">
               Registre-se para acessar a farmácia
             </CardDescription>
           </CardHeader>
@@ -157,77 +153,77 @@ export default function Register({ onRegister }: RegisterProps) {
               <>
               <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-slate-700 dark:text-slate-300">
+                <Label htmlFor="name" className="text-sm font-semibold" style={{ color: "#607369" }}>
                   Nome Completo
                 </Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-5 h-5" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                   <Input
                     id="name"
                     type="text"
                     placeholder="Digite seu nome completo"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="pl-10 h-12 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
+                    className="pl-10 h-12 border-slate-200 rounded-2xl focus:border-green-500 focus:ring-green-500/20"
                     required
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-slate-700 dark:text-slate-300">
+                <Label htmlFor="email" className="text-sm font-semibold" style={{ color: "#607369" }}>
                   Email
                 </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-5 h-5" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                   <Input
                     id="email"
                     type="email"
                     placeholder="Digite seu email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="pl-10 h-12 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
+                    className="pl-10 h-12 border-slate-200 rounded-2xl focus:border-green-500 focus:ring-green-500/20"
                     required
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-               <Label htmlFor="phone" className="text-slate-700 dark:text-slate-300">
+               <Label htmlFor="phone" className="text-sm font-semibold" style={{ color: "#607369" }}>
                  Telefone (Opcional)
                </Label>
                <div className="relative">
-                 <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-5 h-5" />
+                 <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                  <Input
                   id="phone"
                    type="tel"
                    placeholder="+244 9XX XXX XXX"
                    value={formData.phone}
                    onChange={(e) => setFormData({ ...formData, phone: formatPhoneNumber(e.target.value) })}
-                   className="pl-10 h-12 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
+                   className="pl-10 h-12 border-slate-200 rounded-2xl focus:border-green-500 focus:ring-green-500/20"
                  />
                </div>
              </div>
 
               <div className="space-y-2">
-               <Label htmlFor="password" className="text-slate-700 dark:text-slate-300">
+               <Label htmlFor="password" className="text-sm font-semibold" style={{ color: "#607369" }}>
                  Senha
                </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-5 h-5" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Digite sua senha"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="pl-10 pr-10 h-12 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
+                    className="pl-10 pr-10 h-12 border-slate-200 rounded-2xl focus:border-green-500 focus:ring-green-500/20"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                   >
                     {showPassword ? (
                       <EyeOff className="w-5 h-5" />
@@ -239,24 +235,24 @@ export default function Register({ onRegister }: RegisterProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-slate-700 dark:text-slate-300">
+                <Label htmlFor="confirmPassword" className="text-sm font-semibold" style={{ color: "#607369" }}>
                   Confirmar Senha
                 </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-5 h-5" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
                     placeholder="Confirme sua senha"
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    className="pl-10 pr-10 h-12 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
+                    className="pl-10 pr-10 h-12 border-slate-200 rounded-2xl focus:border-green-500 focus:ring-green-500/20"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="w-5 h-5" />
@@ -271,7 +267,7 @@ export default function Register({ onRegister }: RegisterProps) {
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm text-center"
+                  className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm text-center"
                 >
                   {error}
                 </motion.div>
@@ -281,7 +277,7 @@ export default function Register({ onRegister }: RegisterProps) {
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 text-sm text-center"
+                  className="p-3 rounded-lg bg-green-50 border border-green-200 text-green-600 text-sm text-center"
                 >
                   {success}
                 </motion.div>
@@ -289,7 +285,8 @@ export default function Register({ onRegister }: RegisterProps) {
 
               <Button
                 type="submit"
-                className="w-full h-12 bg-gradient-to-r from-blue-600 to-teal-500 hover:from-blue-700 hover:to-teal-600 text-white font-semibold rounded-xl transition-all hover:shadow-lg hover:shadow-blue-500/25"
+                className="w-full h-12 text-white font-bold rounded-full transition-all hover:shadow-lg"
+                style={{ backgroundColor: "#072a1c" }}
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -321,7 +318,8 @@ export default function Register({ onRegister }: RegisterProps) {
             <div className="mt-6 flex flex-col gap-3">
               <button
                 onClick={onRegister}
-                className="flex items-center justify-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+                className="flex items-center justify-center gap-2 text-sm hover:text-slate-700 transition-colors"
+                style={{ color: "#607369" }}
               >
                 <ArrowLeft className="w-4 h-4" />
                 Já tem uma conta? Faça login

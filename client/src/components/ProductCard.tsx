@@ -170,13 +170,33 @@ export function ProductCard({ product, variants = [], index = 0, distance }: Pro
 
         <div className="flex items-center justify-between mt-auto pt-4 border-t border-green-200">
           <div className="flex flex-col">
-            <span className="text-xs text-slate-600 font-medium leading-none mb-1">Preço</span>
-            <span className="text-2xl font-black text-green-600 leading-none mb-1">
-              {finalPrice.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
-            </span>
-            <span className="text-[10px] text-slate-500 line-through mb-2">
-              {basePrice.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
-            </span>
+            {/* Área de Preços Múltiplos */}
+            <div className="flex flex-col gap-1 mb-2">
+              <span className="text-xs text-slate-600 font-medium">Preço Disponível:</span>
+              
+              {/* Se houver variantes (Português/Indiano), mostra mini-preços para comparação */}
+              {allVariants.length > 1 ? (
+                <div className="flex flex-col gap-1">
+                  {allVariants.filter(v => Number(v.price) > 0).map(v => (
+                    <div key={v.id} className={`flex items-center gap-2 ${currentVariant.id === v.id ? 'opacity-100' : 'opacity-60'}`}>
+                      <span className="text-[10px] font-bold bg-slate-100 px-1 rounded">{getOriginFlag(v.origin)}</span>
+                      <span className={`text-sm font-black ${currentVariant.id === v.id ? 'text-green-600' : 'text-slate-600'}`}>
+                        {(Number(v.price)).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <span className="text-2xl font-black text-green-600 leading-none">
+                    {finalPrice.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                  </span>
+                  <span className="text-[10px] text-slate-500 line-through">
+                    {basePrice.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                  </span>
+                </>
+              )}
+            </div>
             
             {currentVariant.pharmacyName && (
               <div className="flex flex-col gap-1">

@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { normalizeError } from "@/lib/errorHandler";
 
 interface LoginProps {
   onLogin: () => void;
@@ -22,19 +23,26 @@ export default function Login({ onLogin, onShowRegister }: LoginProps) {
     setIsLoading(true);
 
     try {
+      const normalizedEmail = email.trim().toLowerCase();
+      
+      if (password.length < 6) {
+        throw new Error("A senha deve ter pelo menos 6 caracteres");
+      }
+
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: normalizedEmail, password }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.message || "Credenciais invalidas");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Erro no servidor (${response.status})`);
       }
+
+      const data = await response.json();
 
       if (data?.user) {
         localStorage.setItem("user", JSON.stringify(data.user));
@@ -42,7 +50,7 @@ export default function Login({ onLogin, onShowRegister }: LoginProps) {
 
       onLogin();
     } catch (err: any) {
-      setError(err.message || "Erro ao fazer login");
+      setError(normalizeError(err));
     } finally {
       setIsLoading(false);
     }
@@ -66,7 +74,7 @@ export default function Login({ onLogin, onShowRegister }: LoginProps) {
         </div>
 
         {/* Login Form Card */}
-        <div className="rounded-3xl p-8 shadow-lg border border-slate-100" style={{ backgroundColor: '#fof5ee' }}>
+        <div className="rounded-3xl p-8 shadow-lg border border-slate-100" style={{ backgroundColor: '#f0f5ee' }}>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Email Field */}
             <div className="space-y-3">

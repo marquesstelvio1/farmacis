@@ -1,6 +1,6 @@
 import pLimit from "p-limit";
-import pRetry, { AbortError } from "p-retry";
-
+import pRetry from "p-retry";
+import { AbortError as PRetryAbortError } from "p-retry"; // Import AbortError with an alias
 /**
  * Batch Processing Utilities
  *
@@ -55,6 +55,14 @@ export function isRateLimitError(error: unknown): boolean {
   );
 }
 
+// Define a custom AbortError if PRetryAbortError is not correctly recognized
+// This is a workaround for TS2339 if the import from p-retry is failing
+class CustomAbortError extends Error {
+  constructor(message?: string) {
+    super(message);
+    this.name = 'AbortError';
+  }
+}
 /**
  * Process items in batches with rate limiting and automatic retries.
  *
@@ -90,6 +98,8 @@ export async function batchProcess<T, R>(
     onProgress,
   } = options;
 
+  const AbortErrorToUse = (pRetry as any).AbortError || PRetryAbortError || CustomAbortError;
+
   const limit = pLimit(concurrency);
   let completed = 0;
 
@@ -105,11 +115,9 @@ export async function batchProcess<T, R>(
           } catch (error: unknown) {
             if (isRateLimitError(error)) {
               throw error; // Rethrow to trigger p-retry
-            }
+            }            
             // For non-rate-limit errors, abort immediately
-            throw new AbortError(
-              error instanceof Error ? error : new Error(String(error))
-            );
+            throw new AbortErrorToUse(error instanceof Error ? error : new Error(String(error)));
           }
         },
         { retries, minTimeout, maxTimeout, factor: 2 }
@@ -155,10 +163,8 @@ export async function batchProcessWithSSE<T, R>(
           maxTimeout,
           factor: 2,
           onFailedAttempt: (error) => {
-            if (!isRateLimitError(error)) {
-              throw new AbortError(
-                error instanceof Error ? error : new Error(String(error))
-              );
+            if (!isRateLimitError(error as Error)) {              
+              throw new AbortErrorToUse(error instanceof Error ? error : new Error(String(error)));
             }
           },
         }

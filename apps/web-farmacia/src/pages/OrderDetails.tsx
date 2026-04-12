@@ -89,6 +89,27 @@ const statusActions: Record<string, { label: string; color: string }> = {
   out_for_delivery: { label: 'Marcar como Entregue', color: 'bg-green-600 hover:bg-green-700' },
 }
 
+/** Multicaixa Express, transferência e ATM exigem comprovativo enviado pelo cliente */
+const PAYMENT_METHODS_REQUIRING_PROOF = ['multicaixa_express', 'transferencia', 'atm'] as const
+
+function paymentMethodRequiresProof(method: string): boolean {
+  return (PAYMENT_METHODS_REQUIRING_PROOF as readonly string[]).includes(method)
+}
+
+function getProofDisplay(proof: string): { src: string; isPdf: boolean } {
+  const lower = proof.toLowerCase()
+  if (lower.startsWith('data:application/pdf')) {
+    return { src: proof, isPdf: true }
+  }
+  if (proof.startsWith('http://') || proof.startsWith('https://')) {
+    return { src: proof, isPdf: lower.endsWith('.pdf') || lower.includes('.pdf?') }
+  }
+  if (proof.startsWith('data:')) {
+    return { src: proof, isPdf: lower.startsWith('data:application/pdf') }
+  }
+  return { src: `data:image/jpeg;base64,${proof}`, isPdf: false }
+}
+
 export default function OrderDetails() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -227,6 +248,8 @@ export default function OrderDetails() {
   // Métodos de pagamento que bloqueiam o pedido
   const lockablePaymentMethods = ['multicaixa_express', 'transferencia', 'atm']
   const isDigitalPayment = lockablePaymentMethods.includes(order.paymentMethod)
+  const requiresProofFromClient = paymentMethodRequiresProof(order.paymentMethod)
+  const proofDisplay = order.paymentProof ? getProofDisplay(order.paymentProof) : null
 
   return (
     <div className="space-y-6">
@@ -476,20 +499,49 @@ export default function OrderDetails() {
                 </span>
               </div>
               
-              {/* Payment Proof Section */}
-              {order.paymentProof && (
-                <div className="mt-4 pt-4 border-t border-gray-100">
-                  <p className="text-sm font-medium text-gray-700 mb-2">Comprovativo:</p>
-                  <button
-                    onClick={() => setShowProofModal(true)}
-                    className="w-full py-2 px-4 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Eye className="w-4 h-4" />
-                    Ver Comprovativo
-                  </button>
-                </div>
-              )}
-              
+              {/* Comprovativo: Express / Transferência / ATM — aguardar envio; depois pode ver */}
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                {requiresProofFromClient ? (
+                  !order.paymentProof ? (
+                    <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 flex items-start gap-3">
+                      <Clock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-semibold text-amber-900">Aguardando comprovativo</p>
+                        <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                          Este pagamento exige comprovativo (Multicaixa Express ou transferência). O cliente envia o comprovativo na app; quando for enviado, poderá visualizá-lo aqui e confirmar na secção &quot;Analisar Comprovativo&quot;.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-gray-700">Comprovativo recebido</p>
+                      <button
+                        type="button"
+                        onClick={() => setShowProofModal(true)}
+                        className="w-full py-2 px-4 bg-[#eef7e8] hover:bg-[#dcefd0] text-[#072a1c] font-medium rounded-lg transition-colors flex items-center justify-center gap-2 border border-[#dce4d7]"
+                      >
+                        <Eye className="w-4 h-4" />
+                        Ver comprovativo
+                      </button>
+                    </div>
+                  )
+                ) : (
+                  order.paymentProof && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-gray-700 mb-2">Comprovativo</p>
+                      <button
+                        type="button"
+                        onClick={() => setShowProofModal(true)}
+                        className="w-full py-2 px-4 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Eye className="w-4 h-4" />
+                        Ver comprovativo
+                      </button>
+                    </div>
+                  )
+                )}
+              </div>
+
               <div className="mt-4 pt-4 border-t border-gray-100">
                 <div className="flex items-center gap-2 mb-3">
                   {order.paymentStatus === 'paid' || isOrderLocked ? (
@@ -499,6 +551,22 @@ export default function OrderDetails() {
                         {isOrderLocked ? 'Pagamento Garantido (Bloqueado)' : 'Pagamento Confirmado'}
                       </span>
                     </>
+                  ) : requiresProofFromClient ? (
+                    !order.paymentProof ? (
+                      <>
+                        <Clock className="w-5 h-5 text-amber-600" />
+                        <span className="font-medium text-amber-800">Aguardando envio do comprovativo</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="w-5 h-5 text-blue-600" />
+                        <span className="font-medium text-blue-800">
+                          {order.status === 'proof_submitted'
+                            ? 'Comprovativo enviado — analise acima ou na secção Analisar Comprovativo'
+                            : 'Comprovativo disponível — aguarde análise'}
+                        </span>
+                      </>
+                    )
                   ) : (
                     <>
                       <Clock className="w-5 h-5 text-amber-600" />
@@ -506,8 +574,10 @@ export default function OrderDetails() {
                     </>
                   )}
                 </div>
-                {order.paymentStatus !== 'paid' && !isOrderLocked && (
+                {/* Confirmar manualmente só para métodos que não dependem de comprovativo do cliente neste fluxo */}
+                {order.paymentStatus !== 'paid' && !isOrderLocked && !requiresProofFromClient && (
                   <button
+                    type="button"
                     onClick={async () => {
                       try {
                         const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pharmacy/orders/${order.id}/mark-paid`, {
@@ -525,7 +595,7 @@ export default function OrderDetails() {
                         toast.error('Erro ao confirmar pagamento');
                       }
                     }}
-                    className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
+                    className="w-full py-2 px-4 bg-[#072a1c] hover:bg-[#0a3a26] text-[#b5f176] font-medium rounded-lg transition-colors"
                   >
                     Confirmar Pagamento
                   </button>
@@ -586,12 +656,13 @@ export default function OrderDetails() {
       )}
 
       {/* Payment Proof Modal */}
-      {showProofModal && order?.paymentProof && (
+      {showProofModal && proofDisplay && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-2xl w-full p-6">
+          <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Comprovativo de Pagamento</h3>
               <button
+                type="button"
                 onClick={() => setShowProofModal(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
@@ -599,17 +670,17 @@ export default function OrderDetails() {
               </button>
             </div>
             <div className="flex justify-center">
-              {order.paymentProof.endsWith('.pdf') ? (
+              {proofDisplay.isPdf ? (
                 <iframe
-                  src={order.paymentProof}
+                  src={proofDisplay.src}
                   className="w-full h-96 rounded-lg border border-gray-200"
-                  title="Payment Proof"
+                  title="Comprovativo PDF"
                 />
               ) : (
                 <img
-                  src={order.paymentProof}
-                  alt="Payment Proof"
-                  className="max-w-full max-h-96 rounded-lg"
+                  src={proofDisplay.src}
+                  alt="Comprovativo de pagamento"
+                  className="max-w-full max-h-[70vh] rounded-lg object-contain border border-gray-200"
                 />
               )}
             </div>

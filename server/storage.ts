@@ -6,6 +6,7 @@ import {
   orderItems,
   adminUsers,
   pharmacyAdmins,
+  users,
   type Product,
   type InsertProduct,
   type Pharmacy,
@@ -14,7 +15,8 @@ import {
   type OrderItem,
   type InsertOrderItem,
   type AdminUser,
-  type PharmacyAdmin
+  type PharmacyAdmin,
+  type User
 } from "@shared/schema";
 import { and, eq, ilike, or, sql } from "drizzle-orm";
 
@@ -44,6 +46,11 @@ export interface IStorage {
   // Admin methods
   getAdminUsers(): Promise<AdminUser[]>;
   createAdminUser(admin: any): Promise<AdminUser>;
+  
+  // User management with role filtering
+  getUsersByRole(role: string): Promise<User[]>;
+  getAdminAndPharmacyUsers(): Promise<User[]>;
+  getClientUsers(): Promise<User[]>;
 
   // Pharmacy Admin methods
   getPharmacyAdmins(): Promise<PharmacyAdmin[]>;
@@ -388,6 +395,23 @@ export class DatabaseStorage implements IStorage {
     const result = (await db.insert(adminUsers).values(admin).returning()) as AdminUser[];
     if (result.length === 0) throw new Error("Failed to create admin user");
     return result[0];
+  }
+
+  async getUsersByRole(role: string): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.role, role));
+  }
+
+  async getAdminAndPharmacyUsers(): Promise<User[]> {
+    return await db.select().from(users).where(
+      or(
+        eq(users.role, 'ADMIN'),
+        eq(users.role, 'FARMACIA')
+      )
+    );
+  }
+
+  async getClientUsers(): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.role, 'CLIENTE'));
   }
 
   async getPharmacyAdmins(): Promise<PharmacyAdmin[]> {

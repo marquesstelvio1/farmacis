@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, ArrowLeft, Loader2, Mail } from 'lucide-react';
+import { ArrowLeft, Loader2, Mail } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -64,7 +64,7 @@ const AuthOneHealth = ({ emailToVerify, onSuccess, onCancel }: AuthOneHealthProp
   };
 
   return (
-    <div className="w-full max-w-md mx-auto bg-white dark:bg-slate-900 p-1">
+    <div className="w-full max-w-md mx-auto bg-white p-1">
       <AnimatePresence mode="wait">
         {step === 1 ? (
           <motion.div
@@ -75,24 +75,25 @@ const AuthOneHealth = ({ emailToVerify, onSuccess, onCancel }: AuthOneHealthProp
             className="space-y-6"
           >
             <div className="text-center space-y-2">
-              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Mail className="text-blue-600 dark:text-blue-400" size={28} />
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm" style={{ backgroundColor: "#b5f176" }}>
+                <Mail className="text-white" size={28} />
               </div>
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Verificação por E-mail</h2>
-              <p className="text-slate-500 dark:text-slate-400 text-sm">Validamos o seu telemóvel através de um código enviado para {emailToVerify}</p>
+              <h2 className="text-2xl font-bold text-slate-900">Verificação por E-mail</h2>
+              <p className="text-slate-500 text-sm">Validamos o seu telemóvel através de um código enviado para {emailToVerify}</p>
             </div>
 
             <Button 
               onClick={handleSendOTP}
               disabled={loading}
-              className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-lg shadow-lg shadow-blue-500/20"
+              className="w-full h-12 text-white font-bold rounded-full transition-all hover:shadow-lg"
+              style={{ backgroundColor: "#072a1c" }}
             >
               {loading ? <Loader2 className="animate-spin mr-2" /> : <Mail className="mr-2" size={20} />}
               Receber Código de Verificação
             </Button>
             
             {onCancel && (
-              <button onClick={onCancel} className="w-full text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+              <button onClick={onCancel} className="w-full text-sm hover:text-slate-700 transition-colors" style={{ color: "#607369" }}>
                 Voltar
               </button>
             )}
@@ -105,9 +106,9 @@ const AuthOneHealth = ({ emailToVerify, onSuccess, onCancel }: AuthOneHealthProp
             className="space-y-6 text-center"
           >
             <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Verifique o seu E-mail</h2>
-              <p className="text-slate-500 dark:text-slate-400 text-sm">
-                Enviámos um código para <span className="font-bold text-blue-600">{emailToVerify}</span> para confirmar as alterações.
+              <h2 className="text-2xl font-bold text-slate-900">Verifique o seu E-mail</h2>
+              <p className="text-slate-500 text-sm">
+                Enviámos um código para <span className="font-bold text-green-700">{emailToVerify}</span> para confirmar as alterações.
               </p>
             </div>
 
@@ -121,20 +122,22 @@ const AuthOneHealth = ({ emailToVerify, onSuccess, onCancel }: AuthOneHealthProp
                 if (val.length === 6) handleVerifyOTP();
               }}
               placeholder="000000"
-              className="w-full p-4 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-100 dark:border-blue-800 rounded-2xl text-center text-4xl font-black tracking-[8px] text-blue-600 dark:text-blue-400 outline-none focus:border-blue-500"
+              className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl text-center text-4xl font-black tracking-[8px] text-slate-800 outline-none focus:border-green-500"
             />
 
             <Button 
               onClick={handleVerifyOTP}
               disabled={loading || otp.length < 6}
-              className="w-full h-14 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-bold text-lg"
+              className="w-full h-12 text-white font-bold rounded-full transition-all hover:shadow-lg"
+              style={{ backgroundColor: "#072a1c" }}
             >
               {loading ? <Loader2 className="animate-spin" /> : "Confirmar e Validar"}
             </Button>
 
             <button 
               onClick={() => setStep(1)}
-              className="text-sm text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center justify-center mx-auto gap-2"
+              className="text-sm hover:text-slate-700 transition-colors flex items-center justify-center mx-auto gap-2"
+              style={{ color: "#607369" }}
             >
               <ArrowLeft size={14} /> Voltar
             </button>

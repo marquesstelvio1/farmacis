@@ -65,6 +65,9 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Serve static files from uploads directory
+app.use('/uploads', express.static('uploads'));
+
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -153,6 +156,9 @@ export const initPromise = (async () => {
       },
     );
   }
-})();
+})().catch(err => {
+  console.error("FATAL: Failed to start server:", err);
+  process.exit(1);
+});
 
 export default app;

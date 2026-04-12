@@ -14,6 +14,7 @@ export const users = pgTable("users", {
   verificationToken: text("verification_token"),
   resetToken: text("reset_token"),
   resetTokenExpiry: timestamp("reset_token_expiry"),
+  role: text("role").notNull().default("CLIENTE"), // CLIENTE, ADMIN, FARMACIA
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -23,11 +24,14 @@ export const insertUserSchema = createInsertSchema(users).omit({
   verificationToken: true,
   resetToken: true,
   resetTokenExpiry: true,
-  createdAt: true
+  createdAt: true,
+  role: true
 });
 
 export const loginSchema = z.object({
   email: z.string()
+    .trim()
+    .toLowerCase()
     .min(1, "Email é obrigatório")
     .email("Formato de email inválido. Exemplo: nome@exemplo.com"),
   password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
@@ -35,6 +39,8 @@ export const loginSchema = z.object({
 
 export const registerSchema = insertUserSchema.extend({
   email: z.string()
+    .trim()
+    .toLowerCase()
     .min(1, "Email é obrigatório")
     .email("Formato de email inválido. Exemplo: nome@exemplo.com"),
   password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),

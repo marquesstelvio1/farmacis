@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Search, Package, Plus, Edit, Trash2 } from 'lucide-react'
+import { Search, Package, Plus, Edit, Trash2, Upload, X, ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '../stores/authStore'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,28 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+
+// Componente de imagem com fallback
+function ProductImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const [error, setError] = useState(false)
+  
+  if (error || !src) {
+    return (
+      <div className={`flex items-center justify-center bg-gray-100 ${className}`}>
+        <ImageIcon className="w-12 h-12 text-gray-400" />
+      </div>
+    )
+  }
+  
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      onError={() => setError(true)}
+    />
+  )
+}
 
 interface Product {
   id: number
@@ -49,18 +71,69 @@ export default function Products() {
   }
 
   const [newProduct, setNewProduct] = useState(resetForm)
+  const [selectedImage, setSelectedImage] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Imagem muito grande. Máximo 5MB.')
+        return
+      }
+      if (!file.type.startsWith('image/')) {
+        toast.error('Apenas imagens são permitidas.')
+        return
+      }
+      setSelectedImage(file)
+      const previewUrl = URL.createObjectURL(file)
+      setImagePreview(previewUrl)
+      // Upload automático
+      uploadImageMutation.mutate(file)
+    }
+  }
+
+  const uploadImageMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData()
+      formData.append('image', file)
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/upload/product-image`, {
+        method: 'POST',
+        body: formData,
+      })
+      
+      if (!response.ok) throw new Error('Failed to upload image')
+      return response.json()
+    },
+    onSuccess: (data) => {
+      setNewProduct(prev => ({ ...prev, imageUrl: data.url }))
+      toast.success('Imagem enviada com sucesso!')
+    },
+    onError: () => {
+      toast.error('Erro ao fazer upload da imagem')
+    }
+  })
+
   const addProductMutation = useMutation({
     mutationFn: async (formData: typeof newProduct) => {
-      // Validate that at least one price is filled
-      const hasBasePrice = formData.price && parseFloat(formData.price) > 0;
-      const hasPortuguesePrice = formData.pricePortuguese && parseFloat(formData.pricePortuguese) > 0;
-      const hasIndianPrice = formData.priceIndian && parseFloat(formData.priceIndian) > 0;
+      const isMed = formData.category === 'medicamento';
+      const hasBase = formData.price && parseFloat(formData.price) > 0;
+      const hasPort = formData.pricePortuguese && parseFloat(formData.pricePortuguese) > 0;
+      const hasInd = formData.priceIndian && parseFloat(formData.priceIndian) > 0;
+
+      // Validação condicional:
+      // Se não for medicamento, o preço base é obrigatório.
+      // Se for medicamento, pelo menos um dos 3 deve estar preenchido.
+      if (!isMed && !hasBase) {
+        throw new Error('O preço base é obrigatório para produtos desta categoria.');
+      }
       
-      if (!hasBasePrice && !hasPortuguesePrice && !hasIndianPrice) {
-        throw new Error('Pelo menos um preço deve ser preenchido (Padrão, Português ou Indiano)');
+      if (isMed && !hasBase && !hasPort && !hasInd) {
+        throw new Error('Para medicamentos, preencha pelo menos um preço (Padrão, Português ou Indiano).');
       }
 
       // Map frontend model to schema.ts model
@@ -189,11 +262,11 @@ export default function Products() {
   }
 
   return (
-    <div className="space-y-6 dark:bg-slate-950 min-h-screen transition-colors">
+    <div className="space-y-6 bg-gray-50 min-h-screen transition-colors">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Produtos</h1>
-          <p className="text-gray-500 dark:text-slate-400">Gerencie os produtos da sua farmácia</p>
+          <h1 className="text-2xl font-bold text-gray-900">Produtos</h1>
+          <p className="text-gray-500">Gerencie os produtos da sua farmácia</p>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
@@ -220,25 +293,22 @@ export default function Products() {
                     required
                   />
                 </div>
-                {newProduct.category !== 'medicamento' && (
-                  <div>
-                    <Label htmlFor="price-top">Preço de Custo (AOA) *</Label>
-                    <Input
-                      id="price-top"
-                      type="number"
-                      step="0.01"
-                      placeholder="Ex: 1000"
-                      value={newProduct.price}
-                      onChange={(e) => setNewProduct(prev => ({ ...prev, price: e.target.value }))}
-                      required
-                    />
-                    {newProduct.price && !isNaN(parseFloat(newProduct.price)) && (
-                      <p className="text-sm text-green-600 mt-1 font-medium">
-                        Preço de venda final: {(parseFloat(newProduct.price) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })} (+15% taxa)
-                      </p>
-                    )}
-                  </div>
-                )}
+                <div>
+                  <Label htmlFor="price-top">Preço Base (AOA) *</Label>
+                  <Input
+                    id="price-top"
+                    type="number"
+                    step="0.01"
+                    placeholder="Ex: 1000"
+                    value={newProduct.price}
+                    onChange={(e) => setNewProduct(prev => ({ ...prev, price: e.target.value }))}
+                  />
+                  {newProduct.price && !isNaN(parseFloat(newProduct.price)) && (
+                    <p className="text-sm text-green-600 mt-1 font-medium">
+                      Preço de venda: {(parseFloat(newProduct.price) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })} (+15%)
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -292,39 +362,23 @@ export default function Products() {
 
               {newProduct.category === 'medicamento' && (
                 <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="dosage">Dosagem</Label>
-                      <Input
-                        id="dosage"
-                        value={newProduct.dosage}
-                        onChange={(e) => setNewProduct(prev => ({ ...prev, dosage: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="origin">Origem</Label>
-                      <Select value={newProduct.origin} onValueChange={(value) => setNewProduct(prev => ({ ...prev, origin: value }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a origem" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="default">Padrão</SelectItem>
-                          <SelectItem value="portugues">Português</SelectItem>
-                          <SelectItem value="indiano">Indiano</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-gray-500 mt-1">Selecione Português ou Indiano para criar variantes</p>
-                    </div>
+                  <div>
+                    <Label htmlFor="dosage">Dosagem</Label>
+                    <Input
+                      id="dosage"
+                      value={newProduct.dosage}
+                      onChange={(e) => setNewProduct(prev => ({ ...prev, dosage: e.target.value }))}
+                    />
                   </div>
 
                   {/* Preços por Origem - Apenas para Medicamentos */}
-                  <div className="border border-gray-200 dark:border-slate-700 rounded-lg p-4 space-y-4">
-                    <Label className="font-semibold text-gray-700 dark:text-slate-300">Preços por Origem (AOA)</Label>
+                  <div className="border border-gray-200 rounded-lg p-4 space-y-4">
+                    <Label className="font-semibold text-gray-700">Preços por Origem (AOA)</Label>
                     <p className="text-xs text-gray-500">Preencha pelo menos um preço</p>
                     
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="pricePortuguese" className="text-sm text-blue-600 dark:text-blue-400">Português</Label>
+                        <Label htmlFor="pricePortuguese" className="text-sm text-gray-600">Português</Label>
                         <Input
                           id="pricePortuguese"
                           type="number"
@@ -340,7 +394,7 @@ export default function Products() {
                         )}
                       </div>
                       <div>
-                        <Label htmlFor="priceIndian" className="text-sm text-emerald-600 dark:text-emerald-400">Indiano</Label>
+                        <Label htmlFor="priceIndian" className="text-sm text-gray-600">Indiano</Label>
                         <Input
                           id="priceIndian"
                           type="number"
@@ -355,34 +409,67 @@ export default function Products() {
                           </p>
                         )}
                       </div>
-                      <div>
-                        <Label htmlFor="price" className="text-sm text-gray-600 dark:text-gray-400">Padrão</Label>
-                        <Input
-                          id="price"
-                          type="number"
-                          step="0.01"
-                          placeholder="Ex: 1000"
-                          value={newProduct.price}
-                          onChange={(e) => setNewProduct(prev => ({ ...prev, price: e.target.value }))}
-                        />
-                        {newProduct.price && !isNaN(parseFloat(newProduct.price)) && (
-                          <p className="text-xs text-green-600 mt-1">
-                            Venda: {(parseFloat(newProduct.price) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
-                          </p>
-                        )}
-                      </div>
                     </div>
                   </div>
                 </>
               )}
 
               <div>
-                <Label htmlFor="imageUrl">URL da Imagem</Label>
-                <Input
-                  id="imageUrl"
-                  value={newProduct.imageUrl}
-                  onChange={(e) => setNewProduct(prev => ({ ...prev, imageUrl: e.target.value }))}
+                <Label>Imagem do Produto</Label>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageSelect}
+                  accept="image/*"
+                  className="hidden"
                 />
+                
+                {imagePreview || newProduct.imageUrl ? (
+                  <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-gray-200">
+                    <img
+                      src={imagePreview || newProduct.imageUrl}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedImage(null)
+                        setImagePreview(null)
+                        setNewProduct(prev => ({ ...prev, imageUrl: '' }))
+                        if (fileInputRef.current) fileInputRef.current.value = ''
+                      }}
+                      className="absolute top-2 right-2 p-1 bg-white/80 hover:bg-white rounded-full shadow-sm"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full aspect-video border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-2 hover:border-green-500 hover:bg-green-50 transition-colors"
+                  >
+                    <Upload className="w-8 h-8 text-gray-400" />
+                    <span className="text-sm text-gray-500">Clique para enviar imagem</span>
+                    <span className="text-xs text-gray-400">ou cole URL abaixo</span>
+                  </button>
+                )}
+                
+                <div className="mt-2">
+                  <Label htmlFor="imageUrl" className="text-xs text-gray-500">Ou insira URL da imagem:</Label>
+                  <Input
+                    id="imageUrl"
+                    value={newProduct.imageUrl}
+                    onChange={(e) => {
+                      setNewProduct(prev => ({ ...prev, imageUrl: e.target.value }))
+                      setSelectedImage(null)
+                      setImagePreview(null)
+                    }}
+                    placeholder="https://..."
+                    className="mt-1"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center space-x-2">
@@ -428,25 +515,23 @@ export default function Products() {
                     required
                   />
                 </div>
-                {newProduct.category !== 'medicamento' && (
-                  <div>
-                    <Label htmlFor="edit-price-top">Preço de Custo (AOA) *</Label>
-                    <Input
-                      id="edit-price-top"
-                      type="number"
-                      step="0.01"
-                      placeholder="Ex: 1000"
-                      value={newProduct.price}
-                      onChange={(e) => setNewProduct(prev => ({ ...prev, price: e.target.value }))}
-                      required
-                    />
-                    {newProduct.price && !isNaN(parseFloat(newProduct.price)) && (
-                      <p className="text-sm text-green-600 mt-1 font-medium">
-                        Preço de venda final: {(parseFloat(newProduct.price) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })} (+15% taxa)
-                      </p>
-                    )}
-                  </div>
-                )}
+                <div>
+                  <Label htmlFor="edit-price-top">Preço Base (AOA) *</Label>
+                  <Input
+                    id="edit-price-top"
+                    type="number"
+                    step="0.01"
+                    placeholder="Ex: 1000"
+                    value={newProduct.price}
+                    onChange={(e) => setNewProduct(prev => ({ ...prev, price: e.target.value }))}
+                    required
+                  />
+                  {newProduct.price && !isNaN(parseFloat(newProduct.price)) && (
+                    <p className="text-sm text-green-600 mt-1 font-medium">
+                      Preço de venda: {(parseFloat(newProduct.price) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })} (+15%)
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -500,38 +585,23 @@ export default function Products() {
 
               {newProduct.category === 'medicamento' && (
                 <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="edit-dosage">Dosagem</Label>
-                      <Input
-                        id="edit-dosage"
-                        value={newProduct.dosage}
-                        onChange={(e) => setNewProduct(prev => ({ ...prev, dosage: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="edit-origin">Origem</Label>
-                      <Select value={newProduct.origin || 'default'} onValueChange={(value) => setNewProduct(prev => ({ ...prev, origin: value }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a origem" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="default">Padrão</SelectItem>
-                          <SelectItem value="portugues">Português</SelectItem>
-                          <SelectItem value="indiano">Indiano</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div>
+                    <Label htmlFor="edit-dosage">Dosagem</Label>
+                    <Input
+                      id="edit-dosage"
+                      value={newProduct.dosage}
+                      onChange={(e) => setNewProduct(prev => ({ ...prev, dosage: e.target.value }))}
+                    />
                   </div>
 
                   {/* Preços por Origem - Edit - Apenas para Medicamentos */}
-                  <div className="border border-gray-200 dark:border-slate-700 rounded-lg p-4 space-y-4">
-                    <Label className="font-semibold text-gray-700 dark:text-slate-300">Preços por Origem (AOA)</Label>
+                  <div className="border border-gray-200 rounded-lg p-4 space-y-4">
+                    <Label className="font-semibold text-gray-700">Preços por Origem (AOA)</Label>
                     <p className="text-xs text-gray-500">Preencha pelo menos um preço</p>
                     
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="edit-pricePortuguese" className="text-sm text-blue-600 dark:text-blue-400">Português</Label>
+                        <Label htmlFor="edit-pricePortuguese" className="text-sm text-gray-600">Português</Label>
                         <Input
                           id="edit-pricePortuguese"
                           type="number"
@@ -547,7 +617,7 @@ export default function Products() {
                         )}
                       </div>
                       <div>
-                        <Label htmlFor="edit-priceIndian" className="text-sm text-emerald-600 dark:text-emerald-400">Indiano</Label>
+                        <Label htmlFor="edit-priceIndian" className="text-sm text-gray-600">Indiano</Label>
                         <Input
                           id="edit-priceIndian"
                           type="number"
@@ -562,54 +632,67 @@ export default function Products() {
                           </p>
                         )}
                       </div>
-                      <div>
-                        <Label htmlFor="edit-price" className="text-sm text-gray-600 dark:text-gray-400">Padrão</Label>
-                        <Input
-                          id="edit-price"
-                          type="number"
-                          step="0.01"
-                          placeholder="Ex: 1000"
-                          value={newProduct.price}
-                          onChange={(e) => setNewProduct(prev => ({ ...prev, price: e.target.value }))}
-                        />
-                        {newProduct.price && !isNaN(parseFloat(newProduct.price)) && (
-                          <p className="text-xs text-green-600 mt-1">
-                            Venda: {(parseFloat(newProduct.price) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
-                          </p>
-                        )}
-                      </div>
                     </div>
                   </div>
                 </>
               )}
 
-              {newProduct.category !== 'medicamento' && (
-                <div>
-                  <Label htmlFor="edit-price">Preço de Custo (AOA) *</Label>
-                  <Input
-                    id="edit-price"
-                    type="number"
-                    step="0.01"
-                    placeholder="Ex: 1000"
-                    value={newProduct.price}
-                    onChange={(e) => setNewProduct(prev => ({ ...prev, price: e.target.value }))}
-                    required={newProduct.category !== 'medicamento'}
-                  />
-                  {newProduct.price && !isNaN(parseFloat(newProduct.price)) && (
-                    <p className="text-sm text-green-600 mt-1 font-medium">
-                      Preço de venda final: {(parseFloat(newProduct.price) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })} (+15% taxa)
-                    </p>
-                  )}
-                </div>
-              )}
-
               <div>
-                <Label htmlFor="edit-imageUrl">URL da Imagem</Label>
-                <Input
-                  id="edit-imageUrl"
-                  value={newProduct.imageUrl}
-                  onChange={(e) => setNewProduct(prev => ({ ...prev, imageUrl: e.target.value }))}
+                <Label>Imagem do Produto</Label>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageSelect}
+                  accept="image/*"
+                  className="hidden"
                 />
+                
+                {imagePreview || newProduct.imageUrl ? (
+                  <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-gray-200">
+                    <img
+                      src={imagePreview || newProduct.imageUrl}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedImage(null)
+                        setImagePreview(null)
+                        setNewProduct(prev => ({ ...prev, imageUrl: '' }))
+                        if (fileInputRef.current) fileInputRef.current.value = ''
+                      }}
+                      className="absolute top-2 right-2 p-1 bg-white/80 hover:bg-white rounded-full shadow-sm"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full aspect-video border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-2 hover:border-green-500 hover:bg-green-50 transition-colors"
+                  >
+                    <Upload className="w-8 h-8 text-gray-400" />
+                    <span className="text-sm text-gray-500">Clique para enviar imagem</span>
+                    <span className="text-xs text-gray-400">ou cole URL abaixo</span>
+                  </button>
+                )}
+                
+                <div className="mt-2">
+                  <Label htmlFor="edit-imageUrl" className="text-xs text-gray-500">Ou insira URL da imagem:</Label>
+                  <Input
+                    id="edit-imageUrl"
+                    value={newProduct.imageUrl}
+                    onChange={(e) => {
+                      setNewProduct(prev => ({ ...prev, imageUrl: e.target.value }))
+                      setSelectedImage(null)
+                      setImagePreview(null)
+                    }}
+                    placeholder="https://..."
+                    className="mt-1"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center space-x-2">
@@ -644,26 +727,20 @@ export default function Products() {
           placeholder="Buscar produto..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+          className="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
         />
       </div>
 
       {/* Products Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
         {filteredProducts?.map((product) => (
-          <div key={product.id} className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden transition-all">
-            <div className="aspect-video bg-gray-100 dark:bg-slate-800 relative">
-              {product.imageUrl ? (
-                <img
-                  src={product.imageUrl}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Package className="w-12 h-12 text-gray-300" />
-                </div>
-              )}
+          <div key={product.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all">
+            <div className="aspect-video bg-gray-100 relative">
+              <ProductImage
+                src={product.imageUrl}
+                alt={product.name}
+                className="w-full h-full object-cover"
+              />
               <div className="absolute top-2 right-2">
                 <span className={`px-2 py-1 text-xs font-medium rounded-full ${product.stock > 0
                   ? 'bg-green-100 text-green-800'
@@ -674,18 +751,18 @@ export default function Products() {
               </div>
             </div>
             <div className="p-4">
-              <h3 className="font-semibold text-gray-900 dark:text-slate-100">{product.name}</h3>
+              <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{product.name}</h3>
               <div className="flex flex-wrap gap-1 mt-1">
-                <span className="text-xs bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 px-2 py-0.5 rounded capitalize">
+                <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded capitalize">
                   {product.category}
                 </span>
                 {product.diseases && product.diseases.slice(0, 2).map((disease, i) => (
-                  <span key={i} className="text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded">
+                  <span key={i} className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded">
                     {disease}
                   </span>
                 ))}
               </div>
-              <p className="text-lg font-bold text-green-600 dark:text-green-400 mt-2">
+              <p className="text-base sm:text-lg font-bold text-green-600 mt-2">
                 {Number(product.price).toLocaleString('pt-AO', {
                   style: 'currency',
                   currency: 'AOA'
@@ -710,21 +787,21 @@ export default function Products() {
                       imageUrl: product.imageUrl || ''
                     });
                   }}
-                  className="flex-1 flex items-center justify-center gap-2 py-2 px-4 border border-gray-300 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-300 text-sm font-medium rounded-lg transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 py-2 px-4 border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg transition-colors"
                 >
                   <Edit className="w-4 h-4" />
                   Editar
                 </button>
                 <button
                   onClick={() => toggleStockMutation.mutate({ id: product.id, inStock: product.stock > 0 })}
-                  className={`flex-1 text-sm font-medium py-2 px-4 rounded-lg transition-colors ${product.stock > 0
-                    ? 'bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20'
-                    : 'bg-green-50 dark:bg-green-900/10 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/20'
+                  className={`flex-1 text-xs sm:text-sm font-medium py-2 px-4 rounded-lg transition-colors ${product.stock > 0
+                    ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                    : 'bg-green-50 text-green-600 hover:bg-green-100'
                     }`}
                 >
                   {product.stock > 0 ? 'Tirar de Stock' : 'Pôr em Stock'}
                 </button>
-                <button className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                   <Trash2 className="w-5 h-5" />
                 </button>
               </div>

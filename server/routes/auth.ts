@@ -11,9 +11,7 @@ const otps = new Map<string, string>();
 
 // Email configuration
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
+  service: "gmail",
   auth: {
     user: process.env.EMAIL_USER || "",
     pass: process.env.EMAIL_PASS || "",
@@ -154,12 +152,13 @@ export function registerAuthRoutes(app: Express) {
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
       const validatedData = registerSchema.parse(req.body);
+      const normalizedEmail = validatedData.email.trim().toLowerCase();
 
       // Check if email already exists
       const existingUser = await db
         .select()
         .from(users)
-        .where(eq(users.email, validatedData.email))
+        .where(eq(users.email, normalizedEmail))
         .limit(1);
 
       if (existingUser.length > 0) {
@@ -180,7 +179,7 @@ export function registerAuthRoutes(app: Express) {
         .insert(users)
         .values({
           name: validatedData.name,
-          email: validatedData.email,
+          email: normalizedEmail,
           password: hashedPassword,
           verificationToken: isDevelopment ? null : verificationToken,
           emailVerified: isDevelopment,
@@ -193,7 +192,7 @@ export function registerAuthRoutes(app: Express) {
       // Send verification email (only in production)
       if (!isDevelopment) {
         try {
-          await sendVerificationEmail(validatedData.email, verificationToken);
+          await sendVerificationEmail(normalizedEmail, verificationToken);
         } catch (emailError) {
           console.error("Failed to send verification email:", emailError);
         }
@@ -252,14 +251,15 @@ export function registerAuthRoutes(app: Express) {
       console.log("Login attempt:", req.body);
       
       const validatedData = loginSchema.parse(req.body);
+      const normalizedEmail = validatedData.email.trim().toLowerCase();
       console.log("Validated data:", validatedData);
 
       // Find user
-      console.log("Querying database for user:", validatedData.email);
+      console.log("Querying database for user:", normalizedEmail);
       const result = await db
         .select()
         .from(users)
-        .where(eq(users.email, validatedData.email))
+        .where(eq(users.email, normalizedEmail))
         .limit(1);
       
       const user = result.length > 0 ? result[0] : undefined;

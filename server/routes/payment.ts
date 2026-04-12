@@ -6,7 +6,7 @@ import Stripe from "stripe";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2026-02-25.clover",
+  apiVersion: "2025-02-24.acacia",
 });
 
 export function registerPaymentRoutes(app: Express) {
@@ -174,17 +174,17 @@ export function registerPaymentRoutes(app: Express) {
   // Webhook for Stripe events
   app.post("/api/payments/webhook", express.raw({ type: "application/json" }), async (req: Request, res: Response) => {
     const sigHeader = req.headers["stripe-signature"];
-    const sig = Array.isArray(sigHeader) ? sigHeader[0] : sigHeader;
+    const sig = (Array.isArray(sigHeader) ? sigHeader[0] : (sigHeader as string)) || "";
     const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
 
-    if (!sig || typeof sig !== "string") {
-      return res.status(400).send("Webhook Error: Missing stripe-signature header");
+    if (!sig || !req.rawBody) {
+      return res.status(400).send("Webhook Error: Missing stripe-signature or raw body");
     }
 
     let event;
 
     try {
-      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+      event = stripe.webhooks.constructEvent(req.rawBody as Buffer, sig, endpointSecret);
     } catch (err: any) {
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }

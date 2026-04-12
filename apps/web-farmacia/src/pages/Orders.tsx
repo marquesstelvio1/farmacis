@@ -120,15 +120,15 @@ export default function Orders() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#dce4d7] border-t-[#072a1c]" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6 dark:bg-slate-950 min-h-screen transition-colors">
+    <div className="space-y-6 transition-colors">
       <div>
-        <h1 className="text-2xl font-bold text-[#072a1c] dark:text-white">Pedidos</h1>
+        <h1 className="text-2xl font-bold text-[#072a1c]">Pedidos</h1>
         <p className="text-[#607369]">Gerencie os pedidos da sua farmácia</p>
       </div>
 
@@ -141,7 +141,7 @@ export default function Orders() {
             placeholder="Buscar pedido..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-[#dce4d7] dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-[#8bc14a] focus:border-transparent outline-none"
+            className="w-full pl-10 pr-4 py-2 border border-[#dce4d7] bg-white text-[#072a1c] rounded-lg shadow-sm focus:ring-2 focus:ring-[#8bc14a] focus:border-transparent outline-none"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -149,7 +149,7 @@ export default function Orders() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-[#dce4d7] dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-[#8bc14a] focus:border-transparent outline-none"
+            className="px-4 py-2 border border-[#dce4d7] bg-white text-[#072a1c] rounded-lg shadow-sm focus:ring-2 focus:ring-[#8bc14a] focus:border-transparent outline-none"
           >
             <option value="all">Todos os status</option>
             <option value="pending">Pendentes</option>
@@ -169,26 +169,26 @@ export default function Orders() {
           const ActionIcon = action?.icon
 
           return (
-            <div key={order.id} className={`bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-[#dce4d7] dark:border-slate-800 p-6 transition-all ${order.isLocked ? 'border-l-4 border-l-[#8bc14a]' : ''}`}>
+            <div key={order.id} className={`bg-white rounded-xl shadow-sm border border-[#dce4d7] p-6 transition-all ${order.isLocked ? 'border-l-4 border-l-[#8bc14a]' : ''}`}>
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-[#eef7e8] dark:bg-green-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <ShoppingBag className="w-6 h-6 text-[#8bc14a] dark:text-green-400" />
+                  <div className="w-12 h-12 bg-[#eef7e8] rounded-lg flex items-center justify-center flex-shrink-0">
+                    <ShoppingBag className="w-6 h-6 text-[#8bc14a]" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-[#072a1c] dark:text-slate-100">Pedido #{order.id}</h3>
+                      <h3 className="font-semibold text-[#072a1c]">Pedido #{order.id}</h3>
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[order.status]}`}>
                         {statusLabels[order.status]}
                       </span>
                       {order.isLocked && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-[#eef7e8] text-[#072a1c] dark:bg-green-900/30 dark:text-green-400">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-[#eef7e8] text-[#072a1c]">
                           <Lock className="w-3 h-3" />
                           Transação Garantida - MCX
                         </span>
                       )}
                     </div>
-                    <p className="text-lg font-bold text-[#072a1c] dark:text-white mt-1">
+                    <p className="text-lg font-bold text-[#072a1c] mt-1">
                       {Number(order.total).toLocaleString('pt-AO', {
                         style: 'currency',
                         currency: 'AOA'
@@ -229,36 +229,36 @@ export default function Orders() {
                   )}
                   <Link
                     to={`/orders/${order.id}`}
-                    className="p-2 text-[#607369] hover:text-[#072a1c] hover:bg-[#f7faf5] dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                    className="p-2 text-[#607369] hover:text-[#072a1c] hover:bg-[#f7faf5] rounded-lg transition-colors"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </Link>
                 </div>
               </div>
 
-              <div className="mt-4 pt-4 border-t border-[#eef3ec] dark:border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="mt-4 pt-4 border-t border-[#eef3ec] grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <p className="text-sm font-medium text-[#607369] dark:text-slate-400 mb-1">Cliente</p>
-                  <p className="text-sm text-[#072a1c] dark:text-slate-200">{order.customerName}</p>
+                  <p className="text-sm font-medium text-[#607369] mb-1">Cliente</p>
+                  <p className="text-sm text-[#072a1c]">{order.customerName}</p>
                   <p className="text-sm text-[#607369] flex items-center gap-1 mt-1">
                     <Phone className="w-3 h-3" />
                     {order.customerPhone}
                   </p>
                 </div>
                 <div className="md:col-span-2">
-                  <p className="text-sm font-medium text-[#607369] dark:text-slate-400 mb-1">Endereço</p>
-                  <p className="text-sm text-[#072a1c] dark:text-slate-200 flex items-start gap-1">
+                  <p className="text-sm font-medium text-[#607369] mb-1">Endereço</p>
+                  <p className="text-sm text-[#072a1c] flex items-start gap-1">
                     <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     {order.customerAddress}
                   </p>
                 </div>
               </div>
 
-              <div className="mt-4 pt-4 border-t border-[#eef3ec] dark:border-slate-800">
-                <p className="text-sm font-medium text-[#607369] dark:text-slate-400 mb-2">Itens</p>
+              <div className="mt-4 pt-4 border-t border-[#eef3ec]">
+                <p className="text-sm font-medium text-[#607369] mb-2">Itens</p>
                 <div className="flex flex-wrap gap-2">
                   {order.items?.map((item, index) => (
-                    <span key={index} className="px-3 py-1 bg-[#f7faf5] dark:bg-slate-800 text-[#072a1c] dark:text-slate-300 text-sm rounded-full border border-[#dce4d7]">
+                    <span key={index} className="px-3 py-1 bg-[#f7faf5] text-[#072a1c] text-sm rounded-full border border-[#dce4d7]">
                       {item.quantity}x {item.productName}
                     </span>
                   ))}

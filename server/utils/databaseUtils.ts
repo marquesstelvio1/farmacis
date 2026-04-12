@@ -148,3 +148,25 @@ export async function ensurePharmacyColumns() {
     console.error('Error ensuring pharmacy columns:', error);
   }
 }
+
+export async function ensureUserColumns() {
+  try {
+    // Add role column for user type management
+    await db.execute(sql`
+      ALTER TABLE users 
+      ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'CLIENTE' NOT NULL
+    `);
+    console.log('Column role ensured in users table');
+
+    // Create index for better performance on role queries
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)
+    `);
+    console.log('Index idx_users_role created/verified');
+
+    console.log('User columns and indexes ensured successfully');
+  } catch (error) {
+    console.error('Error ensuring user columns:', error);
+    // Don't throw - allow app to continue even if column exists
+  }
+}

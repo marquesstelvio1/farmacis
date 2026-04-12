@@ -2,7 +2,18 @@ import express, { type Request, Response } from "express";
 import { storage } from "../storage";
 
 export function registerLocationRoutes(app: express.Application) {
-  
+
+  // Get all active pharmacies
+  app.get("/api/pharmacies", async (req: Request, res: Response) => {
+    try {
+      const allPharmacies = await storage.getActivePharmacies();
+      res.json(allPharmacies);
+    } catch (error) {
+      console.error("Error fetching pharmacies:", error);
+      res.status(500).json({ message: "Erro ao buscar farmácias" });
+    }
+  });
+
   // Haversine formula to calculate distance between two points
   function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
     const R = 6371; // Earth's radius in km

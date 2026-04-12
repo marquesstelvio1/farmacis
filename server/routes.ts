@@ -10,7 +10,7 @@ import { z } from "zod";
 import OpenAI from "openai";
 import bcrypt from "bcryptjs";
 import { registerAuthRoutes } from "./routes/auth";
-import { registerPaymentRoutes } from "./routes/payment.ts";
+import { registerPaymentRoutes } from "./routes/payment";
 import { registerUserPaymentMethodRoutes } from "./routes/userPaymentMethods";
 import { registerPharmacyAdminRoutes } from "./routes/pharmacyAdmin";
 import { registerAdminRoutes } from "./routes/admin";
@@ -125,8 +125,18 @@ export async function registerRoutes(
   app.get(api.products.list.path, async (req, res) => {
     try {
       const search = req.query.search as string | undefined;
-      const allProducts = await storage.getProducts(search);
-      res.json(allProducts);
+      let products = await storage.getProducts();
+      
+      if (search) {
+        const query = search.toLowerCase();
+        products = products.filter(p => 
+          p.name.toLowerCase().includes(query) ||
+          (p.description && p.description.toLowerCase().includes(query)) ||
+          (p.activeIngredient && p.activeIngredient.toLowerCase().includes(query)) ||
+          (Array.isArray(p.diseases) && p.diseases.some(d => d.toLowerCase().includes(query)))
+        );
+      }
+      res.json(products);
     } catch (err) {
       console.error("DETAILED ERROR in GET /api/products:", err);
       res.status(500).json({ 
@@ -181,6 +191,42 @@ export async function registerRoutes(
         message: "Erro ao buscar pedidos do usuário",
         error: err instanceof Error ? err.message : String(err)
       });
+    }
+  });
+
+  // Update order status (user app) - for cash payment confirmation
+  app.patch("/api/user/orders/:orderId/status", async (req, res) => {
+    try {
+      const orderId = parseInt(req.params.orderId);
+      const { paymentStatus, status } = req.body;
+
+      if (!orderId) {
+        return res.status(400).json({ message: "Order ID required" });
+      }
+
+      const updateData: any = {
+        updatedAt: new Date()
+      };
+
+      // Update paymentStatus if provided
+      if (paymentStatus) {
+        updateData.paymentStatus = paymentStatus;
+      }
+
+      // Update status if provided
+      if (status) {
+        updateData.status = status;
+      }
+
+      await db
+        .update(orders)
+        .set(updateData)
+        .where(eq(orders.id, orderId));
+
+      res.json({ message: "Order status updated successfully" });
+    } catch (err) {
+      console.error("Error updating order status:", err);
+      res.status(500).json({ message: "Erro ao atualizar status do pedido" });
     }
   });
 

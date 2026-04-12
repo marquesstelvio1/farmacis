@@ -29,6 +29,7 @@ interface OrderItem {
     productName: string;
     quantity: number;
     unitPrice: string;
+    [key: string]: any; // Permite quaisquer outras propriedades que o servidor possa enviar
 }
 
 interface Order {
@@ -86,6 +87,8 @@ export default function UserOrders() {
         multicaixaExpress: "",
         accountName: ""
     });
+    // Track orders with confirmed payment for immediate UI update
+    const [confirmedPayments, setConfirmedPayments] = useState<Set<number>>(new Set());
     const { toast } = useToast();
     const userString = localStorage.getItem("user");
     const user = userString ? JSON.parse(userString) : {};
@@ -138,22 +141,28 @@ export default function UserOrders() {
                 title: "Processando Pagamento",
                 description: "Aguarde...",
             });
-            const res = await fetch(`/api/pharmacy/orders/${orderId}/status`, {
-                method: "POST",
+            const res = await fetch(`/api/user/orders/${orderId}/status`, {
+                method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ paymentStatus: "paid" }),
             });
+            
             if (res.ok) {
                 toast({
                     title: "Pagamento Concluído",
                     description: "Seu pagamento foi registrado.",
                 });
+                // Mark as confirmed for immediate UI update
+                setConfirmedPayments(prev => new Set(prev).add(orderId));
                 fetchOrders();
+            } else {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.message || "Erro ao processar confirmação.");
             }
-        } catch (err) {
+        } catch (err: any) {
             toast({
                 title: "Erro no Pagamento",
-                description: "Não foi possível processar o pagamento.",
+                description: err.message || "Não foi possível processar o pagamento.",
                 variant: "destructive",
             });
         }
@@ -184,6 +193,10 @@ export default function UserOrders() {
                     title: "Comprovativo Enviado",
                     description: "O seu pagamento foi registado e está em análise.",
                 });
+                // Mark as confirmed for immediate UI update
+                if (selectedOrderForProof) {
+                    setConfirmedPayments(prev => new Set(prev).add(selectedOrderForProof.id));
+                }
                 setShowProofModal(false);
                 setSelectedOrderForProof(null);
                 setPaymentProof(null);
@@ -351,9 +364,17 @@ export default function UserOrders() {
                                 const StatusIcon = config.icon;
                                 const isCash = order.paymentMethod === "cash";
                                 
-                                // O botão de pagar aparece se não for dinheiro, o pagamento estiver pendente 
-                                // e a farmácia já tiver aceitado ou solicitado o comprovativo.
-                                const canPay = !isCash && (order.status === "accepted" || order.status === "awaiting_proof") && order.paymentStatus === "pending";
+                                // Check if payment was just confirmed (for immediate UI update)
+                                const isJustConfirmed = confirmedPayments.has(order.id);
+                                
+                                // Pagamento eletrónico: aparece se a farmácia aceitou ou pediu comprovativo
+                                const canPayElectronic = !isCash && (order.status === "accepted" || order.status === "awaiting_proof") && order.paymentStatus === "pending" && !isJustConfirmed;
+                                
+                                // Pagamento em dinheiro: o botão de confirmar aparece apenas após o produto ser entregue
+                                const canConfirmCash = isCash && order.status === "delivered" && order.paymentStatus === "pending" && !isJustConfirmed;
+                                
+                                // Effective payment status (considering immediate confirmation)
+                                const effectivePaymentStatus = isJustConfirmed ? "paid" : order.paymentStatus;
 
                                 return (
                                     <motion.div
@@ -388,15 +409,15 @@ export default function UserOrders() {
                                                             {config.label}
                                                         </Badge>
 
-                                                        <Badge className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${order.paymentStatus === "paid"
+                                                        <Badge className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${effectivePaymentStatus === "paid"
                                                             ? ""
                                                             : ""
                                                             }`}
-                                                            style={order.paymentStatus === "paid"
+                                                            style={effectivePaymentStatus === "paid"
                                                                 ? { backgroundColor: "rgba(181, 241, 118, 0.35)", color: "#072a1c" }
                                                                 : { backgroundColor: "#f7faf5", color: "#607369", border: "1px solid #dce4d7" }
                                                             }>
-                                                            {order.paymentStatus === "paid" ? "Pago" : "Pagamento Pendente"}
+                                                            {effectivePaymentStatus === "paid" ? "Pago" : "Pagamento Pendente"}
                                                         </Badge>
                                                     </div>
                                                 </div>
@@ -497,14 +518,19 @@ export default function UserOrders() {
                                                             </div>
                                                         </div>
 
-                                                        {canPay ? (
+                                                        {canPayElectronic || canConfirmCash ? (
                                                             <Button
                                                                 onClick={() => handlePayment(order.id)}
                                                                 className="w-full bg-green-500 hover:bg-green-600 text-white py-6 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-500/20"
                                                             >
-                                                                <CreditCard size={20} />
-                                                                {(order.pharmacyIban || order.pharmacyMulticaixaExpress) ? 'Confirmar Pagamento' : 'Pagar Agora'}
+                                                                {canConfirmCash ? <CheckCircle2 size={20} /> : <CreditCard size={20} />}
+                                                                {canConfirmCash ? 'Confirmar Pagamento' : ((order.pharmacyIban || order.pharmacyMulticaixaExpress) ? 'Confirmar Pagamento' : 'Pagar Agora')}
                                                             </Button>
+                                                        ) : isJustConfirmed ? (
+                                                            <div className="w-full bg-green-50 text-green-700 py-3 rounded-xl border border-green-200 text-center text-sm font-bold flex items-center justify-center gap-2">
+                                                                <CheckCircle2 size={18} />
+                                                                Pagamento feito
+                                                            </div>
                                                         ) : order.paymentStatus === "paid" ? (
                                                             <div className="w-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 py-3 rounded-xl border border-green-200 dark:border-green-800 text-center font-bold flex items-center justify-center gap-2">
                                                                 <CheckCircle2 size={18} />
@@ -513,7 +539,7 @@ export default function UserOrders() {
                                                         ) : isCash ? (
                                                             <div className="w-full bg-green-50 text-green-700 py-3 rounded-xl border border-green-200 text-center text-sm font-bold flex items-center justify-center gap-2">
                                                                 <Wallet size={18} />
-                                                                Pagamento em Dinheiro na Entrega
+                                                                Pagamento feito
                                                             </div>
                                                         ) : order.status === "proof_submitted" ? (
                                                             <div className="w-full bg-green-50 text-green-700 py-3 rounded-xl border border-green-200 text-center text-sm font-medium px-4">

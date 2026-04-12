@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "framer-motion";
-import { UploadCloud, CheckCircle2, AlertCircle, RefreshCw, ChevronRight, PillBottle, MapPin } from "lucide-react";
+import { UploadCloud, CheckCircle2, AlertCircle, RefreshCw, PillBottle, MapPin } from "lucide-react";
 import { useIdentifyPill } from "@/hooks/use-ai";
 import { useProducts } from "@/hooks/use-products";
 import { ProductCard } from "@/components/ProductCard";
@@ -57,7 +57,14 @@ export default function Identify() {
   });
 
   // Corrige conflito de tipos entre o rootProps do dropzone e o motion.div
-  const { onDrag: _onDrag, ...rootProps } = getRootProps();
+  const { 
+    onDrag: _onDrag, 
+    onDragStart: _onDS, 
+    onDragEnd: _onDE, 
+    ...rootProps 
+  } = getRootProps() as any;
+
+  const dropzoneProps = rootProps;
 
   const handleIdentify = () => {
     if (imageBase64) {
@@ -111,8 +118,8 @@ export default function Identify() {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                   >
-                    <div
-                      {...rootProps}
+                    <motion.div
+                      {...dropzoneProps}
                       className={`
                         relative border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300
                         ${isDragActive ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/20' : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 hover:border-blue-400 dark:hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-900/10'}
@@ -128,7 +135,7 @@ export default function Identify() {
                       <p className="text-sm text-slate-500 dark:text-slate-400">
                         Formatos suportados: JPEG, PNG, WEBP
                       </p>
-                    </div>
+                    </motion.div>
                   </motion.div>
                 ) : (
                   <motion.div

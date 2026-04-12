@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { useAuthStore } from '../stores/authStore'
-import { Store, MapPin, Phone, Mail, Save, CheckCircle, CreditCard, Building2, User, Search } from 'lucide-react'
+import { Store, MapPin, Phone, Mail, Save, CheckCircle, CreditCard, Building2, User, Search, Upload, X, ImageIcon } from 'lucide-react'
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
@@ -91,6 +92,52 @@ export default function Settings() {
     iban: '',
     multicaixaExpress: '',
     accountName: '',
+    logoUrl: '',
+  })
+
+  const [selectedImage, setSelectedImage] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Imagem muito grande. Máximo 5MB.')
+        return
+      }
+      if (!file.type.startsWith('image/')) {
+        toast.error('Apenas imagens são permitidas.')
+        return
+      }
+      setSelectedImage(file)
+      const previewUrl = URL.createObjectURL(file)
+      setImagePreview(previewUrl)
+      // Upload automático
+      uploadImageMutation.mutate(file)
+    }
+  }
+
+  const uploadImageMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData()
+      formData.append('image', file)
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/upload/pharmacy-logo`, {
+        method: 'POST',
+        body: formData,
+      })
+      
+      if (!response.ok) throw new Error('Failed to upload image')
+      return response.json()
+    },
+    onSuccess: (data) => {
+      setFormData(prev => ({ ...prev, logoUrl: data.url }))
+      toast.success('Logo enviado com sucesso!')
+    },
+    onError: () => {
+      toast.error('Erro ao fazer upload da imagem')
+    }
   })
 
   useEffect(() => {
@@ -118,6 +165,9 @@ export default function Settings() {
           }
           if (data.accountName) {
             setFormData(prev => ({ ...prev, accountName: data.accountName }))
+          }
+          if (data.logoUrl) {
+            setFormData(prev => ({ ...prev, logoUrl: data.logoUrl }))
           }
         })
         .catch(console.error)
@@ -305,6 +355,56 @@ export default function Settings() {
               placeholder="Descreva sua farmácia..."
             />
           </div>
+
+          {/* Logo da Farmácia */}
+          <div className="mt-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Logo da Farmácia (aparece no app do cliente)
+            </label>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImageSelect}
+              accept="image/*"
+              className="hidden"
+            />
+            
+            {imagePreview || formData.logoUrl ? (
+              <div className="relative w-full max-w-xs aspect-square rounded-lg overflow-hidden border border-gray-200">
+                <img
+                  src={imagePreview || formData.logoUrl}
+                  alt="Logo da farmácia"
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedImage(null)
+                    setImagePreview(null)
+                    setFormData(prev => ({ ...prev, logoUrl: '' }))
+                    if (fileInputRef.current) fileInputRef.current.value = ''
+                  }}
+                  className="absolute top-2 right-2 p-1 bg-white/80 hover:bg-white rounded-full shadow-sm"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full max-w-xs aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-2 hover:border-green-500 hover:bg-green-50 transition-colors"
+              >
+                <Upload className="w-8 h-8 text-gray-400" />
+                <span className="text-sm text-gray-500">Clique para enviar logo</span>
+                <span className="text-xs text-gray-400">Máx. 5MB</span>
+              </button>
+            )}
+            
+            <p className="text-xs text-gray-500 mt-2">
+              Esta imagem será exibida no aplicativo do cliente
+            </p>
+          </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
@@ -317,21 +417,18 @@ export default function Settings() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 IBAN da Farmácia
               </label>
-              <div className="relative">
-                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <div className="flex">
-                  <span className="inline-flex items-center px-3 py-2 border border-r-0 border-gray-300 bg-gray-100 text-gray-600 rounded-l-lg text-sm font-mono">
-                    AO06
-                  </span>
-                  <input
-                    type="text"
-                    value={formData.iban}
-                    onChange={(e) => setFormData({ ...formData, iban: formatIBAN(e.target.value) })}
-                    className="flex-1 pl-3 pr-4 py-2 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none font-mono"
-                    placeholder="0040 0000 1234 5678 901"
-                    maxLength={25}
-                  />
-                </div>
+              <div className="flex">
+                <span className="inline-flex items-center px-3 py-2 border border-r-0 border-gray-300 bg-gray-100 text-gray-600 rounded-l-lg text-sm font-mono">
+                  AO06
+                </span>
+                <input
+                  type="text"
+                  value={formData.iban}
+                  onChange={(e) => setFormData({ ...formData, iban: formatIBAN(e.target.value) })}
+                  className="flex-1 pl-3 pr-4 py-2 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none font-mono"
+                  placeholder="0040 0000 1234 5678 901"
+                  maxLength={25}
+                />
               </div>
               <p className="text-xs text-gray-500 mt-1">21 dígitos após AO06</p>
             </div>

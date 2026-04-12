@@ -34,7 +34,7 @@ export default function Layout({ children }: LayoutProps) {
   const { user, logout } = useAuthStore()
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
+    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -47,20 +47,20 @@ export default function Layout({ children }: LayoutProps) {
       {/* Sidebar */}
       <aside
         className={`
-        fixed top-0 left-0 z-50 h-full w-64 bg-card border-r border-border
+        fixed top-0 left-0 z-50 h-full w-64 bg-white border-r border-gray-200
         transform transition-transform duration-200 ease-in-out
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}
       >
         <div className="flex h-full flex-col">
-          <div className="flex items-center justify-between h-16 px-6 border-b border-border flex-shrink-0">
+          <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 flex-shrink-0">
             <Link to="/" className="flex items-center gap-2">
               <img src="/logo.png" alt="Brócolis" className="w-8 h-8 object-contain" />
-              <span className="text-xl font-bold text-primary">Brócolis Admin</span>
+              <span className="text-xl font-bold text-blue-600">Brócolis Admin</span>
             </Link>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-2 rounded-lg hover:bg-accent"
+              className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
             >
               <X className="w-5 h-5" />
             </button>
@@ -79,8 +79,8 @@ export default function Layout({ children }: LayoutProps) {
                   flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium
                   transition-colors
                   ${isActive 
-                    ? 'bg-primary/10 text-primary' 
-                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                    ? 'bg-blue-50 text-blue-600' 
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }
                 `}
                 >
@@ -91,23 +91,23 @@ export default function Layout({ children }: LayoutProps) {
             })}
           </nav>
 
-          <div className="flex-shrink-0 p-4 border-t border-border">
+          <div className="flex-shrink-0 p-4 border-t border-gray-200">
             <div className="flex items-center gap-3 px-4 py-2">
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-sm font-medium text-primary">
+              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                <span className="text-sm font-medium text-blue-600">
                   {user?.name?.charAt(0).toUpperCase()}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">
+                <p className="text-sm font-medium text-gray-900 truncate">
                   {user?.name}
                 </p>
-                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
               </div>
             </div>
             <button
               onClick={logout}
-              className="flex items-center gap-3 w-full px-4 py-2 mt-2 text-sm font-medium text-destructive rounded-lg hover:bg-destructive/10 transition-colors"
+              className="flex items-center gap-3 w-full px-4 py-2 mt-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors"
             >
               <LogOut className="w-5 h-5" />
               Sair
@@ -119,20 +119,20 @@ export default function Layout({ children }: LayoutProps) {
       {/* Main content */}
       <div className="lg:ml-64 min-h-screen">
         {/* Header */}
-        <header className="sticky top-0 z-30 bg-card border-b border-border h-16 flex-shrink-0 overflow-visible">
+        <header className="sticky top-0 z-30 bg-white border-b border-gray-200 h-16 flex-shrink-0 overflow-visible">
           <div className="flex items-center justify-between h-full px-4 lg:px-8">
             <div className="flex items-center">
               <button
                 onClick={() => setSidebarOpen(true)}
                 onTouchStart={() => setSidebarOpen(true)}
-                className="lg:hidden p-3 rounded-lg hover:bg-accent active:bg-accent/80 touch-manipulation z-50 relative focus:outline-none focus:ring-2 focus:ring-primary"
+                className="lg:hidden p-3 rounded-lg hover:bg-gray-100 active:bg-gray-200 touch-manipulation z-50 relative focus:outline-none focus:ring-2 focus:ring-blue-500"
                 aria-label="Abrir menu de navegação"
               >
                 <Menu className="w-6 h-6" />
               </button>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-gray-500">
                 {new Date().toLocaleDateString('pt-BR', { 
                   weekday: 'long', 
                   year: 'numeric', 

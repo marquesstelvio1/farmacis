@@ -1,7 +1,7 @@
 import { Express, Request, Response } from "express";
 import { db } from "../db";
 import { pharmacies, orders, orderItems, users, pharmacyAdmins, adminUsers, systemSettings } from "@shared/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, or, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 // Middleware to check if user is admin
@@ -17,31 +17,58 @@ function requireAdmin(req: Request, res: Response, next: Function) {
 
 export function registerAdminRoutes(app: Express) {
   console.log("[Admin] Registering Admin Routes...");
-  // Admin login
+  // Admin login - checks admin_users table AND users table with role ADMIN/FARMACIA
   app.post("/api/admin/login", async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
 
+      // First try admin_users table (legacy admins)
       const admin = await db.query.adminUsers.findFirst({
         where: eq(adminUsers.email, email),
       });
 
-      if (!admin) {
+      if (admin) {
+        const isValid = await bcrypt.compare(password, admin.password);
+        if (!isValid) {
+          return res.status(401).json({ message: "Invalid credentials" });
+        }
+
+        res.json({
+          user: {
+            id: admin.id,
+            email: admin.email,
+            name: admin.name,
+            role: admin.role,
+          },
+        });
+        return;
+      }
+
+      // Check users table for ADMIN or FARMACIA roles
+      const user = await db.query.users.findFirst({
+        where: eq(users.email, email),
+      });
+
+      if (!user) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      const isValid = await bcrypt.compare(password, admin.password);
+      // Check if user has permission (not CLIENTE)
+      if (user.role === 'CLIENTE') {
+        return res.status(403).json({ message: "Access denied. Client users cannot access admin panel." });
+      }
+
+      const isValid = await bcrypt.compare(password, user.password);
       if (!isValid) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      // In production, create a proper session/JWT
       res.json({
         user: {
-          id: admin.id,
-          email: admin.email,
-          name: admin.name,
-          role: admin.role,
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
         },
       });
     } catch (error) {
@@ -465,19 +492,28 @@ export function registerAdminRoutes(app: Express) {
     }
   });
 
-  // Get all users
+  // Get all users - filtered by role query param (ADMIN, FARMACIA, CLIENTE)
   app.get("/api/admin/users", async (req: Request, res: Response) => {
     try {
-      const allUsers = await db
+      const { role } = req.query;
+      
+      let query = db
         .select({
           id: users.id,
           name: users.name,
           email: users.email,
           emailVerified: users.emailVerified,
+          role: users.role,
           createdAt: users.createdAt,
         })
-        .from(users)
-        .orderBy(desc(users.createdAt));
+        .from(users);
+      
+      // Filter by role if provided
+      if (role) {
+        query = query.where(eq(users.role, String(role)));
+      }
+      
+      const allUsers = await query.orderBy(desc(users.createdAt));
 
       // Get order count for each user
       const usersWithOrders = await Promise.all(
@@ -495,6 +531,46 @@ export function registerAdminRoutes(app: Express) {
     } catch (error) {
       console.error("Fetch users error:", error);
       res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  // Get admin and pharmacy users (ADMIN + FARMACIA roles only)
+  app.get("/api/admin/team-users", async (req: Request, res: Response) => {
+    try {
+      const teamUsers = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          emailVerified: users.emailVerified,
+          role: users.role,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .where(
+          or(
+            eq(users.role, 'ADMIN'),
+            eq(users.role, 'FARMACIA')
+          )
+        )
+        .orderBy(desc(users.createdAt));
+
+      // Get order count for each user
+      const usersWithOrders = await Promise.all(
+        teamUsers.map(async (user) => {
+          const resultArray = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(orders)
+            .where(eq(orders.userId, user.id));
+          const result = resultArray.length > 0 ? resultArray[0] : null;
+          return { ...user, ordersCount: result?.count || 0 };
+        })
+      );
+
+      res.json(usersWithOrders);
+    } catch (error) {
+      console.error("Fetch team users error:", error);
+      res.status(500).json({ message: "Failed to fetch team users" });
     }
   });
 

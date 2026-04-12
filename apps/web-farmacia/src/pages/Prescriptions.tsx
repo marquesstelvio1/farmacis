@@ -10,7 +10,8 @@ import {
   XCircle,
   Clock,
   Eye,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from 'lucide-react'
 
 interface Prescription {
@@ -25,9 +26,9 @@ interface Prescription {
 }
 
 const statusColors: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  approved: 'bg-green-100 text-green-800',
-  rejected: 'bg-red-100 text-red-800',
+  pending: 'bg-amber-100 text-amber-700',
+  approved: 'bg-green-100 text-green-700',
+  rejected: 'bg-red-100 text-red-700',
 }
 
 const statusLabels: Record<string, string> = {
@@ -80,6 +81,24 @@ export default function Prescriptions() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: async (prescriptionId: number) => {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/prescriptions/${prescriptionId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (!response.ok) throw new Error('Failed to delete prescription')
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pharmacy-prescriptions'] })
+      toast.success('Receita apagada com sucesso!')
+    },
+    onError: () => {
+      toast.error('Erro ao apagar receita')
+    },
+  })
+
   const filteredPrescriptions = prescriptions?.filter((p) => {
     const matchesSearch = p.orderId.toString().includes(searchTerm) || p.id.toString().includes(searchTerm)
     const matchesStatus = statusFilter === 'all' || p.status === statusFilter
@@ -97,14 +116,14 @@ export default function Prescriptions() {
   }
 
   return (
-    <div className="space-y-6 dark:bg-slate-950 min-h-screen transition-colors">
+    <div className="space-y-6 bg-gray-50 min-h-screen transition-colors">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Receitas Médicas</h1>
-          <p className="text-gray-500 dark:text-slate-400">Analise e aprove as receitas dos clientes</p>
+          <h1 className="text-2xl font-bold text-gray-900">Receitas Médicas</h1>
+          <p className="text-gray-500">Analise e aprove as receitas dos clientes</p>
         </div>
         {pendingCount > 0 && (
-          <div className="flex items-center gap-2 px-4 py-2 bg-yellow-100 dark:bg-yellow-500/15 text-yellow-800 dark:text-yellow-300 rounded-lg">
+          <div className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 rounded-lg">
             <Clock className="w-5 h-5" />
             <span className="font-semibold">{pendingCount} pendente{pendingCount > 1 ? 's' : ''}</span>
           </div>
@@ -120,7 +139,7 @@ export default function Prescriptions() {
             placeholder="Buscar por ID do pedido..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -128,7 +147,7 @@ export default function Prescriptions() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+            className="px-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
           >
             <option value="all">Todos os status</option>
             <option value="pending">Pendentes</option>
@@ -141,26 +160,26 @@ export default function Prescriptions() {
       {/* Prescriptions List */}
       <div className="space-y-4">
         {filteredPrescriptions?.map((prescription) => (
-          <div key={prescription.id} className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 p-6 transition-all">
+          <div key={prescription.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div className="flex items-start gap-4">
                 <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${
-                  prescription.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-500/15' :
-                  prescription.status === 'approved' ? 'bg-green-100 dark:bg-green-500/15' : 'bg-red-100 dark:bg-red-500/15'
+                  prescription.status === 'pending' ? 'bg-amber-100' :
+                  prescription.status === 'approved' ? 'bg-green-100' : 'bg-red-100'
                 }`}>
                   <FileText className={`w-7 h-7 ${
-                    prescription.status === 'pending' ? 'text-yellow-600 dark:text-yellow-400' :
-                    prescription.status === 'approved' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                    prescription.status === 'pending' ? 'text-amber-600' :
+                    prescription.status === 'approved' ? 'text-green-600' : 'text-red-600'
                   }`} />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-gray-900 dark:text-slate-100">Receita #{prescription.id}</h3>
+                    <h3 className="font-semibold text-gray-900">Receita #{prescription.id}</h3>
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[prescription.status]}`}>
                       {statusLabels[prescription.status]}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
+                  <p className="text-sm text-gray-500 mt-1">
                     Pedido #{prescription.orderId} • {new Date(prescription.createdAt).toLocaleString('pt-BR')}
                   </p>
                   {prescription.rejectionReason && (
@@ -175,7 +194,7 @@ export default function Prescriptions() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setSelectedPrescription(prescription)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
                 >
                   <Eye className="w-4 h-4" />
                   Ver
@@ -202,6 +221,18 @@ export default function Prescriptions() {
                     </button>
                   </>
                 )}
+                <button
+                  onClick={() => {
+                    if (confirm('Tem certeza que deseja apagar esta receita?')) {
+                      deleteMutation.mutate(prescription.id)
+                    }
+                  }}
+                  disabled={deleteMutation.isPending}
+                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Apagar receita"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
           </div>
@@ -222,8 +253,8 @@ export default function Prescriptions() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-blue-600" />
+                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-gray-900">Receita #{selectedPrescription.id}</h2>

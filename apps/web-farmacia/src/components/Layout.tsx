@@ -168,7 +168,7 @@ export default function Layout({ children }: LayoutProps) {
   const unreadCount = Math.max(0, newOrdersCount - lastSeenCount)
 
   return (
-    <div className="min-h-screen bg-green-50/50 text-green-950">
+    <div className="min-h-screen bg-[#f4f6f3] text-slate-900">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -179,23 +179,23 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Sidebar */}
       <aside className={`
-        fixed top-0 left-0 z-50 h-full w-64 bg-white border-r border-green-100
+        fixed top-0 left-0 z-50 h-full w-64 bg-white border-r border-[#dce4d7]
         transform transition-transform duration-200 ease-in-out
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-        <div className="flex items-center justify-between h-16 px-6 border-b border-green-100 flex-shrink-0">
+        <div className="flex items-center justify-between h-16 px-6 border-b border-[#eef3ec] flex-shrink-0 bg-[#072a1c]">
           <div className="flex items-center gap-2">
             <img src="/logo.png" alt="Brócolis" className="w-8 h-8 object-contain" />
             <div>
-              <p className="text-sm font-semibold text-green-900">{user?.pharmacyName}</p>
-              <p className="text-xs text-green-600/70">Brócolis Farmácia</p>
+              <p className="text-sm font-semibold text-[#b5f176] truncate max-w-[140px]">{user?.pharmacyName}</p>
+              <p className="text-xs text-[#8bc14a]/90">Brócolis Farmácia</p>
             </div>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-2 rounded-lg hover:bg-green-50"
+            className="lg:hidden p-2 rounded-lg hover:bg-white/10"
           >
-            <X className="w-5 h-5 text-green-700" />
+            <X className="w-5 h-5 text-[#b5f176]" />
           </button>
         </div>
 
@@ -214,8 +214,8 @@ export default function Layout({ children }: LayoutProps) {
                   flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
                   transition-colors relative
                   ${isActive
-                    ? 'bg-green-600 text-white shadow-lg shadow-green-200'
-                    : 'text-green-700 hover:bg-green-50 hover:text-green-900'
+                    ? 'bg-[#072a1c] text-[#b5f176] shadow-md shadow-[#072a1c]/15'
+                    : 'text-[#607369] hover:bg-[#f7faf5] hover:text-[#072a1c]'
                   }
                 `}
               >
@@ -236,18 +236,18 @@ export default function Layout({ children }: LayoutProps) {
           })}
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-green-100">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-[#eef3ec] bg-[#fafbf9]">
           <div className="flex items-center gap-3 px-4 py-2">
-            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-              <span className="text-sm font-medium text-green-700">
+            <div className="w-8 h-8 rounded-full bg-[#eef7e8] flex items-center justify-center ring-1 ring-[#dce4d7]">
+              <span className="text-sm font-medium text-[#072a1c]">
                 {user?.name?.charAt(0).toUpperCase()}
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-green-900 truncate">
+              <p className="text-sm font-medium text-[#072a1c] truncate">
                 {user?.name}
               </p>
-              <p className="text-xs text-green-600/70 truncate">{user?.email}</p>
+              <p className="text-xs text-[#607369] truncate">{user?.email}</p>
             </div>
           </div>
           <button
@@ -263,22 +263,22 @@ export default function Layout({ children }: LayoutProps) {
       {/* Main content */}
       <div className="lg:ml-64">
         {/* Header */}
-        <header className="sticky top-0 z-30 bg-white border-b border-green-100 h-16 flex-shrink-0 overflow-visible">
+        <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-[#dce4d7] h-16 flex-shrink-0 overflow-visible shadow-sm shadow-slate-900/5">
           <div className="flex items-center justify-between h-full px-4 lg:px-8">
             <div className="flex items-center">
               <button
                 onClick={() => setSidebarOpen(true)}
                 onTouchStart={() => setSidebarOpen(true)}
-                className="lg:hidden p-3 rounded-lg hover:bg-green-50 active:bg-green-100 touch-manipulation z-50 relative focus:outline-none focus:ring-2 focus:ring-green-600"
+                className="lg:hidden p-3 rounded-lg hover:bg-[#f7faf5] active:bg-[#eef7e8] touch-manipulation z-50 relative focus:outline-none focus:ring-2 focus:ring-[#8bc14a]/50"
                 aria-label="Abrir menu de navegação"
               >
-                <Menu className="w-6 h-6 text-green-800" />
+                <Menu className="w-6 h-6 text-[#072a1c]" />
               </button>
             </div>
             <div className="flex items-center gap-4">
               <button 
                 onClick={openNotifications}
-                className="relative p-2 text-green-700 hover:text-green-900 hover:bg-green-50 rounded-lg transition-colors"
+                className="relative p-2 text-[#607369] hover:text-[#072a1c] hover:bg-[#f7faf5] rounded-lg transition-colors"
               >
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
@@ -287,7 +287,7 @@ export default function Layout({ children }: LayoutProps) {
                   </span>
                 )}
               </button>
-              <span className="text-sm text-green-700 hidden sm:block">
+              <span className="text-sm text-[#607369] hidden sm:block capitalize">
                 {new Date().toLocaleDateString('pt-BR', {
                   weekday: 'long',
                   year: 'numeric',
@@ -300,7 +300,7 @@ export default function Layout({ children }: LayoutProps) {
         </header>
 
         {/* Page content */}
-        <main className="p-4 lg:p-8 min-h-[calc(100vh-4rem)] bg-green-50/50">
+        <main className="p-4 lg:p-8 min-h-[calc(100vh-4rem)] bg-[#f4f6f3]">
           {children}
         </main>
       </div>
@@ -316,11 +316,11 @@ export default function Layout({ children }: LayoutProps) {
             style={{ animation: 'slideIn 0.2s ease-out' }}
             onClick={e => e.stopPropagation()}
           >
-            <div className="p-4 border-b border-green-100 flex items-center justify-between">
-              <h3 className="font-semibold text-green-900">Notificações</h3>
+            <div className="p-4 border-b border-[#eef3ec] flex items-center justify-between bg-[#fafbf9]">
+              <h3 className="font-semibold text-[#072a1c]">Notificações</h3>
               <button 
                 onClick={() => setNotifPanelOpen(false)}
-                className="p-1 hover:bg-green-50 rounded-lg text-green-600"
+                className="p-1 hover:bg-[#f7faf5] rounded-lg text-[#607369]"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -328,8 +328,8 @@ export default function Layout({ children }: LayoutProps) {
             <div className="max-h-96 overflow-y-auto">
               {notifications.length === 0 ? (
                 <div className="p-8 text-center">
-                  <Bell className="w-12 h-12 text-green-200 mx-auto mb-3" />
-                  <p className="text-green-600/70 text-sm">Sem notificações novas</p>
+                  <Bell className="w-12 h-12 text-[#dce4d7] mx-auto mb-3" />
+                  <p className="text-[#607369] text-sm">Sem notificações novas</p>
                 </div>
               ) : (
                 notifications.map((notif) => (
@@ -337,30 +337,30 @@ export default function Layout({ children }: LayoutProps) {
                     key={notif.id}
                     to="/orders"
                     onClick={() => setNotifPanelOpen(false)}
-                    className="flex items-start gap-3 p-4 hover:bg-green-50 border-b border-green-50 last:border-0 transition-colors"
+                    className="flex items-start gap-3 p-4 hover:bg-[#f7faf5] border-b border-[#eef3ec] last:border-0 transition-colors"
                   >
-                    <div className={`p-2 rounded-lg ${notif.type === 'order' ? 'bg-green-100' : 'bg-amber-100'}`}>
-                      <Package2 className={`w-4 h-4 ${notif.type === 'order' ? 'text-green-600' : 'text-amber-600'}`} />
+                    <div className={`p-2 rounded-lg ${notif.type === 'order' ? 'bg-[#eef7e8]' : 'bg-amber-50'}`}>
+                      <Package2 className={`w-4 h-4 ${notif.type === 'order' ? 'text-[#8bc14a]' : 'text-amber-600'}`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-green-900 text-sm">{notif.title}</p>
-                      <p className="text-green-600/70 text-xs mt-0.5">{notif.message}</p>
-                      <p className="text-green-400 text-xs mt-1 flex items-center gap-1">
+                      <p className="font-medium text-[#072a1c] text-sm">{notif.title}</p>
+                      <p className="text-[#607369] text-xs mt-0.5">{notif.message}</p>
+                      <p className="text-[#8bc14a] text-xs mt-1 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         {new Date(notif.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-green-400" />
+                    <ChevronRight className="w-4 h-4 text-[#dce4d7]" />
                   </Link>
                 ))
               )}
             </div>
             {notifications.length > 0 && (
-              <div className="p-3 border-t border-green-100 bg-green-50/50">
+              <div className="p-3 border-t border-[#eef3ec] bg-[#fafbf9]">
                 <Link
                   to="/orders"
                   onClick={() => setNotifPanelOpen(false)}
-                  className="block text-center text-sm text-green-600 hover:text-green-700 font-medium"
+                  className="block text-center text-sm text-[#072a1c] hover:text-[#8bc14a] font-medium"
                 >
                   Ver todos os pedidos
                 </Link>
@@ -376,18 +376,18 @@ export default function Layout({ children }: LayoutProps) {
           <div
             key={toast.id}
             onClick={() => removeToast(toast.id)}
-            className="pointer-events-auto bg-white rounded-xl shadow-xl border-l-4 border-green-500 p-4 flex items-center gap-3 cursor-pointer transform transition-all"
+            className="pointer-events-auto bg-white rounded-xl shadow-xl border border-[#dce4d7] border-l-4 border-l-[#8bc14a] p-4 flex items-center gap-3 cursor-pointer transform transition-all"
           >
-            <div className="p-2 bg-green-100 rounded-full">
-              <ShoppingBag className="w-5 h-5 text-green-600" />
+            <div className="p-2 bg-[#eef7e8] rounded-full">
+              <ShoppingBag className="w-5 h-5 text-[#072a1c]" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-green-900 text-sm">Novo Pedido #{toast.orderId}</p>
-              <p className="text-green-600/70 text-xs truncate">{toast.customerName} • {Number(toast.total).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}</p>
+              <p className="font-semibold text-[#072a1c] text-sm">Novo Pedido #{toast.orderId}</p>
+              <p className="text-[#607369] text-xs truncate">{toast.customerName} • {Number(toast.total).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}</p>
             </div>
             <button 
               onClick={(e) => { e.stopPropagation(); removeToast(toast.id); }}
-              className="p-1 hover:bg-green-50 rounded-lg text-green-400 hover:text-green-600"
+              className="p-1 hover:bg-[#f7faf5] rounded-lg text-[#607369] hover:text-[#072a1c]"
             >
               <X className="w-4 h-4" />
             </button>

@@ -25,7 +25,6 @@ import Insurance from "@/pages/Insurance";
 import MedicalInfo from "@/pages/MedicalInfo";
 import AccountSettings from "@/pages/Settings";
 import EmergencyContacts from "@/pages/EmergencyContacts";
-import { useCart } from "@/hooks/use-cart";
 
 interface RouterProps {
   onLogout: () => void;
@@ -61,10 +60,12 @@ function Router({ onLogout: _onLogout }: RouterProps) {
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem("isAuthenticated") === "true";
+    const saved = typeof window !== 'undefined' ? localStorage.getItem("isAuthenticated") : null;
+    return saved === "true";
   });
   const [showRegister, setShowRegister] = useState(false);
-  const { clearCart } = useCart();
+  // Mova chamadas de hooks que dependem de contexto para dentro dos componentes filhos (como Router)
+  // ou garanta que o Provider esteja no main.tsx
 
   const handleLogin = () => {
     setIsAuthenticated(true);
@@ -75,7 +76,6 @@ function App() {
     setIsAuthenticated(false);
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("user");
-    clearCart();
   };
 
   const handleShowRegister = () => {

@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Search, Filter, Grid, List, X, Package, ShoppingCart, Star, MapPin, Navigation, ArrowLeft, SlidersHorizontal } from 'lucide-react'
+import { Search, Grid, List, X, Package, ShoppingCart, Star, MapPin, Navigation, ArrowLeft, SlidersHorizontal } from 'lucide-react'
 import { ProductCard } from '@/components/ProductCard'
 import { useCart } from '@/hooks/use-cart'
 import { type ProductResponse } from "@shared/routes";
-import { useLocation, Link } from "wouter";
+import { Link } from "wouter";
 import { DeliveryLocationPicker } from "@/components/DeliveryLocationPicker";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,13 @@ const categories = [
   { id: 'higiene', name: 'Higiene', icon: Star },
 ]
 
+const origins = [
+  { id: 'all', name: 'Todas as Origens' },
+  { id: 'portugues', name: 'Portuguesa' },
+  { id: 'indiano', name: 'Indiana' },
+  { id: 'default', name: 'Nacional/Padrão' },
+]
+
 const sortOptions = [
   { id: 'name', name: 'Nome' },
   { id: 'price-low', name: 'Menor Preço' },
@@ -28,7 +35,6 @@ const sortOptions = [
 ]
 
 export default function Catalog() {
-  const [pathname, setLocation] = useLocation();
   const searchParams = new URLSearchParams(window.location.search);
   const initialSearch = searchParams.get('search') || '';
   const pharmacyId = searchParams.get('farmacia') || null;
@@ -36,10 +42,13 @@ export default function Catalog() {
   const [search, setSearch] = useState(initialSearch);
   const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
   const [selectedCategory, setSelectedCategory] = useState('all')
+  const [selectedOrigin, setSelectedOrigin] = useState('all')
   const [selectedSort, setSelectedSort] = useState('name')
   const [priceRange, setPriceRange] = useState({ min: '', max: '' })
   const [showFilters, setShowFilters] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const [pharmacyInfo, setPharmacyInfo] = useState<any>(null)
   
   // Localização e Ordenação
@@ -52,6 +61,7 @@ export default function Catalog() {
   const hasActiveFilters =
     Boolean(search.trim()) ||
     selectedCategory !== 'all' ||
+    selectedOrigin !== 'all' ||
     selectedSort !== 'name' ||
     Boolean(priceRange.min) ||
     Boolean(priceRange.max);
@@ -61,6 +71,23 @@ export default function Catalog() {
       setDebouncedSearch(search.trim());
     }, 300);
 
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  // Fetch suggestions while typing
+  useEffect(() => {
+    if (search.trim().length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    const timer = window.setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/products/suggestions?q=${encodeURIComponent(search.trim())}`);
+        if (res.ok) setSuggestions(await res.json());
+      } catch (err) {
+        console.error("Error fetching suggestions:", err);
+      }
+    }, 200);
     return () => window.clearTimeout(timer);
   }, [search]);
 
@@ -86,11 +113,12 @@ export default function Catalog() {
   }, [pharmacyId]);
 
   const { data: products = [], isLoading, error } = useQuery<ProductResponse[]>({
-    queryKey: ['products', debouncedSearch, selectedCategory, selectedSort, priceRange, pharmacyId],
+    queryKey: ['products', debouncedSearch, selectedCategory, selectedOrigin, selectedSort, priceRange, pharmacyId],
     queryFn: async () => {
       const params = new URLSearchParams()
       if (debouncedSearch) params.append('search', debouncedSearch)
       if (selectedCategory !== 'all') params.append('category', selectedCategory)
+      if (selectedOrigin !== 'all') params.append('origin', selectedOrigin)
       if (selectedSort) params.append('sort', selectedSort)
       if (priceRange.min) params.append('minPrice', priceRange.min)
       if (priceRange.max) params.append('maxPrice', priceRange.max)
@@ -142,14 +170,11 @@ export default function Catalog() {
     }).format(parseFloat(value))
   }
 
-  const handleAddToCart = (product: ProductResponse) => {
-    addItem(product)
-  }
-
   const clearAllFilters = () => {
     setSearch('');
     setDebouncedSearch('');
     setSelectedCategory('all');
+    setSelectedOrigin('all');
     setSelectedSort('name');
     setPriceRange({ min: '', max: '' });
   };
@@ -160,6 +185,9 @@ export default function Catalog() {
     if (selectedCategory !== 'all') {
       badges.push(`Categoria: ${categories.find((c) => c.id === selectedCategory)?.name ?? selectedCategory}`);
     }
+    if (selectedOrigin !== 'all') {
+      badges.push(`Origem: ${origins.find((o) => o.id === selectedOrigin)?.name ?? selectedOrigin}`);
+    }
     if (selectedSort !== 'name') {
       badges.push(`Ordenar: ${sortOptions.find((s) => s.id === selectedSort)?.name ?? selectedSort}`);
     }
@@ -168,7 +196,7 @@ export default function Catalog() {
     }
     if (deliveryLocation) badges.push('Proximidade ativa');
     return badges;
-  }, [search, selectedCategory, selectedSort, priceRange.min, priceRange.max, deliveryLocation]);
+  }, [search, selectedCategory, selectedOrigin, selectedSort, priceRange.min, priceRange.max, deliveryLocation]);
 
   if (error) {
     return (
@@ -214,7 +242,11 @@ export default function Catalog() {
 
               {/* Search (Desktop) */}
               <div className="hidden md:block flex-1 max-w-xl mx-8">
-                <div className="relative group">
+                <div 
+                  className="relative group" 
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                >
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 group-focus-within:text-blue-400 transition-colors" />
                   <input
                     type="text"
@@ -222,25 +254,42 @@ export default function Catalog() {
                     value={search}
                     onChange={(e) => {
                       setSearch(e.target.value);
+                      setShowSuggestions(true);
                       const extra = pharmacyId ? `&farmacia=${pharmacyId}` : '';
                       window.history.replaceState(null, '', `/catalogo?search=${encodeURIComponent(e.target.value)}${extra}`);
                     }}
-                    className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 text-white placeholder-slate-500 outline-none transition-all"
+                    className="w-full pl-10 pr-10 py-2 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 text-white placeholder-slate-500 outline-none transition-all"
                   />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowFilters(!showFilters);
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 rounded-lg transition-all"
+                  >
+                    <SlidersHorizontal className="w-4 h-4" />
+                  </button>
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-white/10 rounded-xl overflow-hidden z-50 shadow-2xl">
+                      {suggestions.map((suggestion, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            setSearch(suggestion);
+                            setShowSuggestions(false);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-blue-500/20 hover:text-blue-300 transition-colors border-b border-white/5 last:border-0"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="text-white hover:bg-white/10"
-                  aria-label="Abrir filtros"
-                >
-                  <Filter className="w-5 h-5" />
-                </Button>
-                
                 <Button
                   variant="ghost"
                   size="icon"
@@ -270,15 +319,48 @@ export default function Catalog() {
             {/* Row 2: Search (Mobile) & Location */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-t border-white/5 pt-2">
               <div className="md:hidden w-full">
-                <div className="relative">
+                <div 
+                  className="relative"
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                >
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                   <input
                     type="text"
                     placeholder="Buscar..."
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm"
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setShowSuggestions(true);
+                    }}
+                    className="w-full pl-10 pr-10 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm"
                   />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowFilters(!showFilters);
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 rounded-lg transition-all"
+                  >
+                    <SlidersHorizontal className="w-4 h-4" />
+                  </button>
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-white/10 rounded-xl overflow-hidden z-50 shadow-2xl">
+                      {suggestions.map((suggestion, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            setSearch(suggestion);
+                            setShowSuggestions(false);
+                          }}
+                          className="w-full text-left px-4 py-3 text-sm text-slate-200 hover:bg-blue-500/20 transition-colors border-b border-white/5"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -367,6 +449,26 @@ export default function Catalog() {
                       />
                       <category.icon className="w-4 h-4 text-blue-400" />
                       <span className="text-sm text-slate-200">{category.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Origins */}
+              <div className="mb-6">
+                <h3 className="text-sm font-bold text-white mb-3 uppercase tracking-wide">Origem</h3>
+                <div className="space-y-2">
+                  {origins.map((origin) => (
+                    <label key={origin.id} className="flex items-center space-x-3 cursor-pointer hover:bg-white/10 p-2 rounded transition">
+                      <input
+                        type="radio"
+                        name="origin"
+                        value={origin.id}
+                        checked={selectedOrigin === origin.id}
+                        onChange={(e) => setSelectedOrigin(e.target.value)}
+                        className="text-blue-500"
+                      />
+                      <span className="text-sm text-slate-200">{origin.name}</span>
                     </label>
                   ))}
                 </div>

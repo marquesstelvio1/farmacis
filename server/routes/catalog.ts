@@ -4,6 +4,36 @@ import { insertProductSchema, updateProductSchema, productCategoryEnum, productS
 import { z } from "zod";
 
 export function registerCatalogRoutes(app: express.Application) {
+  // Get search suggestions (autocomplete)
+  app.get("/api/products/suggestions", async (req: Request, res: Response) => {
+    try {
+      const query = (req.query.q as string || "").toLowerCase().trim();
+      if (query.length < 2) return res.json([]);
+
+      // Buscamos os produtos para extrair termos relevantes
+      const products = await storage.getProducts();
+      const suggestionSet = new Set<string>();
+
+      for (const p of products) {
+        if (p.name.toLowerCase().includes(query)) suggestionSet.add(p.name);
+        if (p.activeIngredient && p.activeIngredient.toLowerCase().includes(query)) {
+          suggestionSet.add(p.activeIngredient);
+        }
+        if (Array.isArray(p.diseases)) {
+          p.diseases.forEach((d: string) => {
+            if (d.toLowerCase().includes(query)) suggestionSet.add(d);
+          });
+        }
+        if (suggestionSet.size > 15) break; // Limite para performance
+      }
+
+      res.json(Array.from(suggestionSet).slice(0, 8));
+    } catch (error) {
+      console.error("Suggestions error:", error);
+      res.status(500).json({ message: "Failed to fetch suggestions" });
+    }
+  });
+
   // Get all products (with optional search and pharmacy filter)
   // Groups variants (Portuguese/Indian) under main product cards
   app.get("/api/products", async (req: Request, res: Response) => {
@@ -12,17 +42,33 @@ export function registerCatalogRoutes(app: express.Application) {
       const pharmacyId = req.query.pharmacyId ? parseInt(req.query.pharmacyId as string) : undefined;
       const category = req.query.category as string;
       const status = req.query.status as string;
+      const origin = req.query.origin as string;
 
-      console.log('🔍 GET /api/products - Query params:', { search, pharmacyId, category, status });
+      console.log('🔍 GET /api/products - Query params:', { search, pharmacyId, category, status, origin });
 
-      let products = await storage.getProducts(search, pharmacyId);
+      // Buscamos todos os produtos da farmácia (ou todos) e aplicamos o filtro manualmente
+      // para garantir que a busca por doenças funcione corretamente.
+      let products = await storage.getProducts(undefined, pharmacyId);
       console.log('🔍 Products fetched from storage:', products.length, 'items');
+
+      if (search) {
+        const query = search.toLowerCase();
+        products = products.filter(p => 
+          p.name.toLowerCase().includes(query) ||
+          (p.description && p.description.toLowerCase().includes(query)) ||
+          (p.activeIngredient && p.activeIngredient.toLowerCase().includes(query)) ||
+          (Array.isArray(p.diseases) && p.diseases.some(d => d.toLowerCase().includes(query)))
+        );
+      }
       
       if (category) {
         products = products.filter((product) => product.category === category);
       }
       if (status) {
         products = products.filter((product) => product.status === status);
+      }
+      if (origin) {
+        products = products.filter((product) => product.origin === origin);
       }
 
       // Group products by name to combine variants (Portuguese/Indian)
@@ -97,20 +143,25 @@ export function registerCatalogRoutes(app: express.Application) {
   app.post("/api/products", async (req: Request, res: Response) => {
     try {
       const data = { ...req.body };
+      const isMed = data.category === 'medicamento';
 
-      // Calculate 15% commission if precoBase is provided
+      // Função auxiliar para calcular preço com comissão
+      const withCommission = (val: any) => {
+        const base = parseFloat(String(val));
+        return !isNaN(base) ? (base * 1.15).toFixed(2).toString() : null;
+      };
+
+      // Aplicar comissão em todos os campos de preço fornecidos
       if (data.precoBase) {
-        const base = parseFloat(String(data.precoBase));
-        if (!isNaN(base)) {
-          data.price = (base * 1.15).toFixed(2).toString();
-        }
-      } else if (data.price && !data.precoBase) {
-        // If only price is provided, treat it as base and add commission
-        const base = parseFloat(String(data.price));
-        if (!isNaN(base)) {
-          data.precoBase = base.toString();
-          data.price = (base * 1.15).toFixed(2).toString();
-        }
+        data.price = withCommission(data.precoBase);
+      }
+      
+      if (isMed) {
+        if (data.precoPortugues) data.precoPortugues = withCommission(data.precoPortugues);
+        if (data.precoIndiano) data.precoIndiano = withCommission(data.precoIndiano);
+        
+        // Se não enviou preço base mas enviou um de origem, o primeiro vira o padrão do card
+        if (!data.price) data.price = data.precoPortugues || data.precoIndiano;
       }
 
       const productData = insertProductSchema.parse(data);
@@ -225,7 +276,18 @@ export function registerCatalogRoutes(app: express.Application) {
       const category = req.query.category as string;
       const status = req.query.status as string;
 
-      let products = await storage.getProducts(search, pharmacyId);
+      let products = await storage.getProducts(undefined, pharmacyId);
+
+      if (search) {
+        const query = search.toLowerCase();
+        products = products.filter(p => 
+          p.name.toLowerCase().includes(query) ||
+          (p.description && p.description.toLowerCase().includes(query)) ||
+          (p.activeIngredient && p.activeIngredient.toLowerCase().includes(query)) ||
+          (Array.isArray(p.diseases) && p.diseases.some(d => d.toLowerCase().includes(query)))
+        );
+      }
+
       if (category) {
         products = products.filter((product) => product.category === category);
       }

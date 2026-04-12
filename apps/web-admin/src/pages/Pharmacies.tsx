@@ -72,10 +72,10 @@ interface Pharmacy {
 }
 
 const statusColors: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-300',
-  active: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300',
-  suspended: 'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-300',
-  rejected: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300',
+  pending: 'bg-amber-100 text-amber-700',
+  active: 'bg-green-100 text-green-700',
+  suspended: 'bg-orange-100 text-orange-700',
+  rejected: 'bg-red-100 text-red-700',
 }
 
 const statusLabels: Record<string, string> = {
@@ -239,15 +239,15 @@ export default function Pharmacies() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Área de Controle</h1>
-          <p className="text-gray-500 dark:text-slate-400">
+          <h1 className="text-2xl font-bold text-gray-900">Área de Controle</h1>
+          <p className="text-gray-500">
             Registe e controle farmácias, clínicas, profissionais e seguradoras.
           </p>
         </div>
       </div>
 
       {/* Section switcher */}
-      <div className="flex flex-wrap justify-center gap-2 bg-white dark:bg-slate-900/70 border border-gray-100 dark:border-slate-800 rounded-xl p-2">
+      <div className="flex flex-wrap justify-center gap-2 bg-white border border-gray-100 rounded-xl p-2">
         {[
           { id: 'pharmacies' as const, label: 'Farmácias', icon: Store },
           { id: 'clinics' as const, label: 'Clínicas', icon: Shield },
@@ -264,7 +264,7 @@ export default function Pharmacies() {
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
                 active
                   ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800/60'
+                  : 'text-gray-600 hover:bg-gray-50'
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -287,15 +287,15 @@ export default function Pharmacies() {
       )}
 
       {controlSection !== 'pharmacies' && (
-        <div className="bg-white dark:bg-slate-900/70 rounded-2xl border border-gray-100 dark:border-slate-800 p-6">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100">
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <h2 className="text-lg font-bold text-gray-900">
             {controlSection === 'clinics'
               ? 'Clínicas'
               : controlSection === 'professionals'
                 ? 'Profissionais'
                 : 'Seguradoras'}
           </h2>
-          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
+          <p className="text-sm text-gray-500 mt-1">
             Esta área está pronta para receber as telas de registo e gestão. Quando você quiser, eu crio as páginas e rotas reais aqui no admin.
           </p>
         </div>
@@ -306,21 +306,21 @@ export default function Pharmacies() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-slate-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
             type="text"
             placeholder="Buscar farmácia..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none placeholder:text-gray-400 dark:placeholder:text-slate-500"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 bg-white text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none placeholder:text-gray-400"
           />
         </div>
         <div className="flex items-center gap-2">
-          <Filter className="w-5 h-5 text-gray-400 dark:text-slate-500" />
+          <Filter className="w-5 h-5 text-gray-400" />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            className="px-4 py-2 border border-gray-300 bg-white text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           >
             <option value="all">Todos os status</option>
             <option value="pending">Pendentes</option>
@@ -336,14 +336,14 @@ export default function Pharmacies() {
         {filteredPharmacies?.map((pharmacy) => {
           const StatusIcon = statusIcons[pharmacy.status]
           return (
-            <div key={pharmacy.id} className="bg-white dark:bg-slate-900/70 rounded-xl shadow-sm dark:shadow-none border border-gray-100 dark:border-slate-800 p-6">
+            <div key={pharmacy.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-500/15 rounded-lg flex items-center justify-center">
-                    <Store className="w-6 h-6 text-blue-600 dark:text-blue-300" />
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Store className="w-6 h-6 text-blue-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-slate-100">{pharmacy.name}</h3>
+                    <h3 className="font-semibold text-gray-900">{pharmacy.name}</h3>
                     <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${statusColors[pharmacy.status]}`}>
                       <StatusIcon className="w-3 h-3" />
                       {statusLabels[pharmacy.status]}
@@ -353,14 +353,14 @@ export default function Pharmacies() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleOpenCreds(pharmacy)}
-                    className="p-2 text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors"
+                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                     title="Ver Credenciais"
                   >
                     <Key className="w-5 h-5" />
                   </button>
                   <Link
                     to={`/pharmacies/${pharmacy.id}`}
-                    className="p-2 text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors"
+                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </Link>
@@ -368,15 +368,15 @@ export default function Pharmacies() {
               </div>
 
               <div className="mt-4 space-y-2">
-                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
                   <Mail className="w-4 h-4" />
                   {pharmacy.email}
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
                   <Phone className="w-4 h-4" />
                   {pharmacy.phone}
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
                   <MapPin className="w-4 h-4" />
                   {pharmacy.address}
                 </div>
@@ -431,9 +431,9 @@ export default function Pharmacies() {
 
       {filteredPharmacies?.length === 0 && (
         <div className="text-center py-12">
-          <Store className="w-12 h-12 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-slate-100">Nenhuma farmácia encontrada</h3>
-          <p className="text-gray-500 dark:text-slate-400">Tente ajustar os filtros de busca</p>
+          <Store className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900">Nenhuma farmácia encontrada</h3>
+          <p className="text-gray-500">Tente ajustar os filtros de busca</p>
         </div>
       )}
 
