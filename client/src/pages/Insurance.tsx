@@ -86,10 +86,10 @@ const insurances: Insurance[] = [
 
 export default function Insurance() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-4">
+    <div className="min-h-screen bg-white p-4">
       <div className="max-w-5xl mx-auto py-8">
         <Link href="/">
-          <Button variant="ghost" className="text-white mb-8">
+          <Button variant="ghost" className="text-black mb-8 hover:bg-green-50">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
           </Button>
@@ -102,14 +102,14 @@ export default function Insurance() {
           className="space-y-8"
         >
           {/* Header */}
-          <div className="text-center text-white space-y-4">
+          <div className="text-center text-black space-y-4">
             <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-                <ShieldCheck className="w-6 h-6 text-emerald-400" />
+              <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
+                <ShieldCheck className="w-6 h-6 text-green-600" />
               </div>
               <h1 className="text-4xl font-black">Planos de Saúde</h1>
             </div>
-            <p className="text-slate-300 text-lg">Escolha o melhor plano para você e sua família</p>
+            <p className="text-gray-600 text-lg">Escolha o melhor plano para você e sua família</p>
           </div>
 
           {/* Insurance Grid */}
@@ -120,23 +120,23 @@ export default function Insurance() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all hover:border-emerald-400/50 flex flex-col"
+                className="bg-white border border-gray-200 rounded-2xl p-6 hover:border-green-400 hover:shadow-lg transition-all flex flex-col"
               >
                 <div className="space-y-4 flex-1">
                   {/* Header */}
                   <div>
-                    <h3 className="text-xl font-bold text-white">{insurance.name}</h3>
-                    <p className="text-emerald-300 text-sm font-semibold">{insurance.plan}</p>
-                    <p className="text-2xl font-black text-emerald-400 mt-2">{insurance.price}</p>
+                    <h3 className="text-xl font-bold text-black">{insurance.name}</h3>
+                    <p className="text-green-600 text-sm font-semibold">{insurance.plan}</p>
+                    <p className="text-2xl font-black text-green-600 mt-2">{insurance.price}</p>
                   </div>
 
                   {/* Coverage */}
                   <div className="space-y-2">
-                    <p className="text-xs font-bold text-slate-400 uppercase">Cobertura inclusa:</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase">Cobertura inclusa:</p>
                     <ul className="space-y-1">
                       {insurance.coverage.map((item, idx) => (
-                        <li key={idx} className="text-xs text-slate-300 flex items-center gap-2">
-                          <Heart className="w-3 h-3 text-emerald-400" />
+                        <li key={idx} className="text-xs text-gray-700 flex items-center gap-2">
+                          <Heart className="w-3 h-3 text-green-500" />
                           {item}
                         </li>
                       ))}
@@ -144,36 +144,36 @@ export default function Insurance() {
                   </div>
 
                   {/* Info */}
-                  <div className="grid grid-cols-2 gap-2 text-xs bg-white/5 rounded-lg p-3">
+                  <div className="grid grid-cols-2 gap-2 text-xs bg-green-50 rounded-lg p-3">
                     <div>
-                      <p className="text-slate-400">Rating</p>
-                      <p className="text-white font-bold flex items-center gap-1">
+                      <p className="text-gray-500">Rating</p>
+                      <p className="text-black font-bold flex items-center gap-1">
                         ⭐ {insurance.rating}
                       </p>
                     </div>
                     <div>
-                      <p className="text-slate-400">Membros</p>
-                      <p className="text-white font-bold">{(insurance.members / 1000).toFixed(0)}k</p>
+                      <p className="text-gray-500">Membros</p>
+                      <p className="text-black font-bold">{(insurance.members / 1000).toFixed(0)}k</p>
                     </div>
                   </div>
 
                   {/* Contact Details */}
-                  <div className="space-y-2 text-xs text-slate-300">
+                  <div className="space-y-2 text-xs text-gray-700">
                     <div className="flex items-start gap-2">
-                      <Phone className="w-3 h-3 text-teal-400 mt-0.5 flex-shrink-0" />
-                      <a href={`tel:${insurance.contact}`} className="hover:text-white">
+                      <Phone className="w-3 h-3 text-green-500 mt-0.5 flex-shrink-0" />
+                      <a href={`tel:${insurance.contact}`} className="hover:text-green-600">
                         {insurance.contact}
                       </a>
                     </div>
                     <div className="flex items-start gap-2">
-                      <MapPin className="w-3 h-3 text-teal-400 mt-0.5 flex-shrink-0" />
+                      <MapPin className="w-3 h-3 text-green-500 mt-0.5 flex-shrink-0" />
                       <span>{insurance.location}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* CTA */}
-                <Button className="w-full mt-4 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-emerald-500/50 transition">
+                <Button className="w-full mt-4 bg-gradient-to-r from-green-600 to-green-500 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-green-500/50 transition">
                   Solicitar Informações
                 </Button>
               </motion.div>

@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 // Componente de imagem com fallback
 function ProductImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
   const [error, setError] = useState(false)
-  
+
   if (error || !src) {
     return (
       <div className={`flex items-center justify-center bg-gray-100 ${className}`}>
@@ -21,7 +21,7 @@ function ProductImage({ src, alt, className }: { src: string; alt: string; class
       </div>
     )
   }
-  
+
   return (
     <img
       src={src}
@@ -100,12 +100,12 @@ export default function Products() {
     mutationFn: async (file: File) => {
       const formData = new FormData()
       formData.append('image', file)
-      
+
       const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/upload/product-image`, {
         method: 'POST',
         body: formData,
       })
-      
+
       if (!response.ok) throw new Error('Failed to upload image')
       return response.json()
     },
@@ -125,33 +125,31 @@ export default function Products() {
       const hasPort = formData.pricePortuguese && parseFloat(formData.pricePortuguese) > 0;
       const hasInd = formData.priceIndian && parseFloat(formData.priceIndian) > 0;
 
-      // Validação condicional:
-      // Se não for medicamento, o preço base é obrigatório.
-      // Se for medicamento, pelo menos um dos 3 deve estar preenchido.
       if (!isMed && !hasBase) {
         throw new Error('O preço base é obrigatório para produtos desta categoria.');
       }
-      
+
       if (isMed && !hasBase && !hasPort && !hasInd) {
         throw new Error('Para medicamentos, preencha pelo menos um preço (Padrão, Português ou Indiano).');
       }
 
-      // Map frontend model to schema.ts model
+      // Single record with all prices
       const productData = {
         name: formData.name,
         description: formData.description,
-        precoBase: formData.price || null,
-        precoPortugues: formData.pricePortuguese || null,
-        precoIndiano: formData.priceIndian || null,
         category: formData.category,
         brand: formData.brand,
         dosage: formData.dosage,
-        origin: formData.origin,
-        isMainVariant: formData.origin === 'default',
-        diseases: formData.diseasesInput.split(',').map(s => s.trim()).filter(Boolean),
+        diseases: formData.diseasesInput.split(',').map((s: string) => s.trim()).filter(Boolean),
         prescriptionRequired: formData.prescriptionRequired,
         stock: 100,
-        imageUrl: formData.imageUrl
+        imageUrl: formData.imageUrl,
+        price: formData.price || formData.pricePortuguese || formData.priceIndian,
+        precoBase: formData.price || null,
+        precoPortugues: formData.pricePortuguese || null,
+        precoIndiano: formData.priceIndian || null,
+        origin: 'default',
+        isMainVariant: true,
       };
 
       const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/pharmacy/${user?.pharmacyId}/products`, {
@@ -164,7 +162,9 @@ export default function Products() {
         const err = await response.json();
         throw new Error(err.message || 'Failed to add product');
       }
-      return response.json();
+
+      const created = await response.json();
+      return { createdId: created.id };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pharmacy-products', user?.pharmacyId] })
@@ -183,7 +183,7 @@ export default function Products() {
       const hasBasePrice = data.formData.price && parseFloat(data.formData.price) > 0;
       const hasPortuguesePrice = data.formData.pricePortuguese && parseFloat(data.formData.pricePortuguese) > 0;
       const hasIndianPrice = data.formData.priceIndian && parseFloat(data.formData.priceIndian) > 0;
-      
+
       if (!hasBasePrice && !hasPortuguesePrice && !hasIndianPrice) {
         throw new Error('Pelo menos um preço deve ser preenchido (Padrão, Português ou Indiano)');
       }
@@ -232,6 +232,22 @@ export default function Products() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pharmacy-products', user?.pharmacyId] })
       toast.success('Status de estoque atualizado!')
+    }
+  })
+
+  const deleteProductMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/products/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Failed to delete product');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pharmacy-products', user?.pharmacyId] })
+      toast.success('Produto removido com sucesso!')
+    },
+    onError: () => {
+      toast.error('Erro ao remover produto.')
     }
   })
 
@@ -294,7 +310,7 @@ export default function Products() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="price-top">Preço Base (AOA) *</Label>
+                  <Label htmlFor="price-top">Preço Base (AOA)</Label>
                   <Input
                     id="price-top"
                     type="number"
@@ -305,7 +321,7 @@ export default function Products() {
                   />
                   {newProduct.price && !isNaN(parseFloat(newProduct.price)) && (
                     <p className="text-sm text-green-600 mt-1 font-medium">
-                      Preço de venda: {(parseFloat(newProduct.price) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })} (+15%)
+                      Preço final: {parseFloat(newProduct.price).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
                     </p>
                   )}
                 </div>
@@ -375,7 +391,7 @@ export default function Products() {
                   <div className="border border-gray-200 rounded-lg p-4 space-y-4">
                     <Label className="font-semibold text-gray-700">Preços por Origem (AOA)</Label>
                     <p className="text-xs text-gray-500">Preencha pelo menos um preço</p>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="pricePortuguese" className="text-sm text-gray-600">Português</Label>
@@ -389,7 +405,7 @@ export default function Products() {
                         />
                         {newProduct.pricePortuguese && !isNaN(parseFloat(newProduct.pricePortuguese)) && (
                           <p className="text-xs text-green-600 mt-1">
-                            Venda: {(parseFloat(newProduct.pricePortuguese) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                            Preço: {parseFloat(newProduct.pricePortuguese).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
                           </p>
                         )}
                       </div>
@@ -405,7 +421,7 @@ export default function Products() {
                         />
                         {newProduct.priceIndian && !isNaN(parseFloat(newProduct.priceIndian)) && (
                           <p className="text-xs text-green-600 mt-1">
-                            Venda: {(parseFloat(newProduct.priceIndian) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                            Preço: {parseFloat(newProduct.priceIndian).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
                           </p>
                         )}
                       </div>
@@ -423,7 +439,7 @@ export default function Products() {
                   accept="image/*"
                   className="hidden"
                 />
-                
+
                 {imagePreview || newProduct.imageUrl ? (
                   <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-gray-200">
                     <img
@@ -455,7 +471,7 @@ export default function Products() {
                     <span className="text-xs text-gray-400">ou cole URL abaixo</span>
                   </button>
                 )}
-                
+
                 <div className="mt-2">
                   <Label htmlFor="imageUrl" className="text-xs text-gray-500">Ou insira URL da imagem:</Label>
                   <Input
@@ -516,7 +532,7 @@ export default function Products() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="edit-price-top">Preço Base (AOA) *</Label>
+                  <Label htmlFor="edit-price-top">Preço Base (AOA)</Label>
                   <Input
                     id="edit-price-top"
                     type="number"
@@ -524,11 +540,10 @@ export default function Products() {
                     placeholder="Ex: 1000"
                     value={newProduct.price}
                     onChange={(e) => setNewProduct(prev => ({ ...prev, price: e.target.value }))}
-                    required
                   />
                   {newProduct.price && !isNaN(parseFloat(newProduct.price)) && (
                     <p className="text-sm text-green-600 mt-1 font-medium">
-                      Preço de venda: {(parseFloat(newProduct.price) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })} (+15%)
+                      Preço final: {parseFloat(newProduct.price).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
                     </p>
                   )}
                 </div>
@@ -598,7 +613,7 @@ export default function Products() {
                   <div className="border border-gray-200 rounded-lg p-4 space-y-4">
                     <Label className="font-semibold text-gray-700">Preços por Origem (AOA)</Label>
                     <p className="text-xs text-gray-500">Preencha pelo menos um preço</p>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="edit-pricePortuguese" className="text-sm text-gray-600">Português</Label>
@@ -612,7 +627,7 @@ export default function Products() {
                         />
                         {newProduct.pricePortuguese && !isNaN(parseFloat(newProduct.pricePortuguese)) && (
                           <p className="text-xs text-green-600 mt-1">
-                            Venda: {(parseFloat(newProduct.pricePortuguese) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                            Preço: {parseFloat(newProduct.pricePortuguese).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
                           </p>
                         )}
                       </div>
@@ -628,7 +643,7 @@ export default function Products() {
                         />
                         {newProduct.priceIndian && !isNaN(parseFloat(newProduct.priceIndian)) && (
                           <p className="text-xs text-green-600 mt-1">
-                            Venda: {(parseFloat(newProduct.priceIndian) * 1.15).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                            Preço: {parseFloat(newProduct.priceIndian).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
                           </p>
                         )}
                       </div>
@@ -646,7 +661,7 @@ export default function Products() {
                   accept="image/*"
                   className="hidden"
                 />
-                
+
                 {imagePreview || newProduct.imageUrl ? (
                   <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-gray-200">
                     <img
@@ -678,7 +693,7 @@ export default function Products() {
                     <span className="text-xs text-gray-400">ou cole URL abaixo</span>
                   </button>
                 )}
-                
+
                 <div className="mt-2">
                   <Label htmlFor="edit-imageUrl" className="text-xs text-gray-500">Ou insira URL da imagem:</Label>
                   <Input
@@ -762,12 +777,63 @@ export default function Products() {
                   </span>
                 ))}
               </div>
-              <p className="text-base sm:text-lg font-bold text-green-600 mt-2">
-                {Number(product.price).toLocaleString('pt-AO', {
-                  style: 'currency',
-                  currency: 'AOA'
-                })}
-              </p>
+              {(() => {
+                const ptVal = (product as any).precoPortugues ? parseFloat(String((product as any).precoPortugues)) : 0;
+                const inVal = (product as any).precoIndiano ? parseFloat(String((product as any).precoIndiano)) : 0;
+                const baseValVal = product.price ? parseFloat(String(product.price)) : 0;
+
+                const getDisplayPrice = () => {
+                  if (baseValVal > 0) return { value: baseValVal, isFallback: false };
+                  if (ptVal > 0) return { value: ptVal, isFallback: true, fallbackOrigin: 'portugues' };
+                  if (inVal > 0) return { value: inVal, isFallback: true, fallbackOrigin: 'indiano' };
+                  return null;
+                };
+
+                const display = getDisplayPrice();
+
+                type PriceEntry = { label: string; badge: string; badgeClass: string; value: number; origin: string | null };
+                const getAvailablePrices = (): PriceEntry[] => {
+                  const entries: PriceEntry[] = [];
+                  if (baseValVal > 0) entries.push({ label: 'Base', badge: '🏷️ Base', badgeClass: 'bg-slate-100 text-slate-700 border-slate-200', value: baseValVal, origin: null });
+                  if (ptVal > 0) entries.push({ label: 'Português', badge: '🇵🇹 Português', badgeClass: 'bg-blue-50 text-blue-700 border-blue-200', value: ptVal, origin: 'portugues' });
+                  if (inVal > 0) entries.push({ label: 'Indiano', badge: '🇮🇳 Indiano', badgeClass: 'bg-orange-50 text-orange-700 border-orange-200', value: inVal, origin: 'indiano' });
+                  return entries;
+                };
+
+                const formatKz = (value: number) => {
+                  return value.toLocaleString('pt-AO', {
+                    style: 'currency',
+                    currency: 'AOA',
+                    minimumFractionDigits: 2,
+                  });
+                };
+
+                const prices = getAvailablePrices();
+                const hasBasePrice = display && !display.isFallback;
+
+                if (!display) {
+                  return <span className="text-sm text-slate-400 mt-2 font-medium">Preço sob consulta</span>;
+                }
+
+                if (prices.length > 0) {
+                  return (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {prices.map(entry => (
+                        <span key={entry.origin ?? 'default'} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold border ${entry.badgeClass}`}>
+                          <span>{entry.badge}</span>
+                          <span className="font-bold ml-1">{formatKz(entry.value)}</span>
+                        </span>
+                      ))}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="mt-3">
+                    <span className="text-sm text-slate-400 mt-2 font-medium">Preço sob consulta</span>
+                  </div>
+                );
+              })()}
               <div className="flex gap-2 mt-4">
                 <button
                   onClick={() => {
@@ -801,7 +867,16 @@ export default function Products() {
                 >
                   {product.stock > 0 ? 'Tirar de Stock' : 'Pôr em Stock'}
                 </button>
-                <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                <button
+                  onClick={() => {
+                    if (window.confirm('Tem a certeza que deseja remover este produto?')) {
+                      deleteProductMutation.mutate(product.id)
+                    }
+                  }}
+                  disabled={deleteProductMutation.isPending}
+                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                  title="Remover produto"
+                >
                   <Trash2 className="w-5 h-5" />
                 </button>
               </div>
@@ -810,13 +885,15 @@ export default function Products() {
         ))}
       </div>
 
-      {filteredProducts?.length === 0 && (
-        <div className="text-center py-12">
-          <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">Nenhum produto encontrado</h3>
-          <p className="text-gray-500">Adicione produtos para começar a vender</p>
-        </div>
-      )}
-    </div>
+      {
+        filteredProducts?.length === 0 && (
+          <div className="text-center py-12">
+            <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900">Nenhum produto encontrado</h3>
+            <p className="text-gray-500">Adicione produtos para começar a vender</p>
+          </div>
+        )
+      }
+    </div >
   )
 }

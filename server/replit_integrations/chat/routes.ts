@@ -2,10 +2,16 @@ import type { Express, Request, Response } from "express";
 import OpenAI from "openai";
 import { chatStorage } from "./storage";
 
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+// Só cria cliente OpenAI se houver chave válida (formato sk-...)
+const openaiApiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+const hasValidOpenAIKey = openaiApiKey?.startsWith('sk-');
+
+const openai = hasValidOpenAIKey
+  ? new OpenAI({
+      apiKey: openaiApiKey,
+      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+    })
+  : null;
 
 export function registerChatRoutes(app: Express): void {
   // Get all conversations
@@ -74,6 +80,11 @@ export function registerChatRoutes(app: Express): void {
         role: m.role as "user" | "assistant",
         content: m.content,
       }));
+
+      // Verificar se OpenAI está configurado
+      if (!openai) {
+        return res.status(503).json({ error: "Serviço de chat não configurado" });
+      }
 
       // Set up SSE
       res.setHeader("Content-Type", "text/event-stream");

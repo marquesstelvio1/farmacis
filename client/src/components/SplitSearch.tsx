@@ -1,10 +1,72 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  MessageSquareText, Search, Camera, X, Send, Loader2, User, Bot, 
+import { Link } from "wouter";
+import {
+  MessageSquareText, Search, Camera, X, Send, Loader2, User, Bot,
   Sparkles, Pill, FileImage
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PrescriptionOCR } from "./PrescriptionOCR";
+
+// Helper to render message content with clickable catalog links
+function renderMessageContent(content: string) {
+  const lines = content.split('\n');
+  return lines.map((line, idx) => {
+    // Check if line contains a catalog link
+    const catalogMatch = line.match(/Ver no catalogo: (\/catalogo\?search=\w+)/);
+    if (catalogMatch) {
+      const searchTerm = catalogMatch[1].split('search=')[1];
+      return (
+        <div key={idx} className="mt-2">
+          <Link
+            to={`/catalogo?search=${searchTerm}`}
+            className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium underline"
+          >
+            <Pill size={14} />
+            Ver {searchTerm} no catalogo
+          </Link>
+        </div>
+      );
+    }
+    return <div key={idx}>{line}</div>;
+  });
+}
+
+// Environment variables for assistant configuration
+const ASSISTANT_ENABLED = import.meta.env.VITE_ASSISTANT_ENABLED !== 'false';
+const ASSISTANT_CATALOG_INTEGRATION = import.meta.env.VITE_ASSISTANT_CATALOG_INTEGRATION !== 'false';
+const ASSISTANT_MAX_CATALOG_RESULTS = parseInt(import.meta.env.VITE_ASSISTANT_MAX_CATALOG_RESULTS || '5', 10);
+
+// AI Provider Configuration - Mixed Agent System
+const AI_PROVIDER = 'vanessa';
+const AI_API_KEY = import.meta.env.VITE_AI_API_KEY || '';
+const AI_MODEL = import.meta.env.VITE_AI_MODEL || '';
+
+// Provider-specific URLs
+const PROVIDER_URLS = {
+  vanessa: 'https://vanessa-getway.tuyenecomesso.com',
+  openai: 'https://api.openai.com/v1/chat/completions',
+  anthropic: 'https://api.anthropic.com/v1/messages',
+  google: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',
+};
+
+// Provider names for display
+const PROVIDER_NAMES = {
+  vanessa: 'Vanessa AI',
+};
+
+interface CatalogProduct {
+  id: number;
+  name: string;
+  description: string;
+  price: string;
+  precoPortugues?: string;
+  precoIndiano?: string;
+  activeIngredient?: string;
+  dosage?: string;
+  imageUrl?: string;
+  origin?: string;
+}
 
 interface Message {
   id: string;
@@ -83,9 +145,9 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
       setActiveSection(null);
       return;
     }
-    
+
     setActiveSection(section);
-    
+
     if (section === "chat") {
       // Apenas expande
     }
@@ -96,17 +158,89 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
     onChatOpen?.(false);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (!file) return;
+
+    // Check if it's an image for AI analysis
+    if (file.type.startsWith('image/')) {
       const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = reader.result as string;
-        sessionStorage.setItem("uploadedPhoto", base64);
-        window.location.href = "/identificar";
+      reader.onload = async () => {
+        const base64Full = reader.result as string;
+        const base64 = base64Full.split(',')[1]; // Remove data:image/xxx;base64, prefix
+
+        // Open chat and show the image
+        setShowChat(true);
+        onChatOpen?.(true);
+        setActiveSection(null);
+
+        // Add user message with image
+        const userMessage: Message = {
+          id: Date.now().toString(),
+          role: "user",
+          content: `[Imagem enviada] Analisa esta imagem médica/receita.`,
+          timestamp: new Date(),
+        };
+        setChatMessages(prev => [...prev, userMessage]);
+        setIsTyping(true);
+
+        // Call AI Vision API
+        if (AI_API_KEY || AI_PROVIDER === 'vanessa') {
+          try {
+            const visionText = 'Analisa esta imagem médica ou receita. Extrai apenas os nomes dos medicamentos e as suas dosagens. Responde formatado assim: "Medicamento 1 (dosagem), Medicamento 2 (dosagem)". Se identificares vários, separa por vírgulas. No final, podes dar uma breve explicação do que viste.';
+            const aiResponse = await callAIProvider(visionText, base64);
+
+            // Tenta extrair nomes de medicamentos para a busca (heurística simples)
+            // Normalmente o modelo responde com a lista primeiro
+            const firstLine = aiResponse.split('\n')[0];
+            const potentialSearch = firstLine.replace(/[\[\]]/g, '').trim();
+
+            if (potentialSearch.length > 3 && potentialSearch.length < 100) {
+              setSearchQuery(potentialSearch);
+              setActiveSection('search');
+
+              const assistantMessage: Message = {
+                id: (Date.now() + 1).toString(),
+                role: "assistant",
+                content: `Identifiquei estes medicamentos na tua foto: **${potentialSearch}**. Já os coloquei na barra de pesquisa para ti!\n\n${aiResponse}`,
+                timestamp: new Date(),
+              };
+              setChatMessages(prev => [...prev, assistantMessage]);
+            } else {
+              const assistantMessage: Message = {
+                id: (Date.now() + 1).toString(),
+                role: "assistant",
+                content: aiResponse,
+                timestamp: new Date(),
+              };
+              setChatMessages(prev => [...prev, assistantMessage]);
+            }
+          } catch (error) {
+            console.error('Vision API error:', error);
+            const errorMessage: Message = {
+              id: (Date.now() + 1).toString(),
+              role: "assistant",
+              content: 'Desculpe, não consegui analisar a imagem. Tenta novamente ou descreve o que vês na foto.',
+              timestamp: new Date(),
+            };
+            setChatMessages(prev => [...prev, errorMessage]);
+          }
+        } else {
+          // Fallback if no API key
+          const fallbackMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            content: `Recebi a tua imagem! Infelizmente, o assistente ${PROVIDER_NAMES[AI_PROVIDER]} não está configurado. Descreve o que vês na foto que eu ajudo.`,
+            timestamp: new Date(),
+          };
+          setChatMessages(prev => [...prev, fallbackMessage]);
+        }
+
+        setIsTyping(false);
       };
       reader.readAsDataURL(file);
     }
+
     e.target.value = "";
     setActiveSection(null);
   };
@@ -116,11 +250,11 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
     if (terms.length === 0) return;
 
     const searchTerm = terms.join(', ');
-    
+
     if (onSearch) {
       onSearch(searchTerm);
     }
-    
+
     setSearchQuery('');
     setActiveSection(null);
   };
@@ -136,28 +270,197 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
       timestamp: new Date(),
     };
 
+    // Start chat with just the user message - AI will respond via handleSendMessage flow
     setChatMessages([userMessage]);
     setShowChat(true);
     onChatOpen?.(true);
     setAssistantQuery("");
     setActiveSection(null);
-    setIsTyping(true);
 
-    // Simulação de resposta da IA
+    // Trigger AI response
     setTimeout(() => {
+      handleSendMessageFromStart(userMessage.content);
+    }, 100);
+  };
+
+  // Helper function to process message from start chat
+  const handleSendMessageFromStart = async (content: string) => {
+    setIsTyping(true);
+    setSuggestedProducts([]);
+
+    // Check if it's a medication query for catalog integration
+    if (ASSISTANT_CATALOG_INTEGRATION && isMedicationQuery(content)) {
+      const products = await searchCatalog(content);
+
+      if (products.length > 0) {
+        setSuggestedProducts(products);
+
+        // Build formatted product list for AI with validation
+        const validProducts = products.filter(p => p.name && p.price);
+        if (validProducts.length === 0) {
+          const aiResponse = await callAIProvider(content);
+          const assistantMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            content: aiResponse,
+            timestamp: new Date(),
+          };
+          setChatMessages(prev => [...prev, assistantMessage]);
+          setIsTyping(false);
+          return;
+        }
+
+        let catalogText = `Encontrei ${validProducts.length} produto(s) no catálogo:\n\n`;
+        validProducts.forEach((p, index) => {
+          const formatPrice = (pr: any) => {
+            const num = Number(pr);
+            return !isNaN(num) && num > 0
+              ? num.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })
+              : 'Sob consulta';
+          };
+
+          let details = `${p.name}`;
+          const originPrices = [];
+
+          if (p.precoPortugues) originPrices.push(`Portugal: ${formatPrice(p.precoPortugues)}`);
+          if (p.precoIndiano) originPrices.push(`Índia: ${formatPrice(p.precoIndiano)}`);
+
+          if (originPrices.length > 0) {
+            details += ` (${originPrices.join(' | ')})`;
+          } else {
+            details += ` - ${formatPrice(p.price)}`;
+          }
+
+          catalogText += `${index + 1}. ${details}\n`;
+        });
+
+        const aiResponse = await callAIProvider(`${content}\n\n${catalogText}`);
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: aiResponse,
+          timestamp: new Date(),
+        };
+        setChatMessages(prev => [...prev, assistantMessage]);
+      } else {
+        const aiResponse = await callAIProvider(content);
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: aiResponse,
+          timestamp: new Date(),
+        };
+        setChatMessages(prev => [...prev, assistantMessage]);
+      }
+    } else {
+      const aiResponse = await callAIProvider(content);
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "Olá! Recebi sua dúvida. Como posso te ajudar mais com relação a isso?",
+        content: aiResponse,
         timestamp: new Date(),
       };
       setChatMessages(prev => [...prev, assistantMessage]);
-      setIsTyping(false);
-    }, 1500);
+    }
+
+    setIsTyping(false);
+  };
+
+  const [suggestedProducts, setSuggestedProducts] = useState<CatalogProduct[]>([]);
+
+  // Function to detect if query is about medications/products
+  const isMedicationQuery = (query: string): boolean => {
+    const medicationKeywords = [
+      'medicamento', 'remédio', 'comprimido', 'comprimidos', 'pílula', 'pílulas',
+      'droga', 'fármaco', 'prescrição', 'receita', 'tratamento', 'cura',
+      'dor', 'febre', 'gripe', 'tosse', 'dor de cabeça', 'enxaqueca',
+      'paracetamol', 'ibuprofeno', 'amoxicilina', 'aspirina', 'dipirona',
+      'antibiótico', 'anti-inflamatório', 'analgesico', 'analgésico',
+      'antialérgico', 'antigripal', 'vitamina', 'suplemento',
+      'produto', 'produtos', 'item', 'items', 'catálogo', 'catalogo'
+    ];
+    const lowerQuery = query.toLowerCase();
+    return medicationKeywords.some(keyword => lowerQuery.includes(keyword));
+  };
+
+  // Function to search catalog for products
+  const searchCatalog = async (query: string): Promise<CatalogProduct[]> => {
+    if (!ASSISTANT_CATALOG_INTEGRATION) return [];
+
+    try {
+      // Usar o endpoint de busca completo para obter os objetos do produto com todos os campos (origem, preço base, etc)
+      const response = await fetch(`/api/products?search=${encodeURIComponent(query)}`);
+      if (!response.ok) return [];
+      const products = await response.json();
+      return products.slice(0, ASSISTANT_MAX_CATALOG_RESULTS).map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        description: p.description || '',
+        price: p.price,
+        precoPortugues: p.precoPortugues,
+        precoIndiano: p.precoIndiano,
+        activeIngredient: p.activeIngredient,
+        dosage: p.dosage,
+        imageUrl: p.imageUrl,
+        origin: p.origin
+      }));
+    } catch (error) {
+      console.error('Error searching catalog:', error);
+      return [];
+    }
+  };
+
+  // System prompt for all AI providers
+  const SYSTEM_PROMPT = `És um assistente de saúde profissional e empático para uma plataforma de farmácia digital chamada Farmacis. Ajuda os utilizadores com: Informações sobre medicamentos e dosagens; Identificação de sintomas (sem diagnosticar); Orientação sobre consultas médicas; Análise de receitas médicas (quando enviadas por imagem); Recomendações de produtos do catálogo. IMPORTANTE: Nunca substituís um médico. Sempre recomenda consultar um profissional de saúde para diagnósticos e tratamentos. Responde em português de Angola de forma clara e concisa.`;
+
+  // Unified function to call any AI provider based on configuration
+  const callAIProvider = async (text: string, imageBase64?: string): Promise<string> => {
+    try {
+      // Build conversation history
+      const conversationHistory = chatMessages.map(m => ({
+        role: m.role,
+        content: m.content
+      }));
+
+      // For Vanessa, we always call our backend proxy
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text,
+          imageBase64: imageBase64 || null,
+          conversationHistory,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('AI Proxy error:', response.status, errorData);
+        throw new Error(errorData.message || `Erro do servidor (${response.status})`);
+      }
+
+      const data = await response.json();
+      return data.output_text || 'Desculpe, não consegui processar a tua mensagem.';
+    } catch (error: any) {
+      console.error('AI provider error:', error);
+      return `Erro ao contactar o assistente Vanessa: ${error.message}`;
+    }
   };
 
   const handleSendMessage = async () => {
     if (!chatInput.trim()) return;
+    if (!ASSISTANT_ENABLED) {
+      const disabledMessage: Message = {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: "O assistente está temporariamente desativado. Por favor, tente novamente mais tarde.",
+        timestamp: new Date(),
+      };
+      setChatMessages(prev => [...prev, disabledMessage]);
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -169,58 +472,125 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
     setChatMessages(prev => [...prev, userMessage]);
     setChatInput("");
     setIsTyping(true);
+    setSuggestedProducts([]);
 
-    setTimeout(() => {
-      const responses = [
-        "Entendido! Posso ajudá-lo com informações sobre medicamentos, sintomas ou ajudá-lo a identificar um comprimido. O que gostaria de saber?",
-        "Ótima pergunta! Deixe-me pesquisar informações relevantes para você.",
-        "Com base na sua pergunta, recomendo que consulte a bula do medicamento ou fale com um profissional de saúde.",
-      ];
+    // Check if it's a medication query for catalog integration
+    if (ASSISTANT_CATALOG_INTEGRATION && isMedicationQuery(userMessage.content)) {
+      const products = await searchCatalog(userMessage.content);
+
+      if (products.length > 0) {
+        setSuggestedProducts(products);
+
+        // Build formatted product list for AI with validation
+        const validProducts = products.filter(p => p.name && p.price);
+        if (validProducts.length === 0) {
+          // All products have missing data, just ask AI without catalog
+          const aiResponse = await callAIProvider(userMessage.content);
+          const assistantMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            content: aiResponse,
+            timestamp: new Date(),
+          };
+          setChatMessages(prev => [...prev, assistantMessage]);
+          setIsTyping(false);
+          return;
+        }
+
+        let catalogText = `Encontrei ${validProducts.length} produto(s) no catálogo:\n\n`;
+        validProducts.forEach((p, index) => {
+          const formatPrice = (pr: any) => {
+            const num = Number(pr);
+            return !isNaN(num) && num > 0
+              ? num.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })
+              : 'Sob consulta';
+          };
+
+          let details = `${p.name}`;
+          const originPrices = [];
+
+          if (p.precoPortugues) originPrices.push(`Portugal: ${formatPrice(p.precoPortugues)}`);
+          if (p.precoIndiano) originPrices.push(`Índia: ${formatPrice(p.precoIndiano)}`);
+
+          if (originPrices.length > 0) {
+            details += ` (${originPrices.join(' | ')})`;
+          } else {
+            details += ` - ${formatPrice(p.price)}`;
+          }
+
+          catalogText += `${index + 1}. ${details}\n`;
+        });
+
+        // Get AI response with catalog context
+        const aiResponse = await callAIProvider(`${userMessage.content}\n\n${catalogText}`);
+
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: aiResponse,
+          timestamp: new Date(),
+        };
+        setChatMessages(prev => [...prev, assistantMessage]);
+      } else {
+        // No products found, ask AI for general response
+        const aiResponse = await callAIProvider(userMessage.content);
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: aiResponse,
+          timestamp: new Date(),
+        };
+        setChatMessages(prev => [...prev, assistantMessage]);
+      }
+    } else {
+      // General query - call AI API
+      const aiResponse = await callAIProvider(userMessage.content);
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: responses[Math.floor(Math.random() * responses.length)],
+        content: aiResponse,
         timestamp: new Date(),
       };
       setChatMessages(prev => [...prev, assistantMessage]);
-      setIsTyping(false);
-    }, 1200);
+    }
+
+    setIsTyping(false);
   };
 
   return (
     <>
       <div className={`w-full max-w-4xl mx-auto ${className} relative z-30`}>
-      {/* Main Search Bar - Glassmorphism */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-2xl shadow-green-900/10 border border-white/40 overflow-visible min-h-[100px] sm:min-h-[130px] flex items-stretch"
-      >
-        <div className="flex w-full divide-x divide-slate-200/50">
-            {searchSections.map((section, index) => {
+        {/* Main Search Bar - Glassmorphism */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-2xl shadow-green-900/10 border border-white/40 overflow-visible min-h-[100px] sm:min-h-[130px] flex items-stretch"
+        >
+          <div className="flex w-full divide-x divide-slate-200/50">
+            {searchSections.map((section) => {
               const Icon = section.icon;
               const isActive = activeSection === section.id;
-              const isFirst = index === 0;
-              const isLast = index === searchSections.length - 1;
-              
+              const hasActiveSection = activeSection !== null;
+
               return (
                 <motion.div
                   key={section.id}
-                  animate={{ 
-                    flex: isActive ? 2 : 1,
-                    opacity: 1,
+                  initial={{ flex: '1 1 0%' }}
+                  animate={{
+                    flex: isActive ? '1 1 100%' : (hasActiveSection ? '0 0 0%' : '1 1 0%'),
+                    opacity: isActive ? 1 : (hasActiveSection ? 0 : 1),
                   }}
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className={`relative flex flex-col items-center justify-center transition-all duration-300 ${
-                    isActive 
-                      ? 'bg-white' 
-                      : 'hover:bg-slate-50/50 cursor-pointer'
-                  } ${isFirst ? 'rounded-l-2xl sm:rounded-l-3xl' : ''} ${isLast ? 'rounded-r-2xl sm:rounded-r-3xl' : ''}`}
+                  transition={{ type: "spring", stiffness: 200, damping: 25, mass: 0.8 }}
+                  className={`relative flex flex-col items-center justify-center transition-all duration-300 overflow-hidden rounded-2xl sm:rounded-3xl ${isActive
+                    ? 'bg-white'
+                    : 'hover:bg-slate-50/50 cursor-pointer'
+                    }`}
                   onClick={() => !isActive && handleSectionClick(section.id)}
+                  style={{ display: hasActiveSection && !isActive ? 'none' : 'flex' }}
                 >
                   <AnimatePresence mode="wait">
                     {isActive && (section.id === "search" || section.id === "chat" || section.id === "photo") ? (
-                      <motion.div 
+                      <motion.div
                         key={`active-${section.id}`}
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -229,65 +599,39 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
                         onClick={(e) => e.stopPropagation()}
                       >
                         {section.id === "photo" ? (
-                          <div className="flex-1 flex items-center justify-center gap-3 sm:gap-8">
-                            <button 
-                              onClick={() => fileInputRef.current?.click()}
-                              className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 bg-slate-50 hover:bg-teal-50 rounded-2xl border border-slate-100 hover:border-teal-200 transition-all group/btn"
-                            >
-                              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-teal-100 text-teal-600 rounded-xl flex items-center justify-center group-hover/btn:scale-110 transition-transform">
-                                <FileImage size={20} />
-                              </div>
-                              <div className="text-left">
-                                <p className="text-xs font-bold text-slate-700">Explorador</p>
-                                <p className="text-[10px] text-slate-400 hidden sm:block">Arquivos</p>
-                              </div>
-                            </button>
-                            
-                            <div className="w-px h-8 bg-slate-100" />
-
-                            <button 
-                              onClick={() => cameraInputRef.current?.click()}
-                              className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 bg-slate-50 hover:bg-emerald-50 rounded-2xl border border-slate-100 hover:border-emerald-200 transition-all group/btn"
-                            >
-                              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center group-hover/btn:scale-110 transition-transform">
-                                <Camera size={20} />
-                              </div>
-                              <div className="text-left">
-                                <p className="text-xs font-bold text-slate-700">Câmera</p>
-                                <p className="text-[10px] text-slate-400 hidden sm:block">Tirar Foto</p>
-                              </div>
-                            </button>
+                          <div className="flex-1 overflow-y-auto py-2">
+                            <PrescriptionOCR />
                           </div>
                         ) : (
                           <>
                             <div className={`flex-1 flex items-center bg-slate-50 rounded-2xl border border-slate-100 px-4 focus-within:ring-2 transition-all ${section.id === 'chat' ? 'focus-within:ring-indigo-500/20 focus-within:border-indigo-500' : 'focus-within:ring-green-500/20 focus-within:border-green-500'}`}>
-                          {section.id === 'chat' ? <Sparkles size={18} className="text-indigo-400 mr-2" /> : <Search size={18} className="text-slate-400 mr-2" />}
-                          <input
-                            ref={section.id === 'chat' ? assistantInputRef : searchInputRef}
-                            type="text"
-                            autoFocus
-                            value={section.id === 'chat' ? assistantQuery : searchQuery}
-                            onChange={(e) => section.id === 'chat' ? setAssistantQuery(e.target.value) : setSearchQuery(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && (section.id === 'chat' ? handleStartChat() : handleMultiSearch())}
-                            placeholder={section.id === 'chat' ? "Pergunte algo ao assistente..." : "O que você procura hoje?"}
-                            className="flex-1 bg-transparent border-none focus:ring-0 py-4 text-sm sm:text-base outline-none text-slate-700 placeholder:text-slate-400"
-                          />
-                          {(section.id === 'chat' ? assistantQuery : searchQuery) && (
-                            <button onClick={() => section.id === 'chat' ? setAssistantQuery("") : setSearchQuery("")} className="p-1 hover:bg-slate-200 rounded-full">
-                              <X size={14} className="text-slate-400" />
-                            </button>
-                          )}
-                        </div>
-                        <Button 
-                          onClick={section.id === 'chat' ? handleStartChat : handleMultiSearch}
-                          disabled={section.id === 'chat' ? !assistantQuery.trim() : !searchQuery.trim()}
-                          className={`${section.id === 'chat' ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200' : 'bg-green-600 hover:bg-green-700 shadow-green-200'} text-white rounded-xl px-6 h-[52px] font-bold hidden sm:flex shadow-lg transition-all`}
-                        >
-                          {section.id === 'chat' ? <Send size={18} /> : 'Buscar'}
-                        </Button>
+                              {section.id === 'chat' ? <Sparkles size={18} className="text-indigo-400 mr-2" /> : <Search size={18} className="text-slate-400 mr-2" />}
+                              <input
+                                ref={section.id === 'chat' ? assistantInputRef : searchInputRef}
+                                type="text"
+                                autoFocus
+                                value={section.id === 'chat' ? assistantQuery : searchQuery}
+                                onChange={(e) => section.id === 'chat' ? setAssistantQuery(e.target.value) : setSearchQuery(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && (section.id === 'chat' ? handleStartChat() : handleMultiSearch())}
+                                placeholder={section.id === 'chat' ? "Pergunte algo ao assistente..." : "O que você procura hoje?"}
+                                className="flex-1 bg-transparent border-none focus:ring-0 py-4 text-sm sm:text-base outline-none text-slate-700 placeholder:text-slate-400"
+                              />
+                              {(section.id === 'chat' ? assistantQuery : searchQuery) && (
+                                <button onClick={() => section.id === 'chat' ? setAssistantQuery("") : setSearchQuery("")} className="p-1 hover:bg-slate-200 rounded-full">
+                                  <X size={14} className="text-slate-400" />
+                                </button>
+                              )}
+                            </div>
+                            <Button
+                              onClick={section.id === 'chat' ? handleStartChat : handleMultiSearch}
+                              disabled={section.id === 'chat' ? !assistantQuery.trim() : !searchQuery.trim()}
+                              className={`${section.id === 'chat' ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200' : 'bg-green-600 hover:bg-green-700 shadow-green-200'} text-white rounded-xl px-6 h-[52px] font-bold hidden sm:flex shadow-lg transition-all`}
+                            >
+                              {section.id === 'chat' ? <Send size={18} /> : 'Buscar'}
+                            </Button>
                           </>
                         )}
-                        <button 
+                        <button
                           onClick={() => setActiveSection(null)}
                           className="p-3 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
                         >
@@ -302,18 +646,17 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
                         exit={{ opacity: 0 }}
                         className="flex flex-col items-center justify-center text-center w-full h-full p-2 group"
                       >
-                        <div 
-                          className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center mb-3 shadow-sm transition-all duration-300 group-hover:scale-110 group-hover:shadow-md ${
-                            isActive
-                              ? `bg-gradient-to-br ${section.gradient} text-white`
-                              : section.id === 'chat' ? 'bg-green-50 text-green-600 group-hover:bg-green-600 group-hover:text-white' :
-                                section.id === 'photo' ? 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white' :
+                        <div
+                          className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center mb-2 sm:mb-3 shadow-sm transition-all duration-300 group-hover:scale-110 group-hover:shadow-md ${isActive
+                            ? `bg-gradient-to-br ${section.gradient} text-white`
+                            : section.id === 'chat' ? 'bg-green-50 text-green-600 group-hover:bg-green-600 group-hover:text-white' :
+                              section.id === 'photo' ? 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white' :
                                 'bg-slate-50 text-slate-600 group-hover:bg-slate-800 group-hover:text-white'
-                          }`}
+                            }`}
                         >
-                          <Icon size={26} strokeWidth={2.5} className="transition-colors" />
+                          <Icon size={22} strokeWidth={2} className="transition-colors sm:size-24" />
                         </div>
-                        <p className="font-bold text-[10px] sm:text-xs md:text-sm text-slate-700 whitespace-nowrap">
+                        <p className="font-bold text-[9px] sm:text-xs text-slate-700 whitespace-nowrap">
                           {section.title}
                         </p>
                       </motion.div>
@@ -326,7 +669,7 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
         </motion.div>
 
         {/* Quick Actions Hints - always visible */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="flex items-center justify-center gap-3 sm:gap-6 mt-3 sm:mt-4 text-[10px] sm:text-xs text-slate-400"
@@ -365,7 +708,7 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
       </div>
 
       {/* AI Chat Modal */}
- 
+
 
       <AnimatePresence>
         {showChat && (
@@ -423,7 +766,7 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
                     <p className="text-slate-500 text-sm max-w-xs mx-auto leading-relaxed">
                       Posso ajudá-lo a identificar medicamentos, tirar dúvidas sobre sintomas, dosagem ou interações medicamentosas.
                     </p>
-                    
+
                     {/* Quick Questions */}
                     <div className="flex flex-wrap justify-center gap-2 mt-6">
                       {[
@@ -450,26 +793,27 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                   >
-                    <div className={`flex items-end gap-3 max-w-[85%] ${
-                      message.role === "user" ? "flex-row-reverse" : "flex-row"
-                    }`}>
-                      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm ${
-                        message.role === "user" 
-                          ? "bg-gradient-to-br from-green-500 to-green-600" 
-                          : "bg-gradient-to-br from-slate-100 to-slate-200"
+                    <div className={`flex items-end gap-3 max-w-[85%] ${message.role === "user" ? "flex-row-reverse" : "flex-row"
                       }`}>
+                      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm ${message.role === "user"
+                        ? "bg-gradient-to-br from-green-500 to-green-600"
+                        : "bg-gradient-to-br from-slate-100 to-slate-200"
+                        }`}>
                         {message.role === "user" ? (
                           <User size={18} className="text-white" />
                         ) : (
                           <Bot size={18} className="text-slate-600" />
                         )}
                       </div>
-                      <div className={`px-5 py-4 rounded-3xl shadow-sm ${
-                        message.role === "user"
-                          ? "bg-gradient-to-br from-green-500 to-green-600 text-white rounded-br-md"
-                          : "bg-white text-slate-700 rounded-bl-md border border-slate-100"
-                      }`}>
-                        <p className="text-[15px] leading-relaxed">{message.content}</p>
+                      <div className={`px-5 py-4 rounded-3xl shadow-sm ${message.role === "user"
+                        ? "bg-gradient-to-br from-green-500 to-green-600 text-white rounded-br-md"
+                        : "bg-white text-slate-700 rounded-bl-md border border-slate-100"
+                        }`}>
+                        <div className="text-[15px] leading-relaxed">
+                          {message.role === "assistant"
+                            ? renderMessageContent(message.content)
+                            : message.content}
+                        </div>
                       </div>
                     </div>
                   </motion.div>

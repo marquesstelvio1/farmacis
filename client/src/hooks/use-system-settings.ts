@@ -30,7 +30,7 @@ export const useSystemSettings = create<SettingsStore>((set, get) => ({
         settings: {
           delivery_fee: data.delivery_fee || '0',
           min_order_amount: data.min_order_amount || '500',
-          platform_fee_percent: data.platform_fee_percent || '15',
+          platform_fee_percent: data.platform_fee_percent || '10',
         },
         loading: false,
       });
@@ -40,7 +40,7 @@ export const useSystemSettings = create<SettingsStore>((set, get) => ({
         settings: {
           delivery_fee: '0',
           min_order_amount: '500',
-          platform_fee_percent: '15',
+          platform_fee_percent: '10',
         },
       });
     }

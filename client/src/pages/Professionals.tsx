@@ -134,7 +134,7 @@ export default function Professionals() {
     toast({
       title: "Solicitação de Agendamento Enviada!",
       description: `Sua consulta com ${selectedProfessional?.name} está aguardando confirmação.`,
-      className: "bg-purple-600 text-white border-none",
+      className: "bg-green-600 text-white border-none",
     });
 
     setIsSubmitting(false);
@@ -143,10 +143,10 @@ export default function Professionals() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-4">
+    <div className="min-h-screen bg-white p-4">
       <div className="max-w-5xl mx-auto py-8">
         <Link href="/">
-          <Button variant="ghost" className="text-white mb-8">
+          <Button variant="ghost" className="text-black mb-8 hover:bg-green-50">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
           </Button>
@@ -159,14 +159,14 @@ export default function Professionals() {
           className="space-y-8"
         >
           {/* Header */}
-          <div className="text-center text-white space-y-4">
+          <div className="text-center text-black space-y-4">
             <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                <UserRound className="w-6 h-6 text-purple-400" />
+              <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
+                <UserRound className="w-6 h-6 text-green-600" />
               </div>
               <h1 className="text-4xl font-black">Especialistas</h1>
             </div>
-            <p className="text-slate-300 text-lg">Conecte-se com os melhores médicos credenciados</p>
+            <p className="text-gray-600 text-lg">Conecte-se com os melhores médicos credenciados</p>
           </div>
 
           {/* Professionals Grid */}
@@ -177,39 +177,39 @@ export default function Professionals() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all hover:border-purple-400/50"
+                className="bg-white border border-gray-200 rounded-2xl p-6 hover:border-green-400 hover:shadow-lg transition-all"
               >
                 <div className="space-y-4">
                   {/* Avatar & Header */}
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center mb-3">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center mb-3">
                         <UserRound className="w-6 h-6 text-white" />
                       </div>
-                      <h3 className="text-lg font-bold text-white">{professional.name}</h3>
-                      <p className="text-purple-300 text-sm font-semibold">{professional.specialty}</p>
+                      <h3 className="text-lg font-bold text-black">{professional.name}</h3>
+                      <p className="text-green-600 text-sm font-semibold">{professional.specialty}</p>
                     </div>
-                    <div className="flex items-center gap-1 bg-yellow-500/20 px-2 py-1 rounded-lg">
-                      <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                      <span className="text-yellow-300 font-bold text-sm">{professional.rating}</span>
+                    <div className="flex items-center gap-1 bg-yellow-100 px-2 py-1 rounded-lg">
+                      <Star className="w-4 h-4 text-yellow-600 fill-yellow-600" />
+                      <span className="text-yellow-700 font-bold text-sm">{professional.rating}</span>
                     </div>
                   </div>
 
                   {/* Details */}
-                  <div className="space-y-2 text-xs text-slate-300">
+                  <div className="space-y-2 text-xs text-gray-700">
                     <div className="flex items-start gap-2">
-                      <Award className="w-4 h-4 text-teal-400 mt-0.5 flex-shrink-0" />
+                      <Award className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
                       <span>{professional.credentials}</span>
                     </div>
                     <div className="flex items-start gap-2">
-                      <Briefcase className="w-4 h-4 text-teal-400 mt-0.5 flex-shrink-0" />
+                      <Briefcase className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
                       <span>{professional.experience}</span>
                     </div>
                     <div className="flex items-start gap-2">
-                      <MapPin className="w-4 h-4 text-teal-400 mt-0.5 flex-shrink-0" />
+                      <MapPin className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
                       <span>{professional.location}</span>
                     </div>
-                    <div className="flex items-center gap-2 font-semibold text-teal-300">
+                    <div className="flex items-center gap-2 font-semibold text-green-600">
                       <MapPin className="w-4 h-4 flex-shrink-0" />
                       {professional.distance}
                     </div>
@@ -217,18 +217,18 @@ export default function Professionals() {
 
                   {/* CTA */}
                   <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
-                      className="flex-1 border-teal-400/50 text-teal-300 hover:bg-teal-500/20"
+                      className="flex-1 border-green-400 text-green-600 hover:bg-green-50"
                       onClick={() => window.location.href = `tel:${professional.phone}`}
                     >
                       <Phone className="w-3 h-3 mr-1" />
                       Ligar
                     </Button>
-                    <Button 
+                    <Button
                       size="sm"
-                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                       onClick={() => handleScheduleClick(professional)}
                     >
                       Consultar

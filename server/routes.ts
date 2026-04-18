@@ -7,7 +7,6 @@ import { db } from "./db";
 import { prescriptions, orders, systemSettings } from "@shared/schema";
 import { eq, sql, and, isNotNull } from "drizzle-orm";
 import { z } from "zod";
-import OpenAI from "openai";
 import bcrypt from "bcryptjs";
 import { registerAuthRoutes } from "./routes/auth";
 import { registerPaymentRoutes } from "./routes/payment";
@@ -21,13 +20,12 @@ import { registerPrescriptionRoutes } from "./routes/prescriptions";
 import { registerSettingsRoutes } from "./routes/settings";
 import { registerLocationRoutes } from "./routes/location";
 import { registerMedicalRoutes } from "./routes/medical";
-import { ensureProductColumns, ensureOrderColumns, ensurePharmacyColumns } from "./utils/databaseUtils";
-
-// OpenAI configuration from the AI integration blueprint
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+import { registerProductDiscountRoutes } from "./routes/productDiscounts";
+import { registerAIRoutes } from "./routes/ai";
+import { registerOCRRoutes } from "./routes/ocr";
+import { registerVanessaVisionRoutes } from "./routes/vanessaVision";
+import { registerPrescriptionSearchRoutes } from "./routes/prescriptionSearch";
+import { ensureProductColumns, ensureOrderColumns, ensurePharmacyColumns, ensureProductDiscountTable, ensurePrescriptionsTable, ensureSystemSettingsTable } from "./utils/databaseUtils";
 
 // Socket.IO instance
 let io: SocketIOServer;
@@ -122,30 +120,20 @@ export async function registerRoutes(
   // Register medical routes
   registerMedicalRoutes(app);
 
-  app.get(api.products.list.path, async (req, res) => {
-    try {
-      const search = req.query.search as string | undefined;
-      let products = await storage.getProducts();
-      
-      if (search) {
-        const query = search.toLowerCase();
-        products = products.filter(p => 
-          p.name.toLowerCase().includes(query) ||
-          (p.description && p.description.toLowerCase().includes(query)) ||
-          (p.activeIngredient && p.activeIngredient.toLowerCase().includes(query)) ||
-          (Array.isArray(p.diseases) && p.diseases.some(d => d.toLowerCase().includes(query)))
-        );
-      }
-      res.json(products);
-    } catch (err) {
-      console.error("DETAILED ERROR in GET /api/products:", err);
-      res.status(500).json({ 
-        message: "Failed to fetch products",
-        error: err instanceof Error ? err.message : String(err),
-        stack: process.env.NODE_ENV === 'development' ? (err as Error).stack : undefined
-      });
-    }
-  });
+  // Register product discount routes
+  registerProductDiscountRoutes(app);
+
+  // Register AI routes
+  registerAIRoutes(app);
+
+  // Register OCR routes for prescription/medication image processing
+  registerOCRRoutes(app);
+
+  // Register Vanessa Vision routes for image recognition
+  registerVanessaVisionRoutes(app);
+
+  // Register prescription search routes
+  registerPrescriptionSearchRoutes(app);
 
   app.get(api.products.get.path, async (req, res) => {
     try {
@@ -162,7 +150,46 @@ export async function registerRoutes(
   });
 
   app.post(api.ai.identifyPill.path, express.json({ limit: '10mb' }), async (req, res) => {
-    // ... existing identify code
+    try {
+      const { imageBase64 } = req.body;
+      if (!imageBase64) {
+        return res.status(400).json({ message: "Imagem é obrigatória" });
+      }
+      // Por agora, usar Vanessa para identificar
+      const apiKey = process.env.VITE_AI_API_KEY || process.env.AI_API_KEY;
+      if (!apiKey) {
+        return res.status(503).json({ message: "Serviço de identificação não configurado" });
+      }
+
+      const response = await fetch('https://vanessa-getway.tuyenecomesso.com/v1/inference', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          service: 'vision',
+          input: { text: 'Identifica este comprimido/medicamento.', image_base64: imageBase64 },
+          request_prompt: 'És um farmacêutico. Identifica o medicamento na imagem. Devolve nome, dosagem, e para que serve. Responde em português de Angola.',
+          conversation: [],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Vanessa API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      res.json({
+        identifiedPill: data.output_text || "Não foi possível identificar",
+        description: data.output_text || "",
+        diseases: [],
+        recommendedProductIds: [],
+      });
+    } catch (err: any) {
+      console.error('[Identify Pill] Error:', err);
+      res.status(500).json({ message: err.message || "Erro ao identificar comprimido" });
+    }
   });
 
   app.get(api.pharmacies.list.path, async (req, res) => {
@@ -187,7 +214,7 @@ export async function registerRoutes(
       if (err instanceof Error) {
         console.error("[API] Error stack:", err.stack);
       }
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Erro ao buscar pedidos do usuário",
         error: err instanceof Error ? err.message : String(err)
       });
@@ -244,7 +271,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Payment proof required" });
       }
 
-      const updateData: any = { 
+      const updateData: any = {
         status: status || "proof_submitted",
         paymentProof: paymentProof,
         updatedAt: new Date()
@@ -279,9 +306,11 @@ export async function registerRoutes(
   });
 
   app.patch("/api/user/orders/:orderId/review", async (req, res) => {
+    console.log('[Review] Request received:', req.params.orderId, req.body);
     try {
       const orderId = parseInt(req.params.orderId);
       const { userId, rating, comment } = req.body;
+      console.log('[Review] Processing:', { orderId, userId, rating });
 
       if (!orderId || !userId) {
         return res.status(400).json({ message: "Order ID e User ID são obrigatórios" });
@@ -403,7 +432,7 @@ export async function registerRoutes(
       const minOrderSetting = minOrderSettingResult.length > 0 ? minOrderSettingResult[0] : null;
       const minOrderAmount = minOrderSetting ? parseFloat(minOrderSetting.value) : 500;
       const orderSubtotal = parseFloat(orderData.total || "0") - parseFloat(orderData.deliveryFee || "0");
-      
+
       if (orderSubtotal < minOrderAmount) {
         return res.status(400).json({
           message: `Valor mínimo de ${minOrderAmount.toLocaleString('pt-AO')} AOA para encomendar`,
@@ -424,9 +453,9 @@ export async function registerRoutes(
           const unitPrice = item.unitPrice || item.price || product.price || "0";
           const quantity = item.quantity || 1;
           const prescriptionRequired = item.prescriptionRequired || false;
-          
+
           let prescriptionId = null;
-          
+
           // If item has prescription data, create prescription record
           if (item.prescription && prescriptionRequired) {
             try {
@@ -440,11 +469,11 @@ export async function registerRoutes(
                   status: "pending",
                 })
                 .returning();
-              
+
               if (prescriptionResult.length === 0) {
                 throw new Error("Failed to create prescription");
               }
-              
+
               const prescription = prescriptionResult[0];
               prescriptionId = prescription.id;
               console.log(`Created prescription #${prescription.id} for order #${order.id}, product #${productId}`);
@@ -464,7 +493,7 @@ export async function registerRoutes(
             prescriptionId,
           };
         }));
-        
+
         await storage.createOrderItems(orderItemsData);
         console.log(`Created ${orderItemsData.length} order items for order #${order.id}`);
       }
@@ -478,7 +507,7 @@ export async function registerRoutes(
             total: order.total,
             items: items || [],
           });
-          
+
           // Also emit notification about pending prescriptions
           const itemsWithPrescription = items?.filter((i: any) => i.prescription) || [];
           if (itemsWithPrescription.length > 0) {
@@ -538,6 +567,9 @@ async function seedDatabase() {
     await ensureProductColumns();
     await ensureOrderColumns();
     await ensurePharmacyColumns();
+    await ensureProductDiscountTable();
+    await ensurePrescriptionsTable();
+    await ensureSystemSettingsTable();
     console.log("Database columns ensured successfully");
   } catch (error) {
     console.error("Error ensuring database columns:", error);

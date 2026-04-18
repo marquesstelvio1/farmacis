@@ -1,15 +1,18 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Pill, 
-  Search, 
+import {
+  Pill,
   X,
   Stethoscope,
   UserRound,
   ShieldCheck,
   BookOpen,
-  Home
+  Home,
+  Settings,
+  LayoutGrid,
+  Store,
+  MapPin
 } from "lucide-react";
 import { CartDrawer } from "./CartDrawer";
 
@@ -22,8 +25,11 @@ export function Layout({ children }: LayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navLinks = [
-    { href: "/", label: "Home", icon: Home },
-    { href: "/identificar", label: "Identificar IA", icon: Search },
+    { href: "/", label: "Início", icon: Home },
+    { href: "/catalogo", label: "Catálogo", icon: LayoutGrid },
+    { href: "/farmacias", label: "Farmácias", icon: Store },
+    { href: "/explorar", label: "Explorar", icon: MapPin },
+    { href: "/menu-de-configuracoes", label: "Definições", icon: Settings },
   ];
 
   const quickServices = [
@@ -144,9 +150,32 @@ export function Layout({ children }: LayoutProps) {
       </AnimatePresence>
 
 
-      <main className="flex-1 w-full">
+      <main className="flex-1 w-full pb-20 md:pb-0">
         {children}
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 md:hidden z-40 rounded-t-2xl">
+        <div className="flex items-center justify-center h-20 gap-4 px-2">
+          {navLinks.map((link) => {
+            const isActive = location === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`flex flex-col items-center justify-center gap-1 py-2 w-14 h-14 rounded-xl transition ${
+                  isActive 
+                    ? 'bg-[#22c55e] text-white' 
+                    : 'bg-transparent text-[#607369]'
+                }`}
+              >
+                <link.icon size={20} />
+                <span className="text-[10px] font-bold">{link.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
 
       <CartDrawer />
     </div>

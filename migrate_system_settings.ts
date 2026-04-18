@@ -21,7 +21,7 @@ async function migrate() {
 
     // Insert default settings
     const defaultSettings = [
-      { key: 'platform_fee_percent', value: '15', description: 'Taxa da plataforma em percentagem (ex: 15 = 15%)' },
+      { key: 'platform_fee_percent', value: '10', description: 'Taxa da plataforma em percentagem (ex: 10 = 10%)' },
       { key: 'min_order_amount', value: '500', description: 'Valor mínimo para pedidos em AOA' },
       { key: 'delivery_fee', value: '0', description: 'Taxa de entrega padrão em AOA (0 = grátis)' },
     ];

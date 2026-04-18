@@ -116,7 +116,7 @@ export default function AdminBalance() {
               Ganhos
             </span>
           </div>
-          <p className="text-gray-600 dark:text-slate-400 text-sm mb-1">Lucro Total do Sistema (15%)</p>
+          <p className="text-gray-600 dark:text-slate-400 text-sm mb-1">Lucro Total do Sistema (10%)</p>
           <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-300">
             {formatCurrency(balanceData?.totalSystemProfit || 0)}
           </p>

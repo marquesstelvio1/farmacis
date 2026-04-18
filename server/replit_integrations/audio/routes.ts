@@ -86,6 +86,11 @@ export function registerAudioRoutes(app: Express): void {
         content: m.content,
       }));
 
+      // Verificar se OpenAI está configurado
+      if (!openai) {
+        return res.status(503).json({ error: "Serviço de áudio não configurado" });
+      }
+
       // 5. Set up SSE
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");

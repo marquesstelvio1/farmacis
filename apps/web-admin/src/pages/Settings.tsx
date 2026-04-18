@@ -10,7 +10,7 @@ interface SystemSettings {
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<SystemSettings>({
-    platform_fee_percent: "15",
+    platform_fee_percent: "10",
     min_order_amount: "500",
     delivery_fee: "0",
   });
@@ -27,7 +27,7 @@ export default function SettingsPage() {
       if (response.ok) {
         const data = await response.json();
         setSettings({
-          platform_fee_percent: data.platform_fee_percent || "15",
+          platform_fee_percent: data.platform_fee_percent || "10",
           min_order_amount: data.min_order_amount || "500",
           delivery_fee: data.delivery_fee || "0",
         });
@@ -68,7 +68,7 @@ export default function SettingsPage() {
 
   const handleReset = (key: keyof SystemSettings) => {
     const defaults: SystemSettings = {
-      platform_fee_percent: "15",
+      platform_fee_percent: "10",
       min_order_amount: "500",
       delivery_fee: "0",
     };

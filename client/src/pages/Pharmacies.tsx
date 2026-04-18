@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, MapPin, Phone, Clock, Star, Loader2, AlertCircle } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Clock, Star, Loader2, AlertCircle, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
 
@@ -47,20 +47,24 @@ export default function Pharmacies() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#f8faf6" }}>
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-400 animate-spin mx-auto mb-4" />
-          <p className="text-white font-semibold">Carregando farmácias...</p>
+          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" style={{ color: "#8bc14a" }} />
+          <p className="font-semibold" style={{ color: "#072a1c" }}>Carregando farmácias...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-4">
+    <div className="min-h-screen p-4" style={{ background: "#f8faf6" }}>
       <div className="max-w-5xl mx-auto py-8">
         <Link href="/">
-          <Button variant="ghost" className="text-white mb-8">
+          <Button
+            variant="ghost"
+            className="mb-8 hover:scale-105 transition"
+            style={{ color: "#072a1c", background: "rgba(181, 241, 118, 0.4)" }}
+          >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
           </Button>
@@ -73,29 +77,24 @@ export default function Pharmacies() {
           className="space-y-8"
         >
           {/* Header */}
-          <div className="text-center text-white space-y-4">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                <MapPin className="w-6 h-6 text-blue-400" />
-              </div>
-              <h1 className="text-4xl font-black">Farmácias da Plataforma</h1>
-            </div>
-            <p className="text-slate-300 text-lg">
+          <div className="text-center space-y-4">
+            <h1 className="text-4xl font-black" style={{ color: "#072a1c" }}>Farmácias da Plataforma</h1>
+            <p className="text-lg" style={{ color: "#607369" }}>
               Explore as {pharmacies.length} farmácia{pharmacies.length !== 1 ? "s" : ""} disponível{pharmacies.length !== 1 ? "s" : ""} na nossa rede
             </p>
           </div>
 
           {/* Error State */}
           {error && (
-            <div className="bg-red-500/20 border border-red-500/50 rounded-2xl p-4 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-              <p className="text-red-300">{error}</p>
+            <div className="rounded-2xl p-4 flex items-start gap-3" style={{ background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.3)" }}>
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: "#ef4444" }} />
+              <p style={{ color: "#ef4444" }}>{error}</p>
             </div>
           )}
 
           {/* Empty State */}
           {!loading && pharmacies.length === 0 && !error && (
-            <div className="text-center text-slate-300 py-12">
+            <div className="text-center py-12" style={{ color: "#607369" }}>
               <MapPin className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p className="text-lg">Nenhuma farmácia registada no momento</p>
             </div>
@@ -110,16 +109,30 @@ export default function Pharmacies() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all hover:border-blue-400/50 flex flex-col"
+                  className="rounded-2xl overflow-hidden flex flex-col transition-all hover:shadow-lg"
+                  style={{ background: "#ffffff", border: "1px solid #dce4d7" }}
                 >
-                  <div className="space-y-4 flex-1">
+                  {/* Pharmacy Image Placeholder */}
+                  <div 
+                    className="w-full h-48 bg-gray-200 flex items-center justify-center"
+                    style={{ background: "linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)" }}
+                  >
+                    <div className="text-center">
+                      <div className="w-16 h-16 rounded-full bg-white/50 flex items-center justify-center mx-auto mb-2">
+                        <MapPin className="w-8 h-8" style={{ color: "#8bc14a" }} />
+                      </div>
+                      <span className="text-sm" style={{ color: "#607369" }}>Imagem da Farmácia</span>
+                    </div>
+                  </div>
+                  
+                  <div className="p-6 space-y-4 flex-1">
                     {/* Header */}
                     <div>
-                      <h3 className="text-xl font-bold text-white">{pharmacy.name}</h3>
+                      <h3 className="text-xl font-bold" style={{ color: "#000000" }}>{pharmacy.name}</h3>
                       {pharmacy.rating && (
                         <div className="flex items-center gap-1 mt-2">
-                          <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                          <span className="text-yellow-300 font-semibold text-sm">
+                          <Star className="w-4 h-4 fill-yellow-400" style={{ color: "#fbbf24" }} />
+                          <span className="font-semibold text-sm" style={{ color: "#fbbf24" }}>
                             {pharmacy.rating.toFixed(1)}
                           </span>
                         </div>
@@ -127,20 +140,21 @@ export default function Pharmacies() {
                     </div>
 
                     {/* Details */}
-                    <div className="space-y-2 text-sm text-slate-300">
+                    <div className="space-y-2 text-sm" style={{ color: "#607369" }}>
                       {pharmacy.address && (
                         <div className="flex items-start gap-2">
-                          <MapPin className="w-4 h-4 text-teal-400 mt-1 flex-shrink-0" />
+                          <MapPin className="w-4 h-4 mt-1 flex-shrink-0" style={{ color: "#8bc14a" }} />
                           <span>{pharmacy.address}</span>
                         </div>
                       )}
 
                       {pharmacy.phone && (
                         <div className="flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-teal-400 flex-shrink-0" />
+                          <Phone className="w-4 h-4 flex-shrink-0" style={{ color: "#8bc14a" }} />
                           <a 
                             href={`tel:${pharmacy.phone}`}
-                            className="hover:text-white transition"
+                            className="transition hover:opacity-80"
+                            style={{ color: "#607369" }}
                           >
                             {pharmacy.phone}
                           </a>
@@ -149,7 +163,7 @@ export default function Pharmacies() {
 
                       {pharmacy.hours && (
                         <div className="flex items-start gap-2">
-                          <Clock className="w-4 h-4 text-teal-400 mt-1 flex-shrink-0" />
+                          <Clock className="w-4 h-4 mt-1 flex-shrink-0" style={{ color: "#8bc14a" }} />
                           <span>{pharmacy.hours}</span>
                         </div>
                       )}
@@ -157,18 +171,19 @@ export default function Pharmacies() {
 
                     {/* Badge */}
                     <div className="pt-2">
-                      <span className="inline-block bg-blue-500/20 text-blue-300 text-xs font-bold px-3 py-1 rounded-full">
+                      <span className="inline-block text-xs font-bold px-3 py-1 rounded-full bg-green-100" style={{ color: "#8bc14a" }}>
                         ✓ Verificada
                       </span>
                     </div>
                   </div>
 
                   {/* CTA */}
-                  <div className="flex gap-2 mt-4 pt-4 border-t border-white/10">
+                  <div className="flex gap-2 mt-4 pt-4" style={{ borderTop: "1px solid #dce4d7" }}>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 border-teal-400/50 text-teal-300 hover:bg-teal-500/20"
+                      className="flex-1 hover:scale-105 transition"
+                      style={{ borderColor: "#8bc14a", color: "#8bc14a" }}
                       onClick={() => window.location.href = `tel:${pharmacy.phone}`}
                     >
                       <Phone className="w-3 h-3 mr-1" />
@@ -176,12 +191,25 @@ export default function Pharmacies() {
                     </Button>
                     <Button
                       size="sm"
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                      className="flex-1 hover:scale-105 transition text-white"
+                      style={{ background: "#072a1c" }}
                       onClick={() => setLocation(`/catalogo?farmacia=${pharmacy.id}`)}
                     >
                       Ver Catálogo
                     </Button>
                   </div>
+                  
+                  {/* Comments Button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full mt-2 hover:scale-105 transition"
+                    style={{ color: "#607369" }}
+                    onClick={() => setLocation(`/farmacia/${pharmacy.id}/comentarios`)}
+                  >
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    Ver Comentários
+                  </Button>
                 </motion.div>
               ))}
             </div>

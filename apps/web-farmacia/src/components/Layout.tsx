@@ -13,7 +13,8 @@ import {
   FileText,
   Clock,
   ChevronRight,
-  Package2
+  Package2,
+  Tag
 } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { useSocket } from '../hooks/useSocket'
@@ -44,6 +45,7 @@ const navItems = [
   { path: '/orders', label: 'Pedidos', icon: ShoppingBag },
   { path: '/prescriptions', label: 'Receitas', icon: FileText },
   { path: '/products', label: 'Produtos', icon: Package },
+  { path: '/discounts', label: 'Descontos', icon: Tag },
   { path: '/balance', label: 'Faturamento', icon: DollarSign },
   { path: '/settings', label: 'Configurações', icon: Settings },
 ]
@@ -124,7 +126,7 @@ export default function Layout({ children }: LayoutProps) {
         data: order
       }
       setNotifications(prev => [newNotif, ...prev])
-      
+
       // Add toast
       const newToast: Toast = {
         id: Date.now(),
@@ -133,10 +135,10 @@ export default function Layout({ children }: LayoutProps) {
         total: order.total
       }
       setToasts(prev => [...prev, newToast])
-      
+
       // Update count
       setNewOrdersCount(prev => prev + 1)
-      
+
       // Auto-remove toast after 5 seconds
       setTimeout(() => {
         setToasts(prev => prev.filter(t => t.id !== newToast.id))
@@ -276,7 +278,7 @@ export default function Layout({ children }: LayoutProps) {
               </button>
             </div>
             <div className="flex items-center gap-4">
-              <button 
+              <button
                 onClick={openNotifications}
                 className="relative p-2 text-[#607369] hover:text-[#072a1c] hover:bg-[#f7faf5] rounded-lg transition-colors"
               >
@@ -307,18 +309,18 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Notification Panel */}
       {notifPanelOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/30 z-50"
           onClick={() => setNotifPanelOpen(false)}
         >
-          <div 
+          <div
             className="absolute right-4 top-16 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-2xl border border-green-100 overflow-hidden"
             style={{ animation: 'slideIn 0.2s ease-out' }}
             onClick={e => e.stopPropagation()}
           >
             <div className="p-4 border-b border-[#eef3ec] flex items-center justify-between bg-[#fafbf9]">
               <h3 className="font-semibold text-[#072a1c]">Notificações</h3>
-              <button 
+              <button
                 onClick={() => setNotifPanelOpen(false)}
                 className="p-1 hover:bg-[#f7faf5] rounded-lg text-[#607369]"
               >
@@ -385,7 +387,7 @@ export default function Layout({ children }: LayoutProps) {
               <p className="font-semibold text-[#072a1c] text-sm">Novo Pedido #{toast.orderId}</p>
               <p className="text-[#607369] text-xs truncate">{toast.customerName} • {Number(toast.total).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}</p>
             </div>
-            <button 
+            <button
               onClick={(e) => { e.stopPropagation(); removeToast(toast.id); }}
               className="p-1 hover:bg-[#f7faf5] rounded-lg text-[#607369] hover:text-[#072a1c]"
             >

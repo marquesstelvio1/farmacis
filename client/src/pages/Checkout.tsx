@@ -308,7 +308,7 @@ export default function Checkout() {
   // ─── Success screen ──────────────────────────────────────────────────────
   if (isComplete) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradaent-do-br from-slati-900evia-blue-900 to-slate-900 nt-to-br from-slate-900 via-blue-900 to-slate-900 p-4">
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
           <div className="w-24 h-24 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-6">
             <Check className="w-12 h-12 text-white" />
@@ -328,10 +328,10 @@ export default function Checkout() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-4">
+    <div className="min-h-screen bg-white p-4">
       <div className="max-w-4xl mx-auto py-8">
         <Link href="/">
-          <Button variant="ghost" className="text-white hover:bg-white/10 mb-6">
+          <Button variant="ghost" className="text-slate-700 hover:bg-slate-100 mb-6">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
           </Button>

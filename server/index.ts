@@ -38,6 +38,7 @@ declare module "http" {
 
 app.use(
   express.json({
+    limit: '10mb',
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
@@ -121,9 +122,9 @@ export const initPromise = (async () => {
       return next(err);
     }
 
-    return res.status(status).json({ 
-      message, 
-      error: process.env.NODE_ENV === 'development' ? err.message : undefined 
+    return res.status(status).json({
+      message,
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
   });
 

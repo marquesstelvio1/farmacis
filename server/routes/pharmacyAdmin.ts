@@ -1,6 +1,6 @@
 import { Express, Request, Response } from "express";
 import { db } from "../db";
-import { orders, orderStatusHistory, pharmacies, pharmacyAdmins, payments, orderItems } from "@shared/schema";
+import { orders, orderStatusHistory, pharmacies, pharmacyAdmins, payments, orderItems, products } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
@@ -403,6 +403,129 @@ export function registerPharmacyAdminRoutes(app: Express) {
     } catch (error) {
       console.error("Error fetching pending orders count:", error);
       res.status(500).json({ message: "Erro ao buscar contagem de pedidos pendentes" });
+    }
+  });
+
+  // Get products with discounts for pharmacy
+  app.get("/api/pharmacy/:pharmacyId/products/discounts", async (req: Request, res: Response) => {
+    try {
+      const pharmacyId = parseInt(req.params.pharmacyId as string);
+
+      if (isNaN(pharmacyId)) {
+        return res.status(400).json({ message: "Pharmacy ID inválido" });
+      }
+
+      const pharmacyProducts = await db
+        .select()
+        .from(products)
+        .where(eq(products.pharmacyId, pharmacyId));
+
+      res.json(pharmacyProducts);
+    } catch (error) {
+      console.error("Error fetching pharmacy products for discounts:", error);
+      res.status(500).json({ message: "Erro ao buscar produtos" });
+    }
+  });
+
+  // Update product discount
+  app.put("/api/pharmacy/products/:productId/discount", async (req: Request, res: Response) => {
+    try {
+      const productId = parseInt(req.params.productId as string);
+      const { discountPercentage, discountActive, discountStartDate, discountEndDate } = req.body;
+
+      if (isNaN(productId)) {
+        return res.status(400).json({ message: "Product ID inválido" });
+      }
+
+      // Validate discount percentage
+      if (discountPercentage !== undefined && (discountPercentage < 0 || discountPercentage > 100)) {
+        return res.status(400).json({ message: "Desconto deve estar entre 0 e 100%" });
+      }
+
+      const updateData: any = {
+        discountPercentage: discountPercentage ?? 0,
+        discountActive: discountActive ?? false,
+        updatedAt: new Date(),
+      };
+
+      if (discountStartDate) {
+        updateData.discountStartDate = new Date(discountStartDate);
+      }
+      if (discountEndDate) {
+        updateData.discountEndDate = new Date(discountEndDate);
+      }
+
+      const updatedProduct = await db
+        .update(products)
+        .set(updateData)
+        .where(eq(products.id, productId))
+        .returning();
+
+      if (updatedProduct.length === 0) {
+        return res.status(404).json({ message: "Produto não encontrado" });
+      }
+
+      res.json({
+        message: "Desconto atualizado com sucesso",
+        product: updatedProduct[0],
+      });
+    } catch (error) {
+      console.error("Error updating product discount:", error);
+      res.status(500).json({ message: "Erro ao atualizar desconto" });
+    }
+  });
+
+  // Batch update discounts for multiple products
+  app.post("/api/pharmacy/:pharmacyId/products/discounts/batch", async (req: Request, res: Response) => {
+    try {
+      const pharmacyId = parseInt(req.params.pharmacyId as string);
+      const { productIds, discountPercentage, discountActive, discountEndDate } = req.body;
+
+      if (isNaN(pharmacyId)) {
+        return res.status(400).json({ message: "Pharmacy ID inválido" });
+      }
+
+      if (!Array.isArray(productIds) || productIds.length === 0) {
+        return res.status(400).json({ message: "Lista de produtos inválida" });
+      }
+
+      if (discountPercentage < 0 || discountPercentage > 100) {
+        return res.status(400).json({ message: "Desconto deve estar entre 0 e 100%" });
+      }
+
+      const updateData: any = {
+        discountPercentage: discountPercentage ?? 0,
+        discountActive: discountActive ?? false,
+        updatedAt: new Date(),
+      };
+
+      if (discountEndDate) {
+        updateData.discountEndDate = new Date(discountEndDate);
+      }
+
+      const updatedProducts = [];
+      for (const productId of productIds) {
+        const result = await db
+          .update(products)
+          .set(updateData)
+          .where(and(
+            eq(products.id, productId),
+            eq(products.pharmacyId, pharmacyId)
+          ))
+          .returning();
+
+        if (result.length > 0) {
+          updatedProducts.push(result[0]);
+        }
+      }
+
+      res.json({
+        message: `${updatedProducts.length} produtos atualizados com desconto de ${discountPercentage}%`,
+        products: updatedProducts,
+      });
+    } catch (error) {
+      console.error("Error batch updating product discounts:", error);
+      res.status(500).json({ message: "Erro ao atualizar descontos em lote" });
     }
   });
 }

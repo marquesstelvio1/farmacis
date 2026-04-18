@@ -131,7 +131,7 @@ export default function Dashboard() {
       trend: '3 novas'
     },
     {
-      label: 'Lucro do Sistema (15%)',
+      label: 'Lucro do Sistema (10%)',
       value: stats?.totalProfit || '0',
       isCurrency: true,
       icon: TrendingUp,

@@ -32,7 +32,7 @@ export const api = {
   ai: {
     identifyPill: {
       method: 'POST' as const,
-      path: '/api/ai/identify-pill' as const,
+      path: '/api/identify-pill' as const,
       input: pillIdentificationRequestSchema,
       responses: {
         200: pillIdentificationResponseSchema,

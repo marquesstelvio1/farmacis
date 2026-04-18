@@ -1,0 +1,4 @@
+◇ injected env (13) from .env // tip: ⌘ override existing { override: true }
+🚀 Iniciando atualização de preços...
+✅ Sucesso!
+Linhas afetadas: 4

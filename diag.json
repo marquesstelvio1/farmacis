@@ -1,0 +1,66 @@
+◇ injected env (13) from .env // tip: ⌘ override existing { override: true }
+[
+  {
+    "id": 1,
+    "name": "Paracetamol 500mg",
+    "origin": null,
+    "preco_base": null,
+    "price": "1250"
+  },
+  {
+    "id": 2,
+    "name": "Ibuprofeno 750mg",
+    "origin": null,
+    "preco_base": null,
+    "price": "1890"
+  },
+  {
+    "id": 3,
+    "name": "Loratadina 400mg",
+    "origin": null,
+    "preco_base": null,
+    "price": "1500"
+  },
+  {
+    "id": 4,
+    "name": "Amoxicilina 500mg",
+    "origin": null,
+    "preco_base": null,
+    "price": "3500"
+  },
+  {
+    "id": 8,
+    "name": "Paracetamol ",
+    "origin": null,
+    "preco_base": "500.94",
+    "price": "576.08"
+  },
+  {
+    "id": 7,
+    "name": "Ben-U-ron",
+    "origin": null,
+    "preco_base": "5000",
+    "price": "5750.00"
+  },
+  {
+    "id": 10,
+    "name": "Creme Mustela",
+    "origin": null,
+    "preco_base": "23000.00",
+    "price": "26450.00"
+  },
+  {
+    "id": 11,
+    "name": "Amoxicilina",
+    "origin": "default",
+    "preco_base": "1400",
+    "price": "1400"
+  },
+  {
+    "id": 9,
+    "name": "Amlodipina",
+    "origin": "default",
+    "preco_base": "1222",
+    "price": "575.00"
+  }
+]

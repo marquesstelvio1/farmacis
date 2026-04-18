@@ -156,7 +156,7 @@ export default function MedicalInfo() {
       <div className="max-w-3xl mx-auto px-4">
         <button
           type="button"
-          onClick={() => window.location.assign("/?tab=profile")}
+          onClick={() => window.location.assign("/menu-de-configuracoes")}
           className="mb-4 inline-flex items-center gap-2 rounded-xl px-3 py-2 border transition"
           style={{ borderColor: "#dce4d7", color: "#072a1c", backgroundColor: "#ffffff" }}
         >

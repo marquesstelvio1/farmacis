@@ -19,7 +19,7 @@ export function registerPharmacyRoutes(app: Express) {
   app.post("/api/pharmacy/login", async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
-      
+
       const admin = await db.query.pharmacyAdmins.findFirst({
         where: eq(pharmacyAdmins.email, email),
       });
@@ -39,7 +39,7 @@ export function registerPharmacyRoutes(app: Express) {
         .from(pharmacies)
         .where(eq(pharmacies.id, admin.pharmacyId))
         .limit(1);
-      
+
       if (pharmacyResult.length === 0) {
         throw new Error("Pharmacy not found");
       }
@@ -67,7 +67,7 @@ export function registerPharmacyRoutes(app: Express) {
     try {
       const pharmacyIdParam = req.query.pharmacyId;
       const pharmacyId = typeof pharmacyIdParam === 'string' ? parseInt(pharmacyIdParam) : NaN;
-      
+
       if (!pharmacyId) {
         return res.status(400).json({ message: "Pharmacy ID required" });
       }
@@ -133,7 +133,7 @@ export function registerPharmacyRoutes(app: Express) {
     try {
       const pharmacyIdParam = req.query.pharmacyId;
       const pharmacyId = typeof pharmacyIdParam === 'string' ? parseInt(pharmacyIdParam) : NaN;
-      
+
       if (!pharmacyId) {
         return res.status(400).json({ message: "Pharmacy ID required" });
       }
@@ -218,11 +218,11 @@ export function registerPharmacyRoutes(app: Express) {
     try {
       const pharmacyIdParam = req.query.pharmacyId;
       const pharmacyId = typeof pharmacyIdParam === 'string' ? parseInt(pharmacyIdParam) : NaN;
-      
+
       console.log(`Fetching orders for pharmacy ID: ${pharmacyId} (param: ${pharmacyIdParam})`);
       console.log('Request headers:', req.headers);
       console.log('Request query:', req.query);
-      
+
       if (!pharmacyId) {
         console.log('Invalid pharmacy ID, returning 400');
         return res.status(400).json({ message: "Pharmacy ID required" });
@@ -281,7 +281,7 @@ export function registerPharmacyRoutes(app: Express) {
     try {
       const orderIdParam = req.params.id;
       const orderId = typeof orderIdParam === 'string' ? parseInt(orderIdParam) : NaN;
-      
+
       const orderResult = await db
         .select()
         .from(orders)
@@ -341,10 +341,10 @@ export function registerPharmacyRoutes(app: Express) {
         const allowedForwardStatuses = ['preparing', 'ready', 'out_for_delivery', 'delivered'];
         const currentStatusIndex = allowedForwardStatuses.indexOf(existingOrder.status);
         const newStatusIndex = allowedForwardStatuses.indexOf(status);
-        
+
         // Block transitions to forbidden statuses
         if (FORBIDDEN_TRANSITIONS.includes(status)) {
-          return res.status(403).json({ 
+          return res.status(403).json({
             message: "Este pedido está bloqueado. Não é possível cancelar ou reverter o status pois o pagamento já foi processado.",
             code: "ORDER_LOCKED"
           });
@@ -368,8 +368,8 @@ export function registerPharmacyRoutes(app: Express) {
 
       await db
         .update(orders)
-        .set({ 
-          status, 
+        .set({
+          status,
           updatedAt: new Date(),
           ...(shouldLockOrder && { isLocked: true }),
           ...(iban && { pharmacyIban: iban }),
@@ -379,7 +379,7 @@ export function registerPharmacyRoutes(app: Express) {
         })
         .where(eq(orders.id, orderId));
 
-      res.json({ 
+      res.json({
         message: "Status updated successfully",
         isLocked: shouldLockOrder || existingOrder.isLocked
       });
@@ -423,13 +423,55 @@ export function registerPharmacyRoutes(app: Express) {
         .where(filters.length > 0 ? and(...filters) : sql`true`)
         .orderBy(products.name);
 
-      const allProducts = rows.map(({ product, pharmacyName }) => ({
+      const allProductsRaw = rows.map(({ product, pharmacyName }) => ({
         ...product,
         pharmacyName: pharmacyName || "Farmácia sem nome",
-        inStock: true,
       }));
 
-      res.json(allProducts);
+      // Group products by name to combine variants
+      const groupedProducts = new Map();
+      allProductsRaw.forEach(product => {
+        const key = product.name.toLowerCase().trim();
+        if (!groupedProducts.has(key)) {
+          groupedProducts.set(key, {
+            ...product,
+            variants: [],
+            precoPortugues: product.origin === 'portugues' ? product.price : (product.precoPortugues || null),
+            precoIndiano: product.origin === 'indiano' ? product.price : (product.precoIndiano || null),
+          });
+        }
+        const mainProduct = groupedProducts.get(key);
+
+        if (product.origin && product.origin !== 'default') {
+          if (!mainProduct.variants.some((v: any) => v.id === product.id)) {
+            mainProduct.variants.push({
+              id: product.id,
+              origin: product.origin,
+              dosage: product.dosage,
+              price: product.price,
+              precoBase: product.precoBase,
+              stock: product.stock,
+              pharmacyId: product.pharmacyId,
+              pharmacyName: product.pharmacyName,
+              imageUrl: product.imageUrl,
+            });
+          }
+          if (product.origin === 'portugues') mainProduct.precoPortugues = product.price;
+          if (product.origin === 'indiano') mainProduct.precoIndiano = product.price;
+        } else {
+          const variants = mainProduct.variants;
+          const precoPortugues = mainProduct.precoPortugues;
+          const precoIndiano = mainProduct.precoIndiano;
+
+          Object.assign(mainProduct, product);
+
+          mainProduct.variants = variants;
+          mainProduct.precoPortugues = precoPortugues || product.precoPortugues;
+          mainProduct.precoIndiano = precoIndiano || product.precoIndiano;
+        }
+      });
+
+      res.json(Array.from(groupedProducts.values()));
     } catch (error) {
       console.error("Fetch products error:", error);
       res.status(500).json({ message: "Failed to fetch products" });
@@ -487,7 +529,7 @@ export function registerPharmacyRoutes(app: Express) {
             sql`${orders.createdAt} >= ${startDate}`
           )
         );
-      
+
       if (revenueStatsResult.length === 0) {
         throw new Error("Failed to calculate revenue stats");
       }
@@ -505,7 +547,7 @@ export function registerPharmacyRoutes(app: Express) {
             sql`${orders.status} != 'delivered' AND ${orders.createdAt} >= ${startDate}`
           )
         );
-      
+
       if (pendingStatsResult.length === 0) {
         throw new Error("Failed to calculate pending stats");
       }

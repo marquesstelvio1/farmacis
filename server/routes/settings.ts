@@ -86,11 +86,11 @@ export function registerSettingsRoutes(app: express.Application) {
         .limit(1);
       
       const setting = result.length > 0 ? result[0] : null;
-      const feePercent = setting ? parseFloat(setting.value) : 15;
+      const feePercent = setting ? parseFloat(setting.value) : 10;
       res.json({ feePercent });
     } catch (error) {
       console.error("Error fetching platform fee:", error);
-      res.json({ feePercent: 15 });
+      res.json({ feePercent: 10 });
     }
   });
 

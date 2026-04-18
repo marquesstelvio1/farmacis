@@ -149,6 +149,72 @@ export async function ensurePharmacyColumns() {
   }
 }
 
+export async function ensureProductDiscountTable() {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "product_discounts" (
+        "id" SERIAL PRIMARY KEY,
+        "pharmacy_id" INTEGER NOT NULL,
+        "product_id" INTEGER NOT NULL,
+        "discount_percentage" NUMERIC NOT NULL,
+        "is_active" BOOLEAN DEFAULT true NOT NULL,
+        "expires_at" TIMESTAMP,
+        "created_at" TIMESTAMP DEFAULT NOW() NOT NULL,
+        "updated_at" TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+    console.log('Table product_discounts ensured');
+
+    // Also ensure expires_at column for existing tables
+    await db.execute(sql`
+      ALTER TABLE product_discounts 
+      ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP
+    `);
+    console.log('Column expires_at ensured in product_discounts table');
+  } catch (error) {
+    console.error('Error ensuring product_discounts table:', error);
+  }
+}
+
+export async function ensurePrescriptionsTable() {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "prescriptions" (
+        "id" SERIAL PRIMARY KEY,
+        "order_id" INTEGER NOT NULL,
+        "product_id" INTEGER NOT NULL,
+        "user_id" INTEGER,
+        "image_url" TEXT NOT NULL,
+        "status" TEXT DEFAULT 'pending' NOT NULL,
+        "rejection_reason" TEXT,
+        "reviewed_by" INTEGER,
+        "reviewed_at" TIMESTAMP,
+        "created_at" TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+    console.log('Table prescriptions ensured');
+  } catch (error) {
+    console.error('Error ensuring prescriptions table:', error);
+  }
+}
+
+export async function ensureSystemSettingsTable() {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "system_settings" (
+        "id" SERIAL PRIMARY KEY,
+        "key" TEXT UNIQUE NOT NULL,
+        "value" TEXT NOT NULL,
+        "description" TEXT,
+        "updated_at" TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+    console.log('Table system_settings ensured');
+  } catch (error) {
+    console.error('Error ensuring system_settings table:', error);
+  }
+}
+
 export async function ensureUserColumns() {
   try {
     // Add role column for user type management

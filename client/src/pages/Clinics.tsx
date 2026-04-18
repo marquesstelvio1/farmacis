@@ -107,7 +107,7 @@ export default function Clinics() {
     toast({
       title: "Solicitação de Agendamento Enviada!",
       description: `Sua consulta na ${selectedClinic?.name} está aguardando confirmação.`,
-      className: "bg-blue-600 text-white border-none",
+      className: "bg-green-600 text-white border-none",
     });
 
     setIsSubmitting(false);
@@ -116,10 +116,10 @@ export default function Clinics() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-4">
+    <div className="min-h-screen bg-white p-4">
       <div className="max-w-4xl mx-auto py-8">
         <Link href="/">
-          <Button variant="ghost" className="text-white mb-8">
+          <Button variant="ghost" className="text-black mb-8 hover:bg-green-50">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
           </Button>
@@ -132,14 +132,14 @@ export default function Clinics() {
           className="space-y-8"
         >
           {/* Header */}
-          <div className="text-center text-white space-y-4">
+          <div className="text-center text-black space-y-4">
             <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                <Stethoscope className="w-6 h-6 text-blue-400" />
+              <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
+                <Stethoscope className="w-6 h-6 text-green-600" />
               </div>
               <h1 className="text-4xl font-black">Marcar Consultas</h1>
             </div>
-            <p className="text-slate-300 text-lg">Encontre os centros médicos mais próximos de você</p>
+            <p className="text-gray-600 text-lg">Encontre os centros médicos mais próximos de você</p>
           </div>
 
           {/* Clinics Grid */}
@@ -150,45 +150,45 @@ export default function Clinics() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all hover:border-blue-400/50"
+                className="bg-white border border-gray-200 rounded-2xl p-6 hover:border-green-400 hover:shadow-lg transition-all"
               >
                 <div className="space-y-4">
                   {/* Header */}
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="text-xl font-bold text-white">{clinic.name}</h3>
-                      <p className="text-blue-300 text-sm font-semibold">{clinic.specialty}</p>
+                      <h3 className="text-xl font-bold text-black">{clinic.name}</h3>
+                      <p className="text-green-600 text-sm font-semibold">{clinic.specialty}</p>
                     </div>
-                    <div className="flex items-center gap-1 bg-yellow-500/20 px-2 py-1 rounded-lg">
-                      <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                      <span className="text-yellow-300 font-bold text-sm">{clinic.rating}</span>
+                    <div className="flex items-center gap-1 bg-yellow-100 px-2 py-1 rounded-lg">
+                      <Star className="w-4 h-4 text-yellow-600 fill-yellow-600" />
+                      <span className="text-yellow-700 font-bold text-sm">{clinic.rating}</span>
                     </div>
                   </div>
 
                   {/* Details */}
-                  <div className="space-y-2 text-sm text-slate-300">
+                  <div className="space-y-2 text-sm text-gray-700">
                     <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-teal-400" />
+                      <MapPin className="w-4 h-4 text-green-500" />
                       <span>{clinic.address}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-teal-400" />
+                      <Clock className="w-4 h-4 text-green-500" />
                       <span>{clinic.hours}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-teal-400" />
-                      <a href={`tel:${clinic.phone}`} className="hover:text-white transition">
+                      <Phone className="w-4 h-4 text-green-500" />
+                      <a href={`tel:${clinic.phone}`} className="hover:text-green-600 transition">
                         {clinic.phone}
                       </a>
                     </div>
                     <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-teal-400" />
-                      <span className="font-semibold">{clinic.distance}</span>
+                      <MapPin className="w-4 h-4 text-green-500" />
+                      <span className="font-semibold text-green-600">{clinic.distance}</span>
                     </div>
                   </div>
 
                   {/* CTA */}
-                  <Button className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-blue-500/50 transition">
+                  <Button className="w-full bg-gradient-to-r from-green-600 to-green-500 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-green-500/50 transition">
                     Marcar Consulta
                   </Button>
                 </div>

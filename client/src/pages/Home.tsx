@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Map as MapIcon, Package, Building2, User, Phone, MapPin, Clock, SlidersHorizontal, LocateFixed, Heart, MessageCircle, Stethoscope, ClipboardList, UserRound, LogOut, ShoppingCart, Pill, Store } from "lucide-react";
+import { Map as MapIcon, Package, Building2, User, Phone, MapPin, Clock, SlidersHorizontal, LocateFixed, Heart, MessageCircle, Stethoscope, ClipboardList, UserRound, LogOut, ShoppingCart, Pill, Store, Eye, Plus, Minus, Trash2 } from "lucide-react";
+import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
@@ -671,18 +672,18 @@ export default function Home() {
   );
 
   const explorePharmacies = mapPharmacies.map((pharmacy) => {
-      const lat = parseFloat(String(pharmacy.latitude ?? pharmacy.lat ?? -8.85));
-      const lng = parseFloat(String(pharmacy.longitude ?? pharmacy.lng ?? 13.25));
-      if (Number.isNaN(lat) || Number.isNaN(lng)) {
-        return pharmacy;
-      }
+    const lat = parseFloat(String(pharmacy.latitude ?? pharmacy.lat ?? -8.85));
+    const lng = parseFloat(String(pharmacy.longitude ?? pharmacy.lng ?? 13.25));
+    if (Number.isNaN(lat) || Number.isNaN(lng)) {
+      return pharmacy;
+    }
 
-      const distanceKm = getDistanceKm(userLocation, { lat, lng });
-      return {
-        ...pharmacy,
-        distance: `${distanceKm.toFixed(1)} km`,
-      };
-    });
+    const distanceKm = getDistanceKm(userLocation, { lat, lng });
+    return {
+      ...pharmacy,
+      distance: `${distanceKm.toFixed(1)} km`,
+    };
+  });
 
   const filteredExplorePharmacies = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -850,15 +851,15 @@ export default function Home() {
     const loadPharmacies = async () => {
       try {
         setLoading(true);
-        
+
         const response = await fetch("/api/pharmacy/list");
         if (response.ok) {
           const data = await response.json();
           console.log("Pharmacies loaded from API:", data);
-          
+
           // Normalize all pharmacies to ensure they have required fields
           const normalizedData = (Array.isArray(data) ? data : []).map(normalizePharmacy);
-          
+
           if (normalizedData.length > 0) {
             console.log(`Loaded ${normalizedData.length} pharmacies from database`);
             setPharmacies(normalizedData);
@@ -1063,9 +1064,9 @@ export default function Home() {
           paymentMethod: checkoutPaymentMethod,
           deliveryFee: "0",
           total: String(group.subtotal.toFixed(2)),
-            items: group.items.map(({ product, quantity, origin }) => ({
+          items: group.items.map(({ product, quantity, origin }) => ({
             productId: product.id,
-              productName: origin && origin !== 'default' ? `${product.name} (${origin === 'portugues' ? 'Português' : 'Indiano'})` : product.name,
+            productName: origin && origin !== 'default' ? `${product.name} (${origin === 'portugues' ? 'Português' : 'Indiano'})` : product.name,
             quantity,
             unitPrice: product.price,
             prescriptionRequired: Boolean(product.prescriptionRequired),
@@ -1102,8 +1103,8 @@ export default function Home() {
           const errorBody = await response.json().catch(() => null);
           throw new Error(
             errorBody?.message ||
-              lastNetworkError?.message ||
-              `Falha ao criar pedido para ${group.pharmacyName}`
+            lastNetworkError?.message ||
+            `Falha ao criar pedido para ${group.pharmacyName}`
           );
         }
 
@@ -1167,7 +1168,7 @@ export default function Home() {
     return (
       <div className="h-full flex flex-col w-full relative">
         {/* Liquid Glass Header - Minimal */}
-        <div 
+        <div
           className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between"
           style={{
             background: 'transparent',
@@ -1177,7 +1178,7 @@ export default function Home() {
         >
           <div className="flex-1 flex items-center justify-center px-4">
             {/* Search Bar - Pill shaped */}
-            <div 
+            <div
               className="w-full max-w-md h-11 relative flex items-center gap-3 px-4 rounded-full shadow-lg"
               style={{
                 background: '#ffffff',
@@ -1485,15 +1486,15 @@ export default function Home() {
                 setMapFocusPoint(point);
               }}
             />
-            
+
             {/* Pharmacy Markers */}
             {filteredExplorePharmacies.map((pharmacy) => {
               const lat = parseFloat(String(pharmacy.latitude || pharmacy.lat || -8.85));
               const lng = parseFloat(String(pharmacy.longitude || pharmacy.lng || 13.25));
-              
+
               return (
-                <Marker 
-                  key={pharmacy.id} 
+                <Marker
+                  key={pharmacy.id}
                   position={[lat, lng]}
                   icon={pharmacyMarkerIcon}
                   eventHandlers={{
@@ -1505,13 +1506,13 @@ export default function Home() {
                       <p className="font-bold text-sm mb-2" style={{ color: '#072a1c' }}>
                         {pharmacy.name}
                       </p>
-                      
+
                       <div className="space-y-2 text-xs">
                         <div className="flex items-start gap-2">
                           <Phone className="w-3 h-3 mt-0.5 flex-shrink-0" style={{ color: '#8bc14a' }} />
                           <p style={{ color: '#607369' }}>{pharmacy.phone}</p>
                         </div>
-                        
+
                         <div className="flex items-start gap-2">
                           <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" style={{ color: '#8bc14a' }} />
                           <p style={{ color: '#607369' }} className="line-clamp-2">{pharmacy.address}</p>
@@ -1524,7 +1525,7 @@ export default function Home() {
                           </div>
                         )}
                       </div>
-                      
+
                       {isPharmacyActive(pharmacy.status) && (
                         <div className="mt-3 px-2 py-1 rounded bg-green-100 text-center">
                           <p className="text-xs font-bold" style={{ color: '#8bc14a' }}>✓ Ativa</p>
@@ -1563,7 +1564,7 @@ export default function Home() {
                       <span className="text-xs font-bold" style={{ color: '#072a1c' }}>⭐ {(selectedPharmacy.rating || 4.5).toFixed(1)}</span>
                     </div>
                   </div>
-                  <button 
+                  <button
                     className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 hover:scale-110 transition"
                     style={{ backgroundColor: '#b5f176', color: '#072a1c' }}
                   >
@@ -1590,7 +1591,7 @@ export default function Home() {
                   className="absolute inset-0"
                   style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', zIndex: 9998, pointerEvents: 'auto' }}
                 />
-                
+
                 {/* Bottom Sheet with Drag */}
                 <motion.div
                   ref={pharmacySheetRef}
@@ -1621,7 +1622,7 @@ export default function Home() {
                   }}
                 >
                   {/* Drag Handle */}
-                  <div 
+                  <div
                     className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing"
                     style={{ touchAction: 'none' }}
                     onClick={() => setSheetExpanded((prev) => !prev)}
@@ -1805,15 +1806,15 @@ export default function Home() {
     // Filter products
     let filteredProducts = products.filter(product => {
       const query = searchQuery.toLowerCase();
-      const matchesSearch = !searchQuery || 
+      const matchesSearch = !searchQuery ||
         product.name.toLowerCase().includes(query) ||
         product.description?.toLowerCase().includes(query) ||
         product.activeIngredient?.toLowerCase().includes(query) ||
         product.diseases?.some(d => d.toLowerCase().includes(query));
-      
+
       const matchesCategory = !selectedCategory || product.category === selectedCategory;
       const matchesPharmacy = !catalogPharmacyFilterId || Number(product.pharmacyId) === catalogPharmacyFilterId;
-      
+
       return matchesSearch && matchesCategory && matchesPharmacy;
     });
 
@@ -1831,7 +1832,7 @@ export default function Home() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-black" style={{ color: '#b5f176' }}>Medicamentos</h2>
               <div className="relative">
-                <button 
+                <button
                   onClick={() => {
                     setCheckoutError(null);
                     setCheckoutSuccess(null);
@@ -1842,7 +1843,7 @@ export default function Home() {
                 >
                   <ShoppingCart size={18} />
                   {cartSize > 0 && (
-                    <span 
+                    <span
                       className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
                       style={{ backgroundColor: '#8bc14a', color: '#072a1c' }}
                     >
@@ -1867,15 +1868,15 @@ export default function Home() {
                 type="button"
                 onClick={() => setShowCatalogFilters((prev) => !prev)}
                 className="absolute right-2 w-8 h-8 rounded-full flex items-center justify-center transition hover:scale-105"
-                style={{ 
-                  color: '#072a1c', 
-                  background: showCatalogFilters ? '#b5f176' : 'rgba(181, 241, 118, 0.4)' 
+                style={{
+                  color: '#072a1c',
+                  background: showCatalogFilters ? '#b5f176' : 'rgba(181, 241, 118, 0.4)'
                 }}
               >
                 <SlidersHorizontal className="w-4 h-4" />
                 {/* Badge de filtro ativo (aparece quando uma categoria é selecionada) */}
                 {selectedCategory !== "" && (
-                  <span 
+                  <span
                     className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm"
                     style={{ backgroundColor: '#ef4444' }}
                   />
@@ -1989,172 +1990,214 @@ export default function Home() {
             ) : filteredProducts.length > 0 ? (
               filteredProducts.map((product) => {
                 const isFavorite = favoriteProductIds.includes(product.id);
+                const discount = (product as any).activeDiscount;
+                const discountPct = discount ? parseFloat(discount.percentage) : 0;
+
+                const applyDiscount = (v: string | number | null | undefined) => {
+                  if (!v) return null;
+                  const base = parseFloat(String(v));
+                  return discountPct > 0 ? base * (1 - discountPct / 100) : base;
+                };
+
+                // Formatar Kz
+                const formatKz = (value: number) => {
+                  return value.toLocaleString('pt-AO', {
+                    style: 'currency',
+                    currency: 'AOA',
+                    minimumFractionDigits: 2,
+                  });
+                };
+
+                // Construção alinhada à Lógica de Origem e Preços
+                const ptVal = product.precoPortugues ? parseFloat(String(product.precoPortugues)) : 0;
+                const inVal = product.precoIndiano ? parseFloat(String(product.precoIndiano)) : 0;
+                const baseValVal = product.price ? parseFloat(String(product.price)) : 0;
+
+                // Helper: getDisplayPrice
+                const getDisplayPrice = () => {
+                  if (baseValVal > 0) return { value: baseValVal, isFallback: false };
+                  if (ptVal > 0) return { value: ptVal, isFallback: true, fallbackOrigin: 'portugues' };
+                  if (inVal > 0) return { value: inVal, isFallback: true, fallbackOrigin: 'indiano' };
+                  return null;
+                };
+
+                const display = getDisplayPrice();
+
+                // Helper: getAvailablePrices (adds badges for any filled price)
+                type PriceEntry = { label: string; badge: string; badgeClass: string; value: number; origin: string | null };
+                const getAvailablePrices = (): PriceEntry[] => {
+                  const entries: PriceEntry[] = [];
+                  if (baseValVal > 0) entries.push({ label: 'Base', badge: '🏷️ Base', badgeClass: 'bg-slate-100 text-slate-700 border-slate-200', value: baseValVal, origin: null });
+                  if (ptVal > 0) entries.push({ label: 'Português', badge: '🇵🇹 Português', badgeClass: 'bg-blue-50 text-blue-700 border-blue-200', value: ptVal, origin: 'portugues' });
+                  if (inVal > 0) entries.push({ label: 'Indiano', badge: '🇮🇳 Indiano', badgeClass: 'bg-orange-50 text-orange-700 border-orange-200', value: inVal, origin: 'indiano' });
+                  return entries;
+                };
+
+                const prices = getAvailablePrices();
+                const hasBasePrice = display && !display.isFallback;
+
+                const getCartKey = (origin: string | null) => `${product.id}-${origin ?? 'default'}`;
+                
+                const renderCartControls = (origin: string | null, onAdd: () => void, onRemove: () => void) => {
+                  const key = getCartKey(origin);
+                  const cartItem = cart[key];
+                  if (cartItem) {
+                    return (
+                      <div className="flex items-center gap-1.5 rounded-xl px-2 py-1 border shrink-0" style={{ border: '1.5px solid #8bc14a' }}>
+                        <button onClick={onRemove} className="w-5 h-5 flex items-center justify-center font-bold text-sm rounded" style={{ color: '#8bc14a' }}>-</button>
+                        <span className="w-4 text-center text-xs font-bold" style={{ color: '#072a1c' }}>{cartItem.quantity}</span>
+                        <button onClick={onAdd} className="w-5 h-5 flex items-center justify-center font-bold text-sm rounded" style={{ color: '#8bc14a' }}>+</button>
+                      </div>
+                    );
+                  }
+                  return (
+                    <button
+                      onClick={onAdd}
+                      disabled={!product.stock || product.stock <= 0 || !product.pharmacyId}
+                      className="shrink-0 flex items-center gap-1.5 text-xs font-black px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 disabled:opacity-40"
+                      style={{ backgroundColor: (product.stock && product.stock > 0 && product.pharmacyId) ? '#072a1c' : '#e5e7eb', color: (product.stock && product.stock > 0 && product.pharmacyId) ? '#b5f176' : '#607369' }}
+                    >
+                      <ShoppingCart size={14} />
+                      {product.stock && product.stock > 0 ? 'Comprar' : 'Esgotado'}
+                    </button>
+                  );
+                };
+
                 return (
-                  <div 
-                    key={product.id} 
-                    className="rounded-2xl overflow-hidden transition hover:shadow-xl"
-                    style={{ backgroundColor: '#fof5ee', border: '1px solid #e8e8e8' }}
+                  <div
+                    key={product.id}
+                    className="rounded-2xl overflow-hidden flex flex-col transition-all hover:shadow-lg hover:-translate-y-0.5 bg-white border border-slate-200 hover:border-green-300"
+                    style={{ boxShadow: '0 2px 8px rgba(7,42,28,0.05)' }}
                   >
-                    {/* Product Image */}
-                    <div className="h-32 flex items-center justify-center text-4xl overflow-hidden" style={{ backgroundColor: '#f0f0f0' }}>
+                    {/* Link to product detail - Image + Content */}
+                    <Link href={`/produto/${product.id}`} className="block">
+                      {/* Image + Badges */}
+                      <div className="relative h-40 overflow-hidden flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 group cursor-pointer">
                       {product.imageUrl ? (
-                        <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                        <img src={product.imageUrl} alt={product.name} className="w-full h-full object-contain p-4 transition-transform duration-500 group-hover:scale-110" />
                       ) : (
-                        <Pill size={36} style={{ color: "#8bc14a" }} />
+                        <Pill size={48} style={{ color: "#8bc14a" }} />
                       )}
+
+                      {discountPct > 0 && (
+                        <div className="absolute top-0 left-0 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-br-xl shadow">
+                          -{discountPct}%
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFavoriteProduct(product.id); }}
+                        className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-sm border z-20"
+                        style={{ borderColor: "#dce4d7", backgroundColor: "rgba(255,255,255,0.95)" }}
+                        aria-label={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+                      >
+                        <Heart size={14} className={isFavorite ? "fill-current" : ""} style={{ color: isFavorite ? "#ef4444" : "#607369" }} />
+                      </button>
+                      
+                      {/* Stock Badge */}
+                      <div className={`absolute bottom-2 right-2 px-2 py-1 rounded-full text-[10px] font-bold shadow-sm z-10 ${product.stock > 0 ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'}`}>
+                        {product.stock > 0 ? `${product.stock} em stock` : 'Esgotado'}
+                      </div>
+
+                      {/* Origin badges on the image */}
+                      <div className="absolute bottom-2 left-2 flex gap-1">
+                        {ptVal > 0 && (
+                          <div className="text-[9px] font-black px-2 py-0.5 rounded-full bg-blue-600 text-white shadow-sm">
+                            🇵🇹 PT
+                          </div>
+                        )}
+                        {inVal > 0 && (
+                          <div className="text-[9px] font-black px-2 py-0.5 rounded-full bg-orange-500 text-white shadow-sm">
+                            🇮🇳 IN
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Product Info */}
-                    <div className="p-4">
-                      {/* Name and Brand */}
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <h3 className="font-bold text-sm line-clamp-2" style={{ color: '#072a1c' }}>
-                          {product.name}
-                        </h3>
-                        <button
-                          type="button"
-                          onClick={() => toggleFavoriteProduct(product.id)}
-                          className="w-8 h-8 rounded-full flex items-center justify-center border shrink-0"
-                          style={{ borderColor: "#dce4d7", backgroundColor: "#ffffff" }}
-                          aria-label={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
-                        >
-                          <Heart
-                            size={15}
-                            className={isFavorite ? "fill-current" : ""}
-                            style={{ color: isFavorite ? "#ef4444" : "#607369" }}
-                          />
-                        </button>
-                      </div>
-                      {product.brand && (
-                        <p className="text-xs font-semibold mb-2" style={{ color: '#8bc14a' }}>
-                          <span className="inline-flex items-center gap-1">
-                            <Store size={12} />
-                            {product.brand}
-                          </span>
-                        </p>
-                      )}
-
-                      {/* Dosage and Category */}
-                      <div className="flex items-center gap-2 mb-3">
-                        {product.dosage && (
-                          <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: 'rgba(139, 193, 74, 0.1)', color: '#8bc14a' }}>
-                            {product.dosage}
-                          </span>
-                        )}
-                        {product.category && (
-                          <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: 'rgba(7, 42, 28, 0.1)', color: '#072a1c' }}>
-                            {product.category}
-                          </span>
+                    {/* Content */}
+                    <div className="flex flex-col flex-1 p-3 gap-2">
+                      <div>
+                        <h3 className="font-bold text-sm leading-tight line-clamp-2" style={{ color: '#072a1c' }}>{product.name}</h3>
+                        {product.brand && (
+                          <p className="text-[10px] font-semibold mt-0.5 flex items-center gap-1" style={{ color: '#8bc14a' }}>
+                            <Store size={10} />{product.brand}
+                          </p>
                         )}
                       </div>
 
-                      {/* Seller Pharmacy */}
-                      <div className="mb-3">
-                        <p className="text-xs font-semibold" style={{ color: '#607369' }}>
-                          🏥 Vendido por {product.pharmacyName || 'Farmácia sem nome'}
-                        </p>
+                      <div className="flex flex-wrap gap-1">
+                        {product.dosage && <span className="text-[9px] px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'rgba(139,193,74,0.1)', color: '#4a8a1c' }}>{product.dosage}</span>}
+                        {product.category && <span className="text-[9px] px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'rgba(7,42,28,0.07)', color: '#072a1c' }}>{product.category}</span>}
                       </div>
 
-                      {/* Price and Buttons */}
-                      <div className="flex items-center justify-between">
-                        {product.precoPortugues && product.precoIndiano ? (
-                          <div className="flex flex-col gap-3 w-full">
-                            {/* Portuguese Variant */}
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 uppercase tracking-tighter">Português</span>
-                                <p className="text-sm font-bold" style={{ color: '#072a1c' }}>
-                                  {product.precoPortugues} Kz
-                                </p>
-                              </div>
-                              {cart[`${product.id}-portugues`] ? (
-                                <div className="flex items-center gap-2 bg-white rounded-lg px-2 py-1" style={{ border: '1px solid #8bc14a' }}>
-                                  <button onClick={() => removeFromCart(product.id, "portugues")} className="w-5 h-5 flex items-center justify-center font-bold text-sm hover:bg-gray-100 rounded" style={{ color: '#8bc14a' }}>−</button>
-                                  <span className="w-6 text-center text-xs font-bold" style={{ color: '#072a1c' }}>{cart[`${product.id}-portugues`].quantity}</span>
-                                  <button onClick={() => addToCart(product, "portugues")} className="w-5 h-5 flex items-center justify-center font-bold text-sm hover:bg-gray-100 rounded" style={{ color: '#8bc14a' }}>+</button>
+                      <p className="text-[10px] font-medium flex items-center gap-1" style={{ color: '#607369' }}>
+                        <Store size={9} />Vendido por <span className="font-bold truncate">{product.pharmacyName || 'Farmácia'}</span>
+                      </p>
+
+                      {/* Price Section */}
+                      <div className="mt-auto pt-2" style={{ borderTop: '1px solid #f0f5ed' }}>
+                        {prices.length === 0 ? (
+                          <span className="text-xs text-slate-400">Preço sob consulta</span>
+                        ) : prices.length > 1 ? (
+                          /* Multiplos Preços */
+                          <div className="space-y-1.5 w-full">
+                            {prices.map((entry) => {
+                              const finalPrice = applyDiscount(entry.value)!;
+                              return (
+                                <div key={entry.origin ?? 'default'} className="flex items-center justify-between gap-2 border-b border-gray-50 pb-1.5 last:border-0 last:pb-0">
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className={`inline-flex items-center text-[9px] font-black px-1.5 py-0.5 rounded border ${entry.badgeClass} self-start`}>
+                                      {entry.badge}
+                                    </span>
+                                    <div className="flex items-baseline gap-1">
+                                      <span className="text-sm font-black" style={{ color: '#072a1c' }}>{formatKz(finalPrice)}</span>
+                                      {discountPct > 0 && <span className="text-[9px] line-through text-gray-400">{formatKz(entry.value)}</span>}
+                                    </div>
+                                  </div>
+                                  {renderCartControls(
+                                    entry.origin,
+                                    () => entry.origin ? addToCart(product, entry.origin as any) : addToCart(product),
+                                    () => entry.origin ? removeFromCart(product.id, entry.origin as any) : removeFromCart(product.id)
+                                  )}
                                 </div>
-                              ) : (
-                                <button
-                                  onClick={() => addToCart(product, "portugues")}
-                                  disabled={!product.stock || product.stock <= 0 || !product.pharmacyId}
-                                  className="px-3 py-1.5 rounded-lg font-bold text-xs transition"
-                                  style={{ backgroundColor: '#b5f176', color: '#072a1c' }}
-                                >
-                                  Adicionar
-                                </button>
-                              )}
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          /* Apenas um ÚNICO preço - mostra sempre badge e valor */
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex flex-col gap-1 w-full max-w-[60%]">
+                              <span className={`inline-flex items-center self-start text-[10px] font-black px-1.5 py-0.5 rounded border ${prices[0].badgeClass}`}>
+                                {prices[0].badge}
+                              </span>
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="text-xl font-black truncate" style={{ color: '#8bc14a' }}>
+                                  {formatKz(applyDiscount(prices[0].value)!)}
+                                </span>
+                                {discountPct > 0 && <span className="text-xs line-through text-gray-400">{formatKz(prices[0].value)}</span>}
+                              </div>
                             </div>
-                            {/* Indian Variant */}
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 uppercase tracking-tighter">Indiano</span>
-                                <p className="text-sm font-bold" style={{ color: '#8bc14a' }}>
-                                  {product.precoIndiano} Kz
-                                </p>
-                              </div>
-                              {cart[`${product.id}-indiano`] ? (
-                                <div className="flex items-center gap-2 bg-white rounded-lg px-2 py-1" style={{ border: '1px solid #8bc14a' }}>
-                                  <button onClick={() => removeFromCart(product.id, "indiano")} className="w-5 h-5 flex items-center justify-center font-bold text-sm hover:bg-gray-100 rounded" style={{ color: '#8bc14a' }}>−</button>
-                                  <span className="w-6 text-center text-xs font-bold" style={{ color: '#072a1c' }}>{cart[`${product.id}-indiano`].quantity}</span>
-                                  <button onClick={() => addToCart(product, "indiano")} className="w-5 h-5 flex items-center justify-center font-bold text-sm hover:bg-gray-100 rounded" style={{ color: '#8bc14a' }}>+</button>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() => addToCart(product, "indiano")}
-                                  disabled={!product.stock || product.stock <= 0 || !product.pharmacyId}
-                                  className="px-3 py-1.5 rounded-lg font-bold text-xs transition"
-                                  style={{ backgroundColor: '#b5f176', color: '#072a1c' }}
-                                >
-                                  Adicionar
-                                </button>
+                            <div className="ml-auto">
+                              {renderCartControls(
+                                prices[0].origin,
+                                () => prices[0].origin ? addToCart(product, prices[0].origin as any) : addToCart(product),
+                                () => prices[0].origin ? removeFromCart(product.id, prices[0].origin as any) : removeFromCart(product.id)
                               )}
                             </div>
                           </div>
-                        ) : (
-                          <>
-                            <div className="flex flex-col gap-1">
-                              <p className="text-lg font-black" style={{ color: '#8bc14a' }}>
-                                {product.price} Kz
-                              </p>
-                            </div>
-                            {/* Single Cart Controls */}
-                            {cart[`${product.id}-default`] ? (
-                              <div className="flex items-center gap-2 bg-white rounded-lg px-2 py-1" style={{ border: '1px solid #8bc14a' }}>
-                                <button
-                                  onClick={() => removeFromCart(product.id)}
-                                  className="w-5 h-5 flex items-center justify-center font-bold text-sm transition hover:bg-gray-100 rounded"
-                                  style={{ color: '#8bc14a' }}
-                                >
-                                  −
-                                </button>
-                                <span className="w-6 text-center text-xs font-bold" style={{ color: '#072a1c' }}>
-                                  {cart[`${product.id}-default`].quantity}
-                                </span>
-                                <button
-                                  onClick={() => addToCart(product)}
-                                  disabled={!product.stock || product.stock <= 0 || !product.pharmacyId}
-                                  className="w-5 h-5 flex items-center justify-center font-bold text-sm transition hover:bg-gray-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                                  style={{ color: '#8bc14a' }}
-                                >
-                                  +
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => addToCart(product)}
-                                disabled={!product.stock || product.stock <= 0 || !product.pharmacyId}
-                                className="px-4 py-2 rounded-lg font-bold text-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
-                                style={{
-                                  backgroundColor: (product.stock && product.stock > 0 && product.pharmacyId) ? '#b5f176' : '#ccc',
-                                  color: '#072a1c'
-                                }}
-                              >
-                                {product.pharmacyId ? ((product.stock && product.stock > 0) ? 'Adicionar' : 'Indisponível') : 'Sem farmácia'}
-                              </button>
-                            )}
-                          </>
                         )}
+                        </div>
                       </div>
+                    </Link>
+                    
+                    {/* View Details Button */}
+                    <div className="px-3 pb-3">
+                      <Link href={`/produto/${product.id}`}>
+                        <button className="w-full py-2 text-xs font-semibold text-slate-500 hover:text-green-600 border border-slate-200 hover:border-green-300 rounded-lg transition-colors flex items-center justify-center gap-1">
+                          <Eye size={12} />
+                          Ver detalhes do produto
+                        </button>
+                      </Link>
                     </div>
                   </div>
                 );
@@ -2173,7 +2216,7 @@ export default function Home() {
 
         {/* Cart Summary - Shows when cart has items */}
         {cartSize > 0 && (
-          <div 
+          <div
             className="sticky bottom-24 md:bottom-6 left-0 right-0 mx-4 mb-4 p-4 rounded-2xl shadow-lg"
             style={{ backgroundColor: '#b5f176' }}
           >
@@ -2186,7 +2229,7 @@ export default function Home() {
                   Total: {cartTotal.toFixed(2)} Kz
                 </p>
               </div>
-              <button 
+              <button
                 onClick={() => {
                   setCheckoutError(null);
                   setCheckoutSuccess(null);
@@ -2275,7 +2318,7 @@ export default function Home() {
                       className="mt-6 h-12 px-8 rounded-full font-black"
                       style={{ backgroundColor: "#072a1c", color: "#b5f176" }}
                     >
-                      Voltar ao início
+                       início
                     </button>
                     <button
                       onClick={() => {
@@ -2564,7 +2607,7 @@ export default function Home() {
                   </a>
                 </div>
                 <div className="flex gap-2">
-                  <button 
+                  <button
                     onClick={() => {
                       setSelectedPharmacy(pharmacy);
                       setSheetExpanded(false);
@@ -2574,7 +2617,7 @@ export default function Home() {
                       });
                       setActiveTab("explore");
                     }}
-                    className="flex-1 h-9 text-xs font-bold rounded-lg transition" 
+                    className="flex-1 h-9 text-xs font-bold rounded-lg transition"
                     style={{ backgroundColor: '#072a1c', color: '#b5f176' }}
                   >
                     Ver Detalhes
@@ -2592,7 +2635,7 @@ export default function Home() {
                   >
                     Ver Catálogo
                   </button>
-                  <a 
+                  <a
                     href={`https://www.google.com/maps/search/${pharmacy.latitude},${pharmacy.longitude}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -2734,7 +2777,7 @@ export default function Home() {
           <h1 className="text-xl font-bold" style={{ color: '#072a1c' }}>🏥 Brócolis</h1>
           <p className="text-xs mt-1" style={{ color: '#607369' }}>Saúde e Vida</p>
         </div>
-        
+
         <nav className="flex-1 p-4 space-y-2">
           <button
             onClick={() => setActiveTab("explore")}
@@ -2747,7 +2790,7 @@ export default function Home() {
             <MapIcon size={20} />
             <span>Explorar</span>
           </button>
-          
+
           <button
             onClick={() => setActiveTab("catalog")}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition"
@@ -2759,7 +2802,7 @@ export default function Home() {
             <Package size={20} />
             <span>Catálogo</span>
           </button>
-          
+
           <button
             onClick={() => setActiveTab("pharmacies")}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition"
@@ -2771,7 +2814,7 @@ export default function Home() {
             <Building2 size={20} />
             <span>Farmácias</span>
           </button>
-          
+
           <button
             onClick={() => setActiveTab("profile")}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition"
@@ -2890,4 +2933,5 @@ export default function Home() {
         </div>
       </div>
     </div>
-  );}
+  );
+}

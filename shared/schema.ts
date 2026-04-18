@@ -81,7 +81,7 @@ export const products = pgTable("products", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description").notNull(),
-  price: numeric("price").notNull(),
+  price: numeric("price"),
   precoBase: numeric("preco_base"),
   precoPortugues: numeric("preco_portugues"), // Price for Portuguese origin variant
   precoIndiano: numeric("preco_indiano"),   // Price for Indian origin variant
@@ -99,6 +99,11 @@ export const products = pgTable("products", {
   origin: text("origin"), // "portugues", "indiano", or null for default
   parentProductId: integer("parent_product_id").references((): any => products.id), // link to main product variant
   isMainVariant: boolean("is_main_variant").default(false).notNull(), // indicates if this is the primary product card
+  // Discount fields - percentage based discount per pharmacy
+  discountPercentage: integer("discount_percentage").default(0).notNull(), // 0-100% discount
+  discountActive: boolean("discount_active").default(false).notNull(), // toggle discount on/off
+  discountStartDate: timestamp("discount_start_date"), // optional: when discount starts
+  discountEndDate: timestamp("discount_end_date"), // optional: when discount ends
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }) as any;
@@ -107,7 +112,15 @@ export const insertProductSchema = createInsertSchema(products).omit({
   id: true,
   createdAt: true,
   updatedAt: true
-});
+}).refine(
+  (data) => {
+    const hasPrice = data.price && parseFloat(String(data.price)) > 0;
+    const hasPortuguese = data.precoPortugues && parseFloat(String(data.precoPortugues)) > 0;
+    const hasIndian = data.precoIndiano && parseFloat(String(data.precoIndiano)) > 0;
+    return !!(hasPrice || hasPortuguese || hasIndian);
+  },
+  { message: "Pelo menos um preço (Base, Português ou Indiano) deve ser fornecido." }
+);
 
 export const updateProductSchema = createInsertSchema(products).partial().omit({
   id: true,
@@ -396,3 +409,31 @@ export type MedicalRecord = typeof medicalRecords.$inferSelect;
 export type InsertMedicalRecord = typeof medicalRecords.$inferInsert;
 export type MedicationReminder = typeof medicationReminders.$inferSelect;
 export type InsertMedicationReminder = typeof medicationReminders.$inferInsert;
+
+// Product Discounts - descontos por farmácia para produtos específicos
+export const productDiscounts = pgTable("product_discounts", {
+  id: serial("id").primaryKey(),
+  pharmacyId: integer("pharmacy_id").notNull().references(() => pharmacies.id),
+  productId: integer("product_id").notNull().references(() => products.id),
+  discountPercentage: numeric("discount_percentage").notNull(), // ex: 10.00 = 10%
+  isActive: boolean("is_active").default(true).notNull(),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertProductDiscountSchema = createInsertSchema(productDiscounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const updateProductDiscountSchema = createInsertSchema(productDiscounts).partial().omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export type ProductDiscount = typeof productDiscounts.$inferSelect;
+export type InsertProductDiscount = z.infer<typeof insertProductDiscountSchema>;
+export type UpdateProductDiscount = z.infer<typeof updateProductDiscountSchema>;

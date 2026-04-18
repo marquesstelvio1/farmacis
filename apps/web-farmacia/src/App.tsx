@@ -9,6 +9,7 @@ import Products from './pages/Products'
 import Balance from './pages/Balance'
 import Settings from './pages/Settings'
 import Prescriptions from './pages/Prescriptions'
+import Discounts from './pages/Discounts'
 
 function App() {
   const { isAuthenticated } = useAuthStore()
@@ -28,6 +29,7 @@ function App() {
         <Route path="/prescriptions" element={<Prescriptions />} />
         <Route path="/balance" element={<Balance />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/discounts" element={<Discounts />} />
       </Routes>
     </Layout>
   )

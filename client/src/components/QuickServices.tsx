@@ -88,7 +88,7 @@ export function QuickServices() {
       className="w-full max-w-4xl mx-auto px-2 sm:px-4 py-8 sm:py-12"
     >
       <div className="mb-8">
-        <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+        <h2 className="text-2xl font-extrabold text-black flex items-center gap-2">
           <span className="w-2 h-8 bg-blue-600 rounded-full"></span>
           Serviços Rápidos
         </h2>
@@ -101,25 +101,25 @@ export function QuickServices() {
             variants={itemVariants}
             whileHover={{ y: -8 }}
             onClick={() => setLocation(service.path)}
-            className={`group relative bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-xl dark:hover:shadow-slate-900/50 transition-shadow duration-300 cursor-pointer flex flex-col items-start ${
+            className={`group relative bg-white border border-gray-200 rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-xl transition-shadow duration-300 cursor-pointer flex flex-col items-start ${
               index === 4 ? "md:col-span-2" : ""
             }`}
           >
-            <div className={`p-3 rounded-xl bg-gray-50 dark:bg-slate-700 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 transition-colors duration-300 mb-4`}>
+            <div className={`p-3 rounded-xl bg-white group-hover:bg-green-50 transition-colors duration-300 mb-4`}>
               <service.icon 
                 size={28} 
-                className="text-gray-400 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300" 
+                className="text-green-500 group-hover:text-green-600 transition-colors duration-300" 
               />
             </div>
             
-            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+            <h3 className="font-bold text-black text-lg mb-1 group-hover:text-black transition-colors">
               {service.title}
             </h3>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mb-4 leading-relaxed">
+            <p className="text-gray-600 text-sm mb-4 leading-relaxed">
               {service.subtitle}
             </p>
 
-            <div className="mt-auto flex items-center text-blue-600 dark:text-blue-400 text-xs font-bold opacity-0 group-hover:opacity-100 transition-all transform translate-x-[-10px] group-hover:translate-x-0">
+            <div className="mt-auto flex items-center text-green-600 text-xs font-bold opacity-0 group-hover:opacity-100 transition-all transform translate-x-[-10px] group-hover:translate-x-0">
               SABER MAIS <ArrowRight size={14} className="ml-1" />
             </div>
           </motion.div>

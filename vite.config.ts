@@ -24,6 +24,7 @@ export default defineConfig({
       "@": path.resolve(import.meta.dirname, "client", "src"),
       "@shared": path.resolve(import.meta.dirname, "shared"),
       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
+      "react": path.resolve(import.meta.dirname, "node_modules/react"),
     },
   },
   root: path.resolve(import.meta.dirname, "client"),
@@ -38,7 +39,7 @@ export default defineConfig({
     },
     proxy: {
       "/api": {
-        target: "http://localhost:5176",
+        target: "http://localhost:5001",
         changeOrigin: true,
       },
     },

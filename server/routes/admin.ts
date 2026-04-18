@@ -139,7 +139,8 @@ export function registerAdminRoutes(app: Express) {
       const revenueStats = revenueStatsResult[0];
 
       const totalRevenue = parseFloat(revenueStats.total);
-      const totalProfit = (totalRevenue * (0.15 / 1.15)).toFixed(2);
+      // Comissão de 10% sobre cada venda (sobre o preço de venda, não sobre preço base)
+      const totalProfit = (totalRevenue * 0.10).toFixed(2);
 
       res.json({
         totalPharmacies: pharmacyStats.total,
@@ -725,7 +726,7 @@ export function registerAdminRoutes(app: Express) {
         .where(sql`key = 'platform_fee_percent'`)
         .limit(1);
       const feeSetting = feeSettingResult.length > 0 ? feeSettingResult[0] : null;
-      const feePercent = feeSetting ? parseFloat(feeSetting.value) / 100 : 0.15;
+      const feePercent = feeSetting ? parseFloat(feeSetting.value) / 100 : 0.10;
 
       // Total system revenue
       const systemRevenueResult = await db
@@ -755,15 +756,15 @@ export function registerAdminRoutes(app: Express) {
 
       res.json({
         totalSystemRevenue: systemRevenue.total || '0',
-        totalSystemProfit: (parseFloat(systemRevenue.total || '0') * (feePercent / (1 + feePercent))).toFixed(2),
+        totalSystemProfit: (parseFloat(systemRevenue.total || '0') * feePercent).toFixed(2),
         totalSystemOrders: systemRevenue.count || 0,
         totalSystemCompleted: systemRevenue.completed || 0,
-        platformFeePercent: feeSetting ? feeSetting.value : '15',
+        platformFeePercent: feeSetting ? feeSetting.value : '10',
         pharmacyBreakdown: pharmacyBreakdown.map(pb => ({
           pharmacyId: pb.pharmacyId,
           pharmacyName: pb.pharmacyName || 'Unknown',
           revenue: pb.revenue || '0',
-          profit: (parseFloat(pb.revenue || '0') * (feePercent / (1 + feePercent))).toFixed(2),
+          profit: (parseFloat(pb.revenue || '0') * feePercent).toFixed(2),
           ordersCount: pb.ordersCount || 0,
           completedOrders: pb.completedOrders || 0,
         })),

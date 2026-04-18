@@ -284,8 +284,16 @@ export default function UserOrders() {
             });
 
             if (!res.ok) {
-                const data = await res.json().catch(() => ({}));
-                throw new Error(data.message || "Falha ao enviar avaliação");
+                const contentType = res.headers.get('content-type');
+                let errorMessage = "Falha ao enviar avaliação";
+                if (contentType?.includes('application/json')) {
+                    const data = await res.json().catch(() => ({}));
+                    errorMessage = data.message || errorMessage;
+                } else {
+                    const text = await res.text().catch(() => '');
+                    console.error('API error (non-JSON):', text.substring(0, 200));
+                }
+                throw new Error(errorMessage);
             }
 
             toast({
@@ -310,10 +318,10 @@ export default function UserOrders() {
     return (
         <div className="min-h-screen bg-slate-50 py-8">
             <div className="max-w-4xl mx-auto px-4">
-                <Link href="/">
+                <Link href="/menu-de-configuracoes">
                     <Button variant="ghost" className="mb-6 text-slate-600 hover:bg-slate-100">
                         <ArrowLeft className="w-4 h-4 mr-2" />
-                        Voltar ao Início
+                        Voltar
                     </Button>
                 </Link>
 
