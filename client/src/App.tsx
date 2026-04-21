@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -31,6 +31,7 @@ import EmergencyContacts from "@/pages/EmergencyContacts";
 import MenuConfiguracoes from "@/pages/MenuConfiguracoes";
 import Suporte from "@/pages/Suporte";
 import { PharmacyComments } from "@/pages/PharmacyComments";
+import PharmacyConfig from "@/pages/PharmacyConfig";
 
 interface RouterProps {
   onLogout: () => void;
@@ -59,6 +60,7 @@ function Router({ onLogout: _onLogout }: RouterProps) {
         <Route path="/pedidos" component={UserOrders} />
         <Route path="/configuracoes" component={AccountSettings} />
         <Route path="/menu-de-configuracoes" component={MenuConfiguracoes} />
+        <Route path="/farmacia/config" component={PharmacyConfig} />
         <Route path="/emergencia" component={EmergencyContacts} />
         <Route path="/info-medica" component={MedicalInfo} />
         <Route path="/suporte" component={Suporte} />
@@ -70,11 +72,11 @@ function Router({ onLogout: _onLogout }: RouterProps) {
 }
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+  const [isAuthenticated, setIsAuthenticated] = React.useState(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem("isAuthenticated") : null;
     return saved === "true";
   });
-  const [showRegister, setShowRegister] = useState(false);
+  const [showRegister, setShowRegister] = React.useState(false);
   // Mova chamadas de hooks que dependem de contexto para dentro dos componentes filhos (como Router)
   // ou garanta que o Provider esteja no main.tsx
 

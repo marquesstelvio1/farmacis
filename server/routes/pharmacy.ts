@@ -195,7 +195,6 @@ export function registerPharmacyRoutes(app: Express) {
           openingHours: pharmacies.openingHours,
         })
         .from(pharmacies)
-        .where(eq(pharmacies.status, 'active'))
         .orderBy(pharmacies.name);
 
       // Convert numeric strings to numbers for map coordinates

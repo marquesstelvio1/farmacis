@@ -1,13 +1,16 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { Link } from "wouter";
-import { Upload, X, Loader2, Pill, Camera, FileImage, Check, ExternalLink, Search } from "lucide-react";
+import { X, Loader2, Pill, Camera, Check, ExternalLink, Search, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { PrescriptionPharmacySearch } from "./PrescriptionPharmacySearch";
+import { useToast } from "@/hooks/use-toast";
 
 interface Medication {
   nome: string;
   dosagem: string;
+  marca?: string;
   quantidade?: string;
   periodo_consumo?: string;
   frequencia?: string;
@@ -21,13 +24,35 @@ interface OCRResult {
 type ViewState = 'upload' | 'results' | 'pharmacy-search';
 
 export function PrescriptionOCR() {
+  const { toast } = useToast();
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [result, setResult] = useState<OCRResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewState, setViewState] = useState<ViewState>('upload');
+  const [brandFilter, setBrandFilter] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Extract unique brands from medications
+  const availableBrands = useMemo(() => {
+    if (!result?.medications) return [];
+    const brands = new Set<string>();
+    result.medications.forEach(med => {
+      if (med.marca) brands.add(med.marca);
+    });
+    return Array.from(brands).sort();
+  }, [result]);
+
+  // Filter medications by brand
+  const filteredMedications = useMemo(() => {
+    if (!result?.medications) return [];
+    if (!brandFilter) return result.medications;
+    return result.medications.filter(med =>
+      med.marca?.toLowerCase().includes(brandFilter.toLowerCase()) ||
+      med.nome.toLowerCase().includes(brandFilter.toLowerCase())
+    );
+  }, [result, brandFilter]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -234,22 +259,70 @@ export function PrescriptionOCR() {
               <div className="flex items-center gap-2 text-green-600">
                 <Check className="w-5 h-5" />
                 <span className="font-medium">
-                  {result.medications.length} medicamento(s) encontrado(s)
+                  {filteredMedications.length} de {result.medications.length} medicamento(s) encontrado(s)
                 </span>
               </div>
 
+              {/* Brand Filter */}
+              {availableBrands.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Tag className="w-4 h-4 text-slate-500" />
+                    <span className="text-sm font-medium text-slate-700">Filtrar por marca:</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      onClick={() => setBrandFilter('')}
+                      className={`px-2 py-1 text-xs rounded-full border transition-colors ${
+                        brandFilter === ''
+                          ? 'bg-green-100 text-green-700 border-green-300'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-green-300'
+                      }`}
+                    >
+                      Todas
+                    </button>
+                    {availableBrands.map(brand => (
+                      <button
+                        key={brand}
+                        onClick={() => setBrandFilter(brand === brandFilter ? '' : brand)}
+                        className={`px-2 py-1 text-xs rounded-full border transition-colors ${
+                          brandFilter === brand
+                            ? 'bg-blue-100 text-blue-700 border-blue-300'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+                        }`}
+                      >
+                        {brand}
+                      </button>
+                    ))}
+                  </div>
+                  {brandFilter && (
+                    <div className="flex items-center gap-2 text-sm text-slate-500">
+                      <span>Filtrando por: <strong>{brandFilter}</strong></span>
+                      <button
+                        onClick={() => setBrandFilter('')}
+                        className="text-xs text-red-500 hover:text-red-700"
+                      >
+                        (limpar)
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Medications List - Clickable Links */}
               <div className="space-y-2">
-                {result.medications.map((med, idx) => (
+                {filteredMedications.map((med, idx) => (
                   <Link
                     key={idx}
-                    to={`/catalogo?search=${encodeURIComponent(`${med.nome} ${med.dosagem}`)}`}
+                    to={`/catalogo?search=${encodeURIComponent(`${med.nome} ${med.dosagem} ${med.marca || ''}`)}`}
                     className="flex items-center gap-3 p-3 bg-gray-50 hover:bg-blue-50 rounded-lg transition-colors group"
                   >
                     <Pill className="w-5 h-5 text-blue-500" />
                     <div className="flex-1">
                       <p className="font-medium group-hover:text-blue-700">{med.nome}</p>
-                      <p className="text-sm text-gray-600">{med.dosagem}</p>
+                      <p className="text-sm text-gray-600">
+                        {med.dosagem}{med.marca ? ` • ${med.marca}` : ''}
+                      </p>
                       {med.quantidade && (
                         <p className="text-xs text-gray-500">{med.quantidade}</p>
                       )}
@@ -261,21 +334,30 @@ export function PrescriptionOCR() {
 
               {/* Search Pharmacies Button */}
               <Button
-                onClick={handleSearchPharmacies}
+                onClick={() => {
+                  if (filteredMedications.length) {
+                    // Create temporary result with filtered medications
+                    setResult({ ...result, medications: filteredMedications });
+                    setViewState('pharmacy-search');
+                  }
+                }}
+                disabled={filteredMedications.length === 0}
                 className="w-full bg-green-600 hover:bg-green-700"
               >
                 <Search className="w-4 h-4 mr-2" />
                 Buscar Farmácias com Preços
+                {brandFilter && ` (Marca: ${brandFilter})`}
               </Button>
 
               {/* Search All in Catalog Button */}
               <Link
-                to={`/catalogo?search=${encodeURIComponent(result.medications.map(m => `${m.nome} ${m.dosagem}`).join(', '))}`}
+                to={`/catalogo?search=${encodeURIComponent(filteredMedications.map(m => `${m.nome} ${m.dosagem} ${m.marca || ''}`).join(', '))}`}
                 className="block w-full"
               >
                 <Button variant="outline" className="w-full">
                   <ExternalLink className="w-4 h-4 mr-2" />
                   Pesquisar no Catálogo
+                  {brandFilter && ` (Marca: ${brandFilter})`}
                 </Button>
               </Link>
 
@@ -288,14 +370,18 @@ export function PrescriptionOCR() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={copyToClipboard}
+                    onClick={() => {
+                      navigator.clipboard.writeText(
+                        filteredMedications.map(m => `${m.nome}${m.marca ? ` (${m.marca})` : ''}, ${m.dosagem}`).join('; ')
+                      );
+                    }}
                     className="h-6 text-blue-600"
                   >
                     Copiar
                   </Button>
                 </div>
                 <code className="block text-sm bg-white p-2 rounded border">
-                  {result.medications.map(m => `${m.nome}, ${m.dosagem}`).join('; ')}
+                  {filteredMedications.map(m => `${m.nome}${m.marca ? ` (${m.marca})` : ''}, ${m.dosagem}`).join('; ')}
                 </code>
               </div>
             </div>

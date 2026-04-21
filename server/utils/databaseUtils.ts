@@ -1,6 +1,12 @@
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 
+function isDuplicateError(error: any) {
+  // Postgres error codes: 
+  // 42701: duplicate_column, 42P07: duplicate_table, 42710: duplicate_object (index)
+  return error?.cause?.code === '42701' || error?.cause?.code === '42P07' || error?.cause?.code === '42710';
+}
+
 export async function ensureOrderColumns() {
   try {
     // Add is_locked column for payment immutability
@@ -93,7 +99,10 @@ export async function ensureProductColumns() {
           ADD COLUMN IF NOT EXISTS ${sql.identifier(column.name)} ${sql.raw(column.type)}
         `);
         console.log(`Column ${column.name} ensured in products table`);
-      } catch (error) {
+      } catch (error: any) {
+        if (!isDuplicateError(error)) {
+          throw error; // Re-throw fatal connection errors
+        }
         console.log(`Column ${column.name} might already exist or there was an error:`, error);
       }
     }
@@ -110,7 +119,10 @@ export async function ensureProductColumns() {
       try {
         await db.execute(sql.raw(indexSQL));
         console.log('Index created/verified');
-      } catch (error) {
+      } catch (error: any) {
+        if (!isDuplicateError(error)) {
+          throw error;
+        }
         console.log('Index might already exist or there was an error:', error);
       }
     }
@@ -211,7 +223,10 @@ export async function ensureSystemSettingsTable() {
     `);
     console.log('Table system_settings ensured');
   } catch (error) {
-    console.error('Error ensuring system_settings table:', error);
+    if (!isDuplicateError(error)) {
+      console.error('Fatal error ensuring system_settings table:', error);
+      throw error;
+    }
   }
 }
 

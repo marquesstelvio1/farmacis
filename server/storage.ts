@@ -17,7 +17,8 @@ import {
   type InsertOrderItem,
   type AdminUser,
   type PharmacyAdmin,
-  type User
+  type User,
+  type SystemSetting
 } from "@shared/schema";
 import { and, eq, ilike, or, sql, desc, isNull, gt } from "drizzle-orm";
 
@@ -43,6 +44,7 @@ export interface IStorage {
   getOrderItems(orderId: number): Promise<OrderItem[]>;
   updateOrderStatus(id: number, status: string): Promise<Order>;
   getUserOrders(userId: number): Promise<Order[]>;
+  updateOrderReview(id: number, review: { rating: number, comment: string, reviewedAt: Date }): Promise<void>;
 
   // Admin methods
   getAdminUsers(): Promise<AdminUser[]>;
@@ -64,6 +66,9 @@ export interface IStorage {
   createProductDiscount(discount: any): Promise<any>;
   updateDiscountStatus(id: number, isActive: boolean): Promise<any>;
   deleteDiscount(id: number): Promise<void>;
+
+  // System Settings methods
+  getSystemSettings(): Promise<SystemSetting[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -95,9 +100,6 @@ export class DatabaseStorage implements IStorage {
 
       if (category) {
         conditions.push(eq(products.category, category));
-      }
-      if (status) {
-        conditions.push(eq(products.status, status));
       }
 
       // Join with pharmacies to get pharmacy name and ensure pharmacy exists
@@ -403,6 +405,18 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async updateOrderReview(id: number, review: { rating: number, comment: string, reviewedAt: Date }): Promise<void> {
+    await db
+      .update(orders)
+      .set({
+        reviewRating: review.rating,
+        reviewComment: review.comment,
+        reviewedAt: review.reviewedAt,
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, id));
+  }
+
   async getAdminUsers(): Promise<AdminUser[]> {
     return await db.select().from(adminUsers);
   }
@@ -502,6 +516,10 @@ export class DatabaseStorage implements IStorage {
 
   async deleteDiscount(id: number): Promise<void> {
     await db.delete(productDiscounts).where(eq(productDiscounts.id, id));
+  }
+
+  async getSystemSettings(): Promise<SystemSetting[]> {
+    return await db.select().from(systemSettings);
   }
 }
 

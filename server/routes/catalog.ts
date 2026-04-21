@@ -24,6 +24,9 @@ export function registerCatalogRoutes(app: express.Application) {
             if (d.toLowerCase().includes(query)) suggestionSet.add(d);
           });
         }
+        if (p.brand && p.brand.toLowerCase().includes(query)) {
+          suggestionSet.add(p.brand);
+        }
         if (suggestionSet.size > 15) break; // Limite para performance
       }
 
@@ -43,8 +46,9 @@ export function registerCatalogRoutes(app: express.Application) {
       const category = req.query.category as string;
       const status = req.query.status as string;
       const origin = req.query.origin as string;
+      const brand = req.query.brand as string;
 
-      console.log('🔍 GET /api/products - Query params:', { search, pharmacyId, category, status, origin });
+      console.log('🔍 GET /api/products - Query params:', { search, pharmacyId, category, status, origin, brand });
 
       // Buscamos todos os produtos da farmácia (ou todos) e aplicamos o filtro manualmente
       // para garantir que a busca por doenças funcione corretamente.
@@ -72,21 +76,24 @@ export function registerCatalogRoutes(app: express.Application) {
             const pDosage = (p.dosage || '').toLowerCase();
             const pDesc = (p.description || '').toLowerCase();
             const pIngredient = (p.activeIngredient || '').toLowerCase();
+            const pBrand = (p.brand || '').toLowerCase();
 
             return searchTerms.some(term => {
-              // Check if term includes dosage (e.g., "paracetamol 500mg")
+              // Check if term includes dosage (e.g. "paracetamol 500mg")
               const termParts = term.split(/\s+(?=\d)/);
               const namePart = termParts[0];
               const dosagePart = termParts[1];
 
               const nameMatch = pName.includes(namePart) ||
                                pDesc.includes(namePart) ||
-                               pIngredient.includes(namePart);
+                               pIngredient.includes(namePart) ||
+                               pBrand.includes(namePart);
 
               if (dosagePart && nameMatch) {
                 return pDosage.includes(dosagePart) ||
                        pName.includes(term) ||
-                       pDesc.includes(term);
+                       pDesc.includes(term) ||
+                       pBrand.includes(term);
               }
 
               return nameMatch;
@@ -104,17 +111,20 @@ export function registerCatalogRoutes(app: express.Application) {
             const pDosage = (p.dosage || '').toLowerCase();
             const pDesc = (p.description || '').toLowerCase();
             const pIngredient = (p.activeIngredient || '').toLowerCase();
+            const pBrand = (p.brand || '').toLowerCase();
             const pDiseases = Array.isArray(p.diseases) ? p.diseases : [];
 
             const nameMatch = pName.includes(nameQuery) ||
                              pDesc.includes(nameQuery) ||
                              pIngredient.includes(nameQuery) ||
+                             pBrand.includes(nameQuery) ||
                              pDiseases.some((d: string) => d.toLowerCase().includes(nameQuery));
 
             if (dosageQuery && nameMatch) {
               return pDosage.includes(dosageQuery) ||
                      pName.includes(query) ||
-                     pDesc.includes(query);
+                     pDesc.includes(query) ||
+                     pBrand.includes(query);
             }
 
             return nameMatch;
@@ -140,6 +150,14 @@ export function registerCatalogRoutes(app: express.Application) {
             return p.origin === 'default' || !p.origin || (p.price && parseFloat(String(p.price)) > 0);
           }
           return p.origin === origin;
+        });
+      }
+
+      // Filter by brand
+      if (brand && brand !== 'all') {
+        products = products.filter((p) => {
+          const pBrand = (p.brand || '').toLowerCase();
+          return pBrand === brand.toLowerCase() || pBrand.includes(brand.toLowerCase());
         });
       }
 

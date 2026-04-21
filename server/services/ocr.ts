@@ -7,6 +7,7 @@ const VANESSA_API_URL = "https://vanessa-getway.tuyenecomesso.com/v1/inference";
 export interface Medication {
   nome: string;
   dosagem: string;
+  marca?: string;
   quantidade?: string;
   periodo_consumo?: string;
   frequencia?: string;
@@ -45,6 +46,7 @@ async function processWithVanessa(base64: string, mime: string): Promise<OCRResu
     {
       "nome": "Nome do medicamento",
       "dosagem": "500mg",
+      "marca": "Marca/Genérico do fabricante",
       "quantidade": "30 comprimidos",
       "periodo_consumo": "30 dias",
       "frequencia": "1x ao dia",
@@ -52,6 +54,11 @@ async function processWithVanessa(base64: string, mime: string): Promise<OCRResu
     }
   ]
 }
+
+IMPORTANTE sobre marca:
+- Extrai a marca/fabricante/laboratório do medicamento se visível na receita ou embalagem
+- Se for genérico, indica "Genérico" ou o laboratório fabricante
+- Exemplos: "Bayer", "Pfizer", "Genérico", "Medley", "Teuto"
 
 IMPORTANTE sobre quantidade:
 - Se a receita indicar período de consumo (ex: "30 dias", "2 meses") e frequência (ex: "2x ao dia", "a cada 8h"), CALCULA a quantidade total necessária
@@ -100,7 +107,7 @@ Se não encontrares medicamentos, retorna {"medicamentos": []}.`;
 
   return {
     medications: meds,
-    formattedString: meds.map(m => `${m.nome}, ${m.dosagem}`).join("; "),
+    formattedString: meds.map(m => `${m.nome}${m.marca ? ` (${m.marca})` : ''}, ${m.dosagem}`).join("; "),
     rawText: content,
   };
 }

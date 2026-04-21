@@ -1,32 +1,31 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MapPin,
   Star,
   ShoppingCart,
-  Store,
   Check,
   AlertCircle,
   CreditCard,
   Wallet,
   ArrowLeft,
-  ArrowRight,
   Package,
   X,
   ChevronDown,
   ChevronUp,
-  Clock,
-  Banknote
+  Banknote,
+  Search
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Link } from "wouter";
+import { Input } from "@/components/ui/input";
 
 interface Medication {
   nome: string;
   dosagem: string;
+  marca?: string;
   quantidade?: string;
   periodo_consumo?: string;
   frequencia?: string;
@@ -73,6 +72,7 @@ export function PrescriptionPharmacySearch({ medications, onBack, onOrder }: Pre
   const [selectedPharmacies, setSelectedPharmacies] = useState<Map<number, number[]>>(new Map());
   const [expandedPharmacies, setExpandedPharmacies] = useState<Set<number>>(new Set());
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [brandFilter, setBrandFilter] = useState<string>('');
   const { toast } = useToast();
 
   // Get user location
@@ -118,9 +118,9 @@ export function PrescriptionPharmacySearch({ medications, onBack, onOrder }: Pre
         setResults(data.pharmacies || []);
 
         // Auto-select first pharmacy with all products if exists
-        const firstComplete = data.pharmacies?.find((p: PharmacyResult) => p.hasAllProducts);
+        const firstComplete = data.pharmacies?.find((p: { pharmacyId: number; hasAllProducts: boolean; products: { productId: number }[] }) => p.hasAllProducts);
         if (firstComplete) {
-          setSelectedPharmacies(new Map([[firstComplete.pharmacyId, firstComplete.products.map(p => p.productId)]]));
+          setSelectedPharmacies(new Map([[firstComplete.pharmacyId, firstComplete.products.map((p: { productId: number }) => p.productId)]]));
         }
       } catch (error) {
         toast({
@@ -223,6 +223,18 @@ export function PrescriptionPharmacySearch({ medications, onBack, onOrder }: Pre
   const allMedicationsCovered = checkAllMedicationsCovered();
   const selectedCount = selectedPharmacies.size;
 
+  // Filtrar resultados por marca
+  const filteredResults = useMemo(() => {
+    if (!brandFilter.trim()) return results;
+    const filter = brandFilter.toLowerCase();
+    return results.filter(pharmacy =>
+      pharmacy.products.some(product =>
+        product.productName.toLowerCase().includes(filter) ||
+        product.dosage.toLowerCase().includes(filter)
+      )
+    );
+  }, [results, brandFilter]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -248,7 +260,7 @@ export function PrescriptionPharmacySearch({ medications, onBack, onOrder }: Pre
           {medications.map((med, idx) => (
             <div key={idx} className="flex items-center justify-between text-sm">
               <span className="text-slate-700">
-                {med.nome} <span className="text-slate-500">({med.dosagem})</span>
+                {med.nome} <span className="text-slate-500">({med.dosagem}{med.marca ? ` • ${med.marca}` : ''})</span>
               </span>
               {med.quantidade && (
                 <Badge variant="secondary" className="text-xs">
@@ -261,7 +273,7 @@ export function PrescriptionPharmacySearch({ medications, onBack, onOrder }: Pre
       </Card>
 
       {/* Sort Options */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <span className="text-sm text-slate-500">Ordenar por:</span>
         <div className="flex gap-1">
           {(['distance', 'price', 'rating'] as const).map((option) => (
@@ -281,13 +293,33 @@ export function PrescriptionPharmacySearch({ medications, onBack, onOrder }: Pre
         </div>
       </div>
 
+      {/* Brand Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+        <Input
+          type="text"
+          placeholder="Pesquisar por marca ou produto..."
+          value={brandFilter}
+          onChange={(e) => setBrandFilter(e.target.value)}
+          className="pl-10"
+        />
+        {brandFilter && (
+          <button
+            onClick={() => setBrandFilter('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
       {/* Results */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-12">
           <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4" />
           <p className="text-slate-500">Buscando farmácias...</p>
         </div>
-      ) : results.length === 0 ? (
+      ) : filteredResults.length === 0 ? (
         <Card className="p-8 text-center">
           <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-slate-800 mb-2">
@@ -314,7 +346,7 @@ export function PrescriptionPharmacySearch({ medications, onBack, onOrder }: Pre
           )}
 
           {/* Pharmacy Cards */}
-          {results.map((pharmacy) => {
+          {filteredResults.map((pharmacy) => {
             const isSelected = selectedPharmacies.has(pharmacy.pharmacyId);
             const isExpanded = expandedPharmacies.has(pharmacy.pharmacyId);
 
@@ -341,6 +373,15 @@ export function PrescriptionPharmacySearch({ medications, onBack, onOrder }: Pre
                     >
                       {isSelected && <Check className="w-4 h-4 text-white" />}
                     </button>
+
+                    {/* Pharmacy Logo */}
+                    {pharmacy.pharmacyLogo && (
+                      <img
+                        src={pharmacy.pharmacyLogo}
+                        alt={pharmacy.pharmacyName}
+                        className="w-12 h-12 rounded-lg object-cover border border-slate-200 flex-shrink-0"
+                      />
+                    )}
 
                     {/* Pharmacy Info */}
                     <div className="flex-1 min-w-0">
@@ -436,17 +477,27 @@ export function PrescriptionPharmacySearch({ medications, onBack, onOrder }: Pre
                           {pharmacy.products.map((product) => (
                             <div
                               key={product.productId}
-                              className="flex items-center justify-between p-3 bg-white rounded-lg border"
+                              className="flex items-center justify-between p-3 bg-white rounded-lg border gap-3"
                             >
-                              <div>
-                                <p className="font-medium text-sm text-slate-800">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm text-slate-800 truncate">
                                   {product.productName}
                                 </p>
-                                <p className="text-xs text-slate-500">
-                                  {product.dosage} • Qtd: {product.quantity}
-                                </p>
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                  <Badge variant="secondary" className="text-xs">
+                                    {product.dosage}
+                                  </Badge>
+                                  <span className="text-xs text-slate-500">
+                                    Qtd: {product.quantity}
+                                  </span>
+                                  {product.stock <= 5 && (
+                                    <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                                      Só {product.stock} left
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
-                              <div className="text-right">
+                              <div className="text-right flex-shrink-0">
                                 <p className="font-semibold text-slate-800">
                                   {product.totalPrice.toLocaleString('pt-AO', {
                                     style: 'currency',
@@ -457,7 +508,7 @@ export function PrescriptionPharmacySearch({ medications, onBack, onOrder }: Pre
                                   {product.price.toLocaleString('pt-AO', {
                                     style: 'currency',
                                     currency: 'AOA'
-                                  })} cada
+                                  })} unit
                                 </p>
                               </div>
                             </div>

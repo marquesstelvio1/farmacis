@@ -25,9 +25,9 @@ export function Layout({ children }: LayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navLinks = [
-    { href: "/", label: "Início", icon: Home },
     { href: "/catalogo", label: "Catálogo", icon: LayoutGrid },
     { href: "/farmacias", label: "Farmácias", icon: Store },
+    { href: "/", label: "Início", icon: Home },
     { href: "/explorar", label: "Explorar", icon: MapPin },
     { href: "/menu-de-configuracoes", label: "Definições", icon: Settings },
   ];
@@ -94,18 +94,20 @@ export function Layout({ children }: LayoutProps) {
                   const isActive = location === link.href;
                   return (
                     <motion.div key={link.href} variants={itemVariants}>
-                      <Link
-                        href={link.href}
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-base font-bold transition-all ${
-                          isActive
-                            ? 'bg-green-600 text-white shadow-lg shadow-green-200'
-                            : 'text-slate-700 hover:bg-slate-100'
-                        }`}
-                      >
-                        <link.icon size={20} />
-                        {link.label}
-                      </Link>
+  <Link
+    key={link.href}
+    href={link.href}
+    className={`flex flex-col items-center justify-center gap-1 py-2 w-14 h-14 rounded-xl transition ${
+      isActive 
+        ? 'bg-[#22c55e] text-white' 
+        : link.label === "Início"
+          ? 'bg-transparent text-green-600'
+          : 'bg-transparent text-[#607369]'
+    }`}
+  >
+    <link.icon size={20} />
+    <span className="text-[10px] font-bold">{link.label}</span>
+  </Link>
                     </motion.div>
                   );
                 })}
@@ -160,18 +162,26 @@ export function Layout({ children }: LayoutProps) {
           {navLinks.map((link) => {
             const isActive = location === link.href;
             return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`flex flex-col items-center justify-center gap-1 py-2 w-14 h-14 rounded-xl transition ${
-                  isActive 
-                    ? 'bg-[#22c55e] text-white' 
-                    : 'bg-transparent text-[#607369]'
-                }`}
-              >
-                <link.icon size={20} />
-                <span className="text-[10px] font-bold">{link.label}</span>
-              </Link>
+  <Link
+    key={link.href}
+    href={link.href}
+    className={`flex flex-col items-center justify-center gap-1 py-2 w-14 h-14 rounded-xl transition group ${
+      isActive
+        ? (link.href === "/menu-de-configuracoes" ? 'bg-transparent' : 'bg-[#22c55e] text-white')
+        : link.label === "Início"
+          ? 'bg-transparent text-green-600'
+          : 'bg-transparent text-[#607369] hover:bg-green-50'
+    }`}
+  >
+    {link.href === "/menu-de-configuracoes" ? (
+      <div className={`w-11 h-11 rounded-full bg-gradient-to-br from-green-500 to-teal-500 flex items-center justify-center text-white font-bold text-sm shadow-lg border-2 transition-all ${isActive ? 'border-green-500' : 'border-white'}`}>SM</div>
+    ) : (
+      <>
+        <link.icon size={20} />
+        <span className="text-[10px] font-bold">{link.label}</span>
+      </>
+    )}
+  </Link>
             );
           })}
         </div>

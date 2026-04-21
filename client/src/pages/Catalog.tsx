@@ -43,6 +43,7 @@ export default function Catalog() {
   const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [selectedOrigin, setSelectedOrigin] = useState('all')
+  const [selectedBrand, setSelectedBrand] = useState('all')
   const [selectedSort, setSelectedSort] = useState('name')
   const [priceRange, setPriceRange] = useState({ min: '', max: '' })
   const [showFilters, setShowFilters] = useState(false)
@@ -62,6 +63,7 @@ export default function Catalog() {
     Boolean(search.trim()) ||
     selectedCategory !== 'all' ||
     selectedOrigin !== 'all' ||
+    selectedBrand !== 'all' ||
     selectedSort !== 'name' ||
     Boolean(priceRange.min) ||
     Boolean(priceRange.max);
@@ -112,13 +114,29 @@ export default function Catalog() {
     }
   }, [pharmacyId]);
 
+  // Fetch unique brands from products
+  const { data: brands = [] } = useQuery<string[]>({
+    queryKey: ['brands', pharmacyId],
+    queryFn: async () => {
+      const response = await fetch(`/api/products?pharmacyId=${pharmacyId || ''}`);
+      if (!response.ok) return [];
+      const products = await response.json();
+      const brandSet = new Set<string>();
+      products.forEach((p: any) => {
+        if (p.brand) brandSet.add(p.brand);
+      });
+      return Array.from(brandSet).sort();
+    }
+  });
+
   const { data: products = [], isLoading, error } = useQuery<ProductResponse[]>({
-    queryKey: ['products', debouncedSearch, selectedCategory, selectedOrigin, selectedSort, priceRange, pharmacyId],
+    queryKey: ['products', debouncedSearch, selectedCategory, selectedOrigin, selectedBrand, selectedSort, priceRange, pharmacyId],
     queryFn: async () => {
       const params = new URLSearchParams()
       if (debouncedSearch) params.append('search', debouncedSearch)
       if (selectedCategory !== 'all') params.append('category', selectedCategory)
       if (selectedOrigin !== 'all') params.append('origin', selectedOrigin)
+      if (selectedBrand !== 'all') params.append('brand', selectedBrand)
       if (selectedSort) params.append('sort', selectedSort)
       if (priceRange.min) params.append('minPrice', priceRange.min)
       if (priceRange.max) params.append('maxPrice', priceRange.max)
@@ -183,6 +201,7 @@ export default function Catalog() {
     setDebouncedSearch('');
     setSelectedCategory('all');
     setSelectedOrigin('all');
+    setSelectedBrand('all');
     setSelectedSort('name');
     setPriceRange({ min: '', max: '' });
   };
@@ -196,6 +215,9 @@ export default function Catalog() {
     if (selectedOrigin !== 'all') {
       badges.push(`Origem: ${origins.find((o) => o.id === selectedOrigin)?.name ?? selectedOrigin}`);
     }
+    if (selectedBrand !== 'all') {
+      badges.push(`Marca: ${selectedBrand}`);
+    }
     if (selectedSort !== 'name') {
       badges.push(`Ordenar: ${sortOptions.find((s) => s.id === selectedSort)?.name ?? selectedSort}`);
     }
@@ -204,7 +226,7 @@ export default function Catalog() {
     }
     if (deliveryLocation) badges.push('Proximidade ativa');
     return badges;
-  }, [search, selectedCategory, selectedOrigin, selectedSort, priceRange.min, priceRange.max, deliveryLocation]);
+  }, [search, selectedCategory, selectedOrigin, selectedBrand, selectedSort, priceRange.min, priceRange.max, deliveryLocation]);
 
   if (error) {
     return (
@@ -484,6 +506,39 @@ export default function Catalog() {
                 </div>
               </div>
 
+              {/* Brands */}
+              {brands.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-bold text-white mb-3 uppercase tracking-wide">Marca</h3>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    <label className="flex items-center space-x-3 cursor-pointer hover:bg-white/10 p-2 rounded transition">
+                      <input
+                        type="radio"
+                        name="brand"
+                        value="all"
+                        checked={selectedBrand === 'all'}
+                        onChange={(e) => setSelectedBrand(e.target.value)}
+                        className="text-green-500"
+                      />
+                      <span className="text-sm text-slate-200">Todas as Marcas</span>
+                    </label>
+                    {brands.map((brand) => (
+                      <label key={brand} className="flex items-center space-x-3 cursor-pointer hover:bg-white/10 p-2 rounded transition">
+                        <input
+                          type="radio"
+                          name="brand"
+                          value={brand}
+                          checked={selectedBrand === brand}
+                          onChange={(e) => setSelectedBrand(e.target.value)}
+                          className="text-green-500"
+                        />
+                        <span className="text-sm text-slate-200">{brand}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Sort */}
               <div className="mb-6">
                 <h3 className="text-sm font-bold text-white mb-3 uppercase tracking-wide">Ordenar por</h3>
@@ -623,15 +678,15 @@ export default function Catalog() {
             )}
           </div>
         ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className={viewMode === 'grid'
-              ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-              : "space-y-4"
-            }
-          >
+           <motion.div
+             initial={{ opacity: 0 }}
+             animate={{ opacity: 1 }}
+             transition={{ delay: 0.2 }}
+             className={viewMode === 'grid'
+               ? "grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+               : "space-y-4"
+             }
+           >
             {sortedProducts.map((product, idx) => (
               <motion.div
                 key={product.id}

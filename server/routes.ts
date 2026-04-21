@@ -293,10 +293,20 @@ export async function registerRoutes(
         updateData.clientAccountName = clientAccountName;
       }
 
-      await db
-        .update(orders)
-        .set(updateData)
-        .where(eq(orders.id, orderId));
+      // Update using storage abstraction ideally, or keep consistency
+      await db.update(orders).set(updateData).where(eq(orders.id, orderId));
+
+      // Notificar a farmácia via Socket.IO
+      if (io) {
+        const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+        if (order) {
+          io.to(`pharmacy-${order.pharmacyId}`).emit('payment-proof-submitted', {
+            orderId: order.id,
+            customerName: order.customerName,
+            status: "proof_submitted"
+          });
+        }
+      }
 
       res.json({ message: "Payment proof submitted successfully" });
     } catch (err) {
@@ -346,15 +356,11 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Este pedido já foi avaliado" });
       }
 
-      await db
-        .update(orders)
-        .set({
-          reviewRating: numericRating,
-          reviewComment: typeof comment === "string" ? comment.trim().slice(0, 500) : "",
-          reviewedAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(orders.id, orderId));
+      await storage.updateOrderReview(orderId, {
+        rating: numericRating,
+        comment: typeof comment === "string" ? comment.trim().slice(0, 500) : "",
+        reviewedAt: new Date()
+      });
 
       res.json({ message: "Avaliação enviada com sucesso" });
     } catch (err) {

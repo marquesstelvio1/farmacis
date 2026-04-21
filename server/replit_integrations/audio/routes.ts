@@ -92,7 +92,7 @@ export function registerAudioRoutes(app: Express): void {
       }
 
       // 5. Set up SSE
-      res.setHeader("Content-Type", "text/event-stream");
+      res.set("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
 

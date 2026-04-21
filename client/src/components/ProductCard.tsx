@@ -2,7 +2,7 @@ import { ShoppingCart, Plus, X, Store, FileText, MapPin, Globe, Minus, Trash2, P
 import { motion } from "framer-motion";
 import { type ProductResponse } from "@shared/routes";
 import { useCart } from "@/hooks/use-cart";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 
@@ -48,35 +48,36 @@ export function ProductCard({ product, variants = [], index = 0, distance }: Pro
     activeDiscount: (product as any).activeDiscount
   };
 
-  // Generate virtual variants from columns if they exist and are > 0
-  const virtualVariants: ProductVariant[] = [];
+  const allVariants = useMemo(() => {
+    // Generate virtual variants from columns if they exist and are > 0
+    const virtual: ProductVariant[] = [];
 
-  if (product.precoPortugues && parseFloat(String(product.precoPortugues)) > 0) {
-    virtualVariants.push({
-      ...mainVariant,
-      id: product.id, // Use same ID or handle as needed
-      origin: 'portugues',
-      price: String(product.precoPortugues),
-      precoBase: String(product.precoPortugues),
-    });
-  }
+    if (product.precoPortugues && parseFloat(String(product.precoPortugues)) > 0) {
+      virtual.push({
+        ...mainVariant,
+        id: product.id,
+        origin: 'portugues',
+        price: String(product.precoPortugues),
+        precoBase: String(product.precoPortugues),
+      });
+    }
 
-  if (product.precoIndiano && parseFloat(String(product.precoIndiano)) > 0) {
-    virtualVariants.push({
-      ...mainVariant,
-      id: product.id,
-      origin: 'indiano',
-      price: String(product.precoIndiano),
-      precoBase: String(product.precoIndiano),
-    });
-  }
+    if (product.precoIndiano && parseFloat(String(product.precoIndiano)) > 0) {
+      virtual.push({
+        ...mainVariant,
+        id: product.id,
+        origin: 'indiano',
+        price: String(product.precoIndiano),
+        precoBase: String(product.precoIndiano),
+      });
+    }
 
-  // Combine passed variants with virtual ones, avoiding duplicates if possible
-  const allVariants: ProductVariant[] = [
-    mainVariant,
-    ...virtualVariants,
-    ...variants.filter(v => v.origin !== 'portugues' && v.origin !== 'indiano')
-  ];
+    return [
+      mainVariant,
+      ...virtual,
+      ...variants.filter(v => v.origin !== 'portugues' && v.origin !== 'indiano')
+    ];
+  }, [product, variants, distance]);
 
   // Get the currently selected variant or default to first
   const currentVariant = selectedVariant || allVariants[0];
@@ -122,7 +123,7 @@ export function ProductCard({ product, variants = [], index = 0, distance }: Pro
       >
         {/* Clickable Area for Product Detail */}
         <Link href={`/produto/${product.id}`} className="absolute inset-0 z-10" aria-label={`Ver detalhes de ${product.name}`} />
-        <div className="relative h-48 w-full mb-5 rounded-xl overflow-hidden bg-gradient-to-br from-green-50 to-emerald-100">
+        <div className="relative h-[180px] w-full mb-3 rounded-xl overflow-hidden bg-gradient-to-br from-green-50 to-emerald-100 sm:h-[200px] sm:mb-4">
           <img
             src={product.imageUrl ?? undefined}
             alt={product.name}
@@ -169,148 +170,119 @@ export function ProductCard({ product, variants = [], index = 0, distance }: Pro
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col">
-          <h3 className="text-xl font-bold text-slate-800 mb-2 line-clamp-1">{product.name}</h3>
-
-          {/* Dosage Badge */}
-          {currentVariant.dosage && (
-            <div className="mb-3">
-              <span className="inline-flex items-center gap-1.5 text-sm font-bold text-green-800 bg-gradient-to-r from-green-100 to-emerald-100 border-2 border-green-300 px-3 py-1.5 rounded-xl shadow-sm">
-                <span className="text-green-600">●</span>
-                {currentVariant.dosage}
+        <div className="flex-1 flex flex-col p-3 sm:p-4">
+          {/* Brand Badge */}
+          {(product as any).brand && (
+            <div className="mb-2">
+              <span className="inline-flex items-center text-[10px] font-bold px-2 py-1 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                {(product as any).brand}
               </span>
             </div>
           )}
 
-          <p className="text-sm text-slate-600 line-clamp-2 mb-4 flex-1">
+           <h3 className="text-base font-bold text-slate-800 mb-2 line-clamp-1 sm:text-lg">{product.name}</h3>
+
+          {/* Dosage & Origin Row */}
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            {currentVariant.dosage && (
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-800 bg-green-100 border border-green-300 px-2 py-1 rounded-lg">
+                {currentVariant.dosage}
+              </span>
+            )}
+            <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded border ${currentVariant.origin === 'portugues'
+              ? 'bg-red-50 text-red-700 border-red-200'
+              : currentVariant.origin === 'indiano'
+                ? 'bg-orange-50 text-orange-700 border-orange-200'
+                : 'bg-slate-100 text-slate-700 border-slate-200'
+              }`}>
+              {getOriginFlag(currentVariant.origin)} {getOriginLabel(currentVariant.origin)}
+            </span>
+          </div>
+
+          {/* Description */}
+          <p className="text-sm text-slate-600 line-clamp-2 mb-3 flex-1">
             {product.description}
           </p>
 
-
-          {/* Disease tags - Modern pills */}
-          <div className="flex flex-wrap gap-2 mb-4">
+          {/* Disease tags */}
+          <div className="flex flex-wrap gap-1.5 mb-3">
             {(product.diseases ?? []).slice(0, 3).map((disease: string) => (
-              <span key={disease} className="text-[10px] font-bold px-3 py-1.5 bg-slate-100 text-slate-600 rounded-full border border-slate-200 hover:bg-green-50 hover:text-green-600 hover:border-green-200 transition-colors cursor-default">
+              <span key={disease} className="text-[9px] font-medium px-2 py-1 bg-slate-100 text-slate-600 rounded-full border border-slate-200">
                 {disease}
               </span>
             ))}
             {(product.diseases?.length ?? 0) > 3 && (
-              <span className="text-[10px] font-bold px-3 py-1.5 bg-green-100 text-green-700 rounded-full border border-green-200">
+              <span className="text-[9px] font-medium px-2 py-1 bg-green-100 text-green-700 rounded-full">
                 +{(product.diseases?.length ?? 0) - 3}
               </span>
             )}
           </div>
 
-          <div className="flex items-center justify-between mt-auto pt-4 border-t-2 border-green-100">
-            <div className="flex flex-col gap-1">
-              {/* Price Display - Shows origin selection if variants exist */}
-              {allVariants.length > 1 ? (
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Origem:</span>
-                  <div className="flex flex-wrap gap-2">
-                    {allVariants.map(v => (
-                      <button
-                        key={`${v.id}-${v.origin ?? 'default'}`}
-                        onClick={() => setSelectedVariant(v)}
-                        className={`flex flex-col p-1.5 rounded-lg border-2 transition-all ${currentVariant.id === v.id
-                          ? 'bg-green-50 border-green-500 scale-105 shadow-sm'
-                          : 'bg-white border-transparent hover:border-slate-200'
-                          }`}
-                      >
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${v.origin === 'portugues' ? 'bg-red-100 text-red-700' : v.origin === 'indiano' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-700'
-                          }`}>
-                          {getOriginFlag(v.origin)} {v.origin === 'portugues' ? 'PT' : v.origin === 'indiano' ? 'IN' : 'Base'}
-                        </span>
-                        {(() => {
-                          const vDiscount = v.activeDiscount || (product as any).activeDiscount;
-                          const vDiscountPercent = vDiscount ? parseFloat(vDiscount.percentage) : 0;
-                          const vPriceValue = Number(v.price);
-                          const vFinalPrice = vDiscountPercent > 0 ? vPriceValue * (1 - vDiscountPercent / 100) : vPriceValue;
-                          return (
-                            <span className={`text-xs font-black ${currentVariant.id === v.id ? 'text-green-600' : 'text-slate-500'
-                              }`}>
-                              {vFinalPrice.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
-                            </span>
-                          );
-                        })()}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                /* Single or Default Price Display - Always show badge for currently selected */
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className={`inline-flex items-center text-[10px] font-black px-2 py-0.5 rounded border ${currentVariant.origin === 'portugues'
-                      ? 'bg-blue-50 text-blue-700 border-blue-200'
-                      : currentVariant.origin === 'indiano'
-                        ? 'bg-orange-50 text-orange-700 border-orange-200'
-                        : 'bg-slate-100 text-slate-700 border-slate-200'
-                      }`}>
-                      {getOriginFlag(currentVariant.origin)} {getOriginLabel(currentVariant.origin)}
-                    </span>
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-black text-green-600 leading-none">
-                      {finalPrice.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
-                    </span>
-                    {(Number(currentVariant.precoBase) > finalPrice || hasDiscount) && (
-                      <span className="text-xs text-slate-400 line-through font-medium">
-                        {basePriceValue.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
+          {/* Origin variants selector */}
+          {allVariants.length > 1 && (
+            <div className="mb-3">
+              <span className="text-[10px] font-bold text-slate-500 uppercase">Escolher origem:</span>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {allVariants.map(v => {
+                  const vDiscount = v.activeDiscount || (product as any).activeDiscount;
+                  const vDiscountPercent = vDiscount ? parseFloat(vDiscount.percentage) : 0;
+                  const vPriceValue = Number(v.price);
+                  const vFinalPrice = vDiscountPercent > 0 ? vPriceValue * (1 - vDiscountPercent / 100) : vPriceValue;
+                  return (
+                    <button
+                      key={`${v.id}-${v.origin ?? 'default'}`}
+                      onClick={() => setSelectedVariant(v)}
+                      className={`flex items-center gap-1 px-2 py-1 rounded-lg border-2 transition-all text-[10px] ${currentVariant.id === v.id
+                        ? 'bg-green-50 border-green-500 shadow-sm'
+                        : 'bg-white border-slate-200 hover:border-green-300'
+                        }`}
+                    >
+                      <span>{getOriginFlag(v.origin)}</span>
+                      <span className="font-bold">{vFinalPrice.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
-              {/* Pharmacy Info - Compact */}
-              {currentVariant.pharmacyName && (
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="flex items-center gap-1 py-0.5 px-2 bg-green-50 rounded-md border border-green-100">
-                    <Store size={9} className="text-green-600" />
-                    <span className="text-[10px] font-bold text-green-700 truncate max-w-[80px]">
-                      {currentVariant.pharmacyName}
-                    </span>
-                  </div>
-                  {currentVariant.distance !== undefined && currentVariant.distance !== null && (
-                    <span className="flex items-center gap-0.5 text-[9px] font-bold text-green-600">
-                      <MapPin size={8} />
-                      {currentVariant.distance < 1 ? `${(currentVariant.distance * 1000).toFixed(0)}m` : `${currentVariant.distance.toFixed(1)}km`}
-                    </span>
-                  )}
-                </div>
+          {/* Price & Pharmacy Info */}
+          <div className="mt-auto pt-3 border-t border-green-100">
+            {/* Price Row */}
+            <div className="flex items-baseline gap-2 mb-2">
+              <span className="text-xl font-black text-green-600">
+                {finalPrice.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+              </span>
+              {(Number(currentVariant.precoBase) > finalPrice || hasDiscount) && (
+                <span className="text-xs text-slate-400 line-through">
+                  {basePriceValue.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                </span>
               )}
             </div>
 
-            {/* Price and Buy Button Section */}
-            <div className="mt-auto pt-4 border-t-2 border-green-100">
-              {/* Quantity Badge */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-slate-500">Qtd:</span>
-                  <span className="text-sm font-bold text-slate-700">{currentVariant.stock} un.</span>
+            {/* Pharmacy & Distance */}
+            {currentVariant.pharmacyName && (
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-1 py-0.5 px-2 bg-green-50 rounded border border-green-100">
+                  <Store size={10} className="text-green-600" />
+                  <span className="text-[10px] font-bold text-green-700 truncate max-w-[100px]">
+                    {currentVariant.pharmacyName}
+                  </span>
                 </div>
-                {quantity > 0 && (
-                  <Badge className="bg-blue-100 text-blue-700 text-xs">
-                    {quantity} no carrinho
-                  </Badge>
-                )}
-              </div>
-
-              {/* Price Row */}
-              <div className="flex items-baseline gap-2 mb-3">
-                <span className="text-2xl font-black text-green-600">
-                  {finalPrice.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
-                </span>
-                {hasDiscount && (
-                  <span className="text-sm text-slate-400 line-through">
-                    {basePriceValue.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                {currentVariant.distance !== undefined && currentVariant.distance !== null && (
+                  <span className="flex items-center gap-0.5 text-[10px] font-bold text-slate-500">
+                    <MapPin size={10} />
+                    {currentVariant.distance < 1 ? `${(currentVariant.distance * 1000).toFixed(0)}m` : `${currentVariant.distance.toFixed(1)}km`}
                   </span>
                 )}
+                <span className="text-[10px] text-slate-500">
+                  Stock: {currentVariant.stock} un.
+                </span>
               </div>
+            )}
 
-              {/* Buy Button */}
-              <div className="flex gap-2">
+            {/* Buy Button */}
+            <div className="flex gap-2">
                 {quantity > 0 ? (
                   <div className="flex items-center gap-2 w-full">
                     <div className="flex items-center gap-1 bg-green-500 rounded-xl px-2 py-2 shadow-md flex-1 justify-center">
@@ -378,7 +350,7 @@ export function ProductCard({ product, variants = [], index = 0, distance }: Pro
 
               {/* View Details Link */}
               <Link href={`/produto/${product.id}`}>
-                <button 
+                <button
                   className="w-full mt-2 py-2 text-sm text-slate-500 hover:text-green-600 flex items-center justify-center gap-1 transition-colors"
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -388,7 +360,6 @@ export function ProductCard({ product, variants = [], index = 0, distance }: Pro
               </Link>
             </div>
           </div>
-        </div>
       </motion.div>
     </>
   );

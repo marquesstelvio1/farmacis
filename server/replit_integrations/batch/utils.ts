@@ -98,7 +98,7 @@ export async function batchProcess<T, R>(
     onProgress,
   } = options;
 
-  const AbortErrorToUse = (pRetry as any).AbortError || PRetryAbortError || CustomAbortError;
+  const AbortErrClass = (pRetry as any).AbortError || PRetryAbortError || CustomAbortError;
 
   const limit = pLimit(concurrency);
   let completed = 0;
@@ -117,7 +117,7 @@ export async function batchProcess<T, R>(
               throw error; // Rethrow to trigger p-retry
             }            
             // For non-rate-limit errors, abort immediately
-            throw new AbortErrorToUse(error instanceof Error ? error : new Error(String(error)));
+            throw new AbortErrClass(error instanceof Error ? error : new Error(String(error)));
           }
         },
         { retries, minTimeout, maxTimeout, factor: 2 }
@@ -163,8 +163,10 @@ export async function batchProcessWithSSE<T, R>(
           maxTimeout,
           factor: 2,
           onFailedAttempt: (error) => {
-            if (!isRateLimitError(error as Error)) {              
-              throw new AbortErrorToUse(error instanceof Error ? error : new Error(String(error)));
+            // @ts-ignore workaround for p-retry version differences in Replit
+            const AbortErr = (pRetry as any).AbortError || PRetryAbortError || CustomAbortError;
+            if (!isRateLimitError(error)) {
+              throw new AbortErr(error instanceof Error ? error : new Error(String(error)));
             }
           },
         }

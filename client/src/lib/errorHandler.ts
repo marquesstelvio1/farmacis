@@ -88,9 +88,11 @@ export async function safeFetch<T>(
     try {
       return await response.json();
     } catch (parseError) {
+      if (response.status === 200) return {} as T; // Handle empty success responses
       throw new Error('Unexpected end of JSON input');
     }
   } catch (error) {
+    console.error("Fetch Error Detail:", error);
     throw new Error(normalizeError(error));
   }
 }

@@ -1,5 +1,14 @@
 import { z } from 'zod';
-import { products, pillIdentificationRequestSchema, pillIdentificationResponseSchema } from './schema';
+import { products, pillIdentificationRequestSchema, pillIdentificationResponseSchema, insertOrderSchema } from './schema';
+
+export const orderCreateInputSchema = insertOrderSchema.extend({
+  items: z.array(z.object({
+    productId: z.number(),
+    quantity: z.number(),
+    unitPrice: z.string(),
+    prescriptionRequired: z.boolean().optional(),
+  }))
+});
 
 export const errorSchemas = {
   validation: z.object({ message: z.string(), field: z.string().optional() }),
@@ -54,7 +63,7 @@ export const api = {
     create: {
       method: 'POST' as const,
       path: '/api/orders' as const,
-      input: z.any(),
+      input: orderCreateInputSchema,
       responses: {
         201: z.any(),
       },

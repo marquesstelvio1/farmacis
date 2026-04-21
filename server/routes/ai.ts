@@ -44,7 +44,23 @@ export function registerAIRoutes(app: Express) {
             console.log("[AI Proxy] Node version:", process.version);
             console.log("[AI Proxy] Native fetch available:", hasNativeFetch);
 
-            const SYSTEM_PROMPT = `És um assistente de saúde profissional e empático para uma plataforma de farmácia digital chamada Farmacis. Ajuda os utilizadores com: Informações sobre medicamentos e dosagens; Identificação de sintomas (sem diagnosticar); Orientação sobre consultas médicas; Análise de receitas médicas (quando enviadas por imagem); Recomendações de produtos do catálogo. IMPORTANTE: Nunca substituís um médico. Sempre recomenda consultar um profissional de saúde para diagnósticos e tratamentos. Responde em português de Angola de forma clara e concisa.`;
+            const SYSTEM_PROMPT = `És um assistente de saúde profissional e empático para uma plataforma de farmácia digital chamada Farmacis. Ajuda os utilizadores com: Informações sobre medicamentos e dosagens; Identificação de sintomas (sem diagnosticar); Orientação sobre consultas médicas; Análise de receitas médicas (quando enviadas por imagem); Recomendações de produtos do catálogo.
+
+IMPORTANTE - Formatação de medicamentos:
+Quando recomendares ou mencionares nomes de medicamentos, envolve SEMPRE o nome do medicamento com duplos colchetes assim: [[NomeMedicamento]]
+
+Exemplos:
+- "Recomendo [[Paracetamol]] para dor de cabeça"
+- "Podes tomar [[Ibuprofeno]] ou [[Aspirina]]"
+- "O [[Amoxicilina 500mg]] é um antibiótico comum"
+
+Regras:
+- Usa [[ ]] APENAS para nomes de medicamentos concretos
+- Não uses [[ ]] para sintomas, doenças ou instruções gerais
+- Mantém o nome exacto como apareceria numa farmácia
+- Continua a responder em português de Angola
+
+IMPORTANTE: Nunca substituís um médico. Sempre recomenda consultar um profissional de saúde para diagnósticos e tratamentos. Responde em português de Angola de forma clara e concisa.`;
 
             // Use any AI API key available in env
             const apiKey = process.env.VITE_AI_API_KEY || process.env.VITE_SPLIT_SEARCH_AI_KEY || process.env.AI_API_KEY;
@@ -107,10 +123,13 @@ export function registerAIRoutes(app: Express) {
             res.json({ output_text: data.output_text || null, raw: data });
         } catch (err: any) {
             console.error('[AI Proxy] Catch error:', err);
+            console.error('[AI Proxy] Error stack:', err.stack);
+            console.error('[AI Proxy] Request body received:', JSON.stringify(req.body, null, 2).substring(0, 500));
             res.status(500).json({
                 error: "Internal Server Error",
                 message: err.message,
                 cause: err.cause?.message,
+                stack: err.stack,
             });
         }
     });

@@ -13,7 +13,8 @@ import {
   ShieldCheck,
   FileText,
   MapPin,
-  Bell
+  Bell,
+  Store
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -35,6 +36,16 @@ const menuItems = [
     color: "bg-blue-500",
     bgColor: "bg-blue-50",
     textColor: "text-blue-600"
+  },
+  {
+    id: "farmacia",
+    label: "Minha Farmácia",
+    description: "Dados da farmácia e pagamentos",
+    icon: Store,
+    href: "/farmacia/config",
+    color: "bg-indigo-500",
+    bgColor: "bg-indigo-50",
+    textColor: "text-indigo-600"
   },
   {
     id: "saude",

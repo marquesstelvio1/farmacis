@@ -4,7 +4,6 @@ import {
   Stethoscope, 
   UserRound, 
   ShieldCheck, 
-  BookOpen,
   ArrowRight 
 } from "lucide-react";
 import { useLocation } from "wouter";
@@ -29,7 +28,7 @@ const services: ServiceCard[] = [
   },
   {
     id: "clinics",
-    title: "Marcar Consultas",
+    title: "Consultas",
     subtitle: "Centros médicos próximos",
     icon: Stethoscope,
     path: "/clinicas",
@@ -45,18 +44,10 @@ const services: ServiceCard[] = [
   },
   {
     id: "insurance",
-    title: "Planos de Saúde",
+    title: "Seguros",
     subtitle: "Validar o seu seguro",
     icon: ShieldCheck,
     path: "/seguradoras",
-    color: "text-blue-600",
-  },
-  {
-    id: "catalog",
-    title: "Ver Catálogo",
-    subtitle: "Ofertas das farmácias",
-    icon: BookOpen,
-    path: "/catalogo", // Mantém o path para a página de catálogo
     color: "text-blue-600",
   },
 ];
@@ -94,33 +85,34 @@ export function QuickServices() {
         </h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-        {services.map((service, index) => (
+      {/* Mobile: 2x2 square layout | Desktop: 2 columns rectangular */}
+      <div className="grid grid-cols-2 md:grid-cols-2 gap-3 sm:gap-6">
+        {services.map((service) => (
           <motion.div
             key={service.id}
             variants={itemVariants}
-            whileHover={{ y: -8 }}
+            whileHover={{ y: -4 }}
             onClick={() => setLocation(service.path)}
-            className={`group relative bg-white border border-gray-200 rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-xl transition-shadow duration-300 cursor-pointer flex flex-col items-start ${
-              index === 4 ? "md:col-span-2" : ""
-            }`}
+            className="group relative bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-xl transition-shadow duration-300 cursor-pointer overflow-hidden aspect-square md:aspect-auto md:p-5 sm:p-6"
           >
-            <div className={`p-3 rounded-xl bg-white group-hover:bg-green-50 transition-colors duration-300 mb-4`}>
-              <service.icon 
-                size={28} 
-                className="text-green-500 group-hover:text-green-600 transition-colors duration-300" 
-              />
-            </div>
-            
-            <h3 className="font-bold text-black text-lg mb-1 group-hover:text-black transition-colors">
-              {service.title}
-            </h3>
-            <p className="text-gray-600 text-sm mb-4 leading-relaxed">
-              {service.subtitle}
-            </p>
+            <div className="flex flex-col items-center justify-center h-full p-3 md:items-start md:p-0">
+              <div className={`p-2 md:p-3 rounded-xl bg-gray-50 group-hover:bg-green-50 transition-colors duration-300 mb-2 md:mb-4`}>
+                <service.icon
+                  size={24}
+                  className="text-green-500 group-hover:text-green-600 transition-colors duration-300 md:w-7 md:h-7"
+                />
+              </div>
 
-            <div className="mt-auto flex items-center text-green-600 text-xs font-bold opacity-0 group-hover:opacity-100 transition-all transform translate-x-[-10px] group-hover:translate-x-0">
-              SABER MAIS <ArrowRight size={14} className="ml-1" />
+              <h3 className="font-bold text-black text-xs sm:text-lg mb-0.5 md:mb-1 text-center md:text-left transition-colors">
+                {service.title}
+              </h3>
+              <p className="text-gray-500 text-[10px] sm:text-sm md:text-gray-600 text-center md:text-left md:mb-4 leading-tight md:leading-relaxed hidden sm:block">
+                {service.subtitle}
+              </p>
+
+              <div className="mt-auto flex items-center text-green-600 text-[10px] sm:text-xs font-bold opacity-0 group-hover:opacity-100 transition-all transform translate-x-[-10px] group-hover:translate-x-0 hidden md:flex">
+                SABER MAIS <ArrowRight size={14} className="ml-1" />
+              </div>
             </div>
           </motion.div>
         ))}

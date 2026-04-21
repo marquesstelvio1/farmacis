@@ -128,14 +128,21 @@ export default function ProductDetail() {
     }
   };
 
-  const getCurrentPrice = () => {
-    if (!product) return 0;
-    switch (selectedOrigin) {
-      case "portugues": return product.precoPortugues || product.price;
-      case "indiano": return product.precoIndiano || product.price;
-      default: return product.price;
-    }
-  };
+const getCurrentPrice = () => {
+  if (!product) return 0;
+  switch (selectedOrigin) {
+    case "portugues": 
+      return product.precoPortugues !== null && product.precoPortugues !== undefined 
+        ? product.precoPortugues 
+        : product.price || 0;
+    case "indiano": 
+      return product.precoIndiano !== null && product.precoIndiano !== undefined 
+        ? product.precoIndiano 
+        : product.price || 0;
+    default: 
+      return product.price || 0;
+  }
+};
 
   const getOriginLabel = (origin: string) => {
     switch (origin) {
@@ -233,11 +240,11 @@ export default function ProductDetail() {
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white border-b border-slate-200 px-4 py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link href="/">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-          </Link>
+<Link href="/catalogo">
+  <Button variant="ghost" size="icon">
+    <ArrowLeft className="w-5 h-5" />
+  </Button>
+</Link>
           <h1 className="font-semibold text-slate-800 truncate max-w-[200px]">{product.name}</h1>
           <div className="flex gap-2">
             <Button variant="ghost" size="icon" onClick={handleShare}>
@@ -266,25 +273,15 @@ export default function ProductDetail() {
               />
             </div>
             
-            {/* Badges */}
-            <div className="absolute top-4 left-4 flex flex-col gap-2">
-              {product.prescriptionRequired && (
-                <Badge className="bg-red-500 text-white px-3 py-1">
-                  <FileText className="w-3 h-3 mr-1" />
-                  Receita
-                </Badge>
-              )}
-              {product.stock > 0 ? (
-                <Badge className="bg-green-500 text-white px-3 py-1">
-                  <Check className="w-3 h-3 mr-1" />
-                  Em Stock ({product.stock} un.)
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="px-3 py-1">
-                  Esgotado
-                </Badge>
-              )}
-            </div>
+             {/* Badges */}
+             <div className="absolute top-4 left-4 flex flex-col gap-2">
+               {product.prescriptionRequired && (
+                 <Badge className="bg-red-500 text-white px-3 py-1">
+                   <FileText className="w-3 h-3 mr-1" />
+                   Receita
+                 </Badge>
+               )}
+             </div>
           </motion.div>
 
           {/* Product Info */}
@@ -382,39 +379,36 @@ export default function ProductDetail() {
                     currency: "AOA",
                   })}
                 </span>
-                {product.precoBase && product.precoBase > currentPrice && (
-                  <span className="text-xl text-slate-400 line-through">
-                    {product.precoBase.toLocaleString("pt-AO", {
-                      style: "currency",
-                      currency: "AOA",
-                    })}
-                  </span>
-                )}
+                 {product.precoBase !== null && product.precoBase !== undefined && product.precoBase > currentPrice && (
+                   <span className="text-xl text-slate-400 line-through">
+                     {product.precoBase.toLocaleString("pt-AO", {
+                       style: "currency",
+                       currency: "AOA",
+                     })}
+                   </span>
+                 )}
               </div>
 
-              {/* Quantity Selector */}
-              <div className="flex items-center gap-4 mb-4">
-                <span className="font-semibold text-slate-700">Quantidade:</span>
-                <div className="flex items-center gap-2 bg-white rounded-lg border border-slate-200 p-1">
-                  <button
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="w-12 text-center font-bold text-lg">{quantity}</span>
-                  <button
-                    onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-                    disabled={quantity >= product.stock}
-                    className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-50"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-                <span className="text-sm text-slate-500">
-                  {product.stock} disponíveis
-                </span>
-              </div>
+               {/* Quantity Selector */}
+               <div className="flex items-center gap-4 mb-4">
+                 <span className="font-semibold text-slate-700">Quantidade:</span>
+                 <div className="flex items-center gap-2 bg-white rounded-lg border border-slate-200 p-1">
+                   <button
+                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                     className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors"
+                   >
+                     <Minus className="w-4 h-4" />
+                   </button>
+                   <span className="w-12 text-center font-bold text-lg">{quantity}</span>
+                   <button
+                     onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                     disabled={quantity >= product.stock}
+                     className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-50"
+                   >
+                     <Plus className="w-4 h-4" />
+                   </button>
+                 </div>
+               </div>
 
               {/* Total */}
               <div className="flex items-center justify-between pt-3 border-t border-green-200">
@@ -560,12 +554,12 @@ export default function ProductDetail() {
                     <h3 className="font-semibold text-slate-800 text-sm line-clamp-2 mb-1">
                       {relatedProduct.name}
                     </h3>
-                    <p className="text-green-600 font-bold">
-                      {relatedProduct.price.toLocaleString("pt-AO", {
-                        style: "currency",
-                        currency: "AOA",
-                      })}
-                    </p>
+      <p className="text-green-600 font-bold">
+        {relatedProduct.price !== null ? relatedProduct.price.toLocaleString("pt-AO", {
+          style: "currency",
+          currency: "AOA",
+        }) : "Preço indisponível"}
+      </p>
                   </Card>
                 </Link>
               ))}

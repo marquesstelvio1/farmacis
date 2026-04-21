@@ -7,6 +7,7 @@ import { and, eq, or, ilike, sql, desc, inArray } from "drizzle-orm";
 interface Medication {
   nome: string;
   dosagem: string;
+  marca?: string;
   quantidade?: string;
   periodo_consumo?: string;
   frequencia?: string;
@@ -94,14 +95,17 @@ async function searchProductsInPharmacies(
 
     const quantityNeeded = parseQuantity(med.quantidade);
 
-    // Build search query
+    // Build search query - busca por nome, dosagem e marca
     const searchConditions = [
-      ilike(products.name, `%${med.nome}%`),
+      or(
+        ilike(products.name, `%${med.nome}%`),
+        med.marca ? ilike(products.brand, `%${med.marca}%`) : undefined
+      ),
       or(
         ilike(products.dosage, `%${med.dosagem}%`),
         sql`COALESCE(${products.dosage}, '') = ''`
       )
-    ];
+    ].filter(Boolean);
 
     const productResults = await db
       .select({
@@ -123,9 +127,7 @@ async function searchProductsInPharmacies(
       .from(products)
       .innerJoin(pharmacies, eq(products.pharmacyId, pharmacies.id))
       .where(and(
-        ...searchConditions,
-        eq(pharmacies.status, 'active'),
-        eq(products.status, 'active')
+        ...searchConditions
       ));
 
     // Get ratings for each pharmacy
