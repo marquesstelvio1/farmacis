@@ -16,7 +16,8 @@ import {
     Store,
     Wallet,
     Truck,
-    Star
+    Star,
+    Bell // Import Bell icon
 } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -47,10 +48,12 @@ interface Order {
     createdAt: string;
     pharmacyIban?: string;
     pharmacyMulticaixaExpress?: string;
+    pharmacyAccountName?: string;
     items?: OrderItem[];
     reviewRating?: number | null;
     reviewComment?: string | null;
     reviewedAt?: string | null;
+    isRead?: boolean; // NEW: To track if the user has seen this order
 }
 
 interface ReviewDraft {
@@ -93,19 +96,64 @@ export default function UserOrders() {
     const userString = localStorage.getItem("user");
     const user = userString ? JSON.parse(userString) : {};
 
+    // NEW: State for tracking read orders and unread count
+    const [readOrderIds, setReadOrderIds] = useState<Set<number>>(() => {
+        try {
+            const storedReadIds = localStorage.getItem("readOrderIds");
+            return storedReadIds ? new Set(JSON.parse(storedReadIds)) : new Set();
+        } catch (e) {
+            console.error("Failed to parse readOrderIds from localStorage", e);
+            return new Set();
+        }
+    });
+    const [unreadOrdersCount, setUnreadOrdersCount] = useState(0);
+
     const fetchOrders = async () => {
         if (!user?.id) return;
         try {
             const res = await fetch(`/api/user/orders?userId=${user.id}`);
             if (res.ok) {
                 const data = await res.json();
-                setOrders(data);
+                let currentUnreadCount = 0;
+                const updatedOrders = data.map((order: Order) => {
+                    const isOrderRead = readOrderIds.has(order.id);
+                    if (!isOrderRead) {
+                        currentUnreadCount++;
+                    }
+                    return { ...order, isRead: isOrderRead };
+                });
+                setOrders(updatedOrders);
+                setUnreadOrdersCount(currentUnreadCount);
             }
         } catch (err) {
             console.error("Failed to fetch orders:", err);
         } finally {
             setLoading(false);
         }
+    };
+
+    useEffect(() => {
+        fetchOrders();
+        const interval = setInterval(fetchOrders, 10000);
+        return () => clearInterval(interval);
+    }, [user?.id, readOrderIds]); // Added readOrderIds to dependencies to re-evaluate isRead status on changes
+
+    // NEW: Function to mark an order as read
+    const markOrderAsRead = (orderId: number) => {
+        setReadOrderIds(prev => {
+            const newSet = new Set(prev);
+            if (!newSet.has(orderId)) {
+                newSet.add(orderId);
+                localStorage.setItem("readOrderIds", JSON.stringify(Array.from(newSet)));
+                // Update orders state to reflect the change and recalculate unread count
+                setOrders(prevOrders => {
+                    const updated = prevOrders.map(order => order.id === orderId ? { ...order, isRead: true } : order);
+                    setUnreadOrdersCount(updated.filter(order => !newSet.has(order.id)).length);
+                    return updated;
+                });
+            }
+            return newSet;
+        });
     };
 
     useEffect(() => {
@@ -341,6 +389,14 @@ export default function UserOrders() {
                     </div>
                 </div>
 
+                {/* NEW: Display unread orders count (for demonstration/debugging, could be passed to header) */}
+                {unreadOrdersCount > 0 && (
+                    <div className="mb-4 p-3 bg-blue-50 text-blue-700 rounded-xl flex items-center gap-2">
+                        <Bell size={20} />
+                        Você tem {unreadOrdersCount} pedido(s) novo(s) ou não lido(s).
+                    </div>
+                )}
+
                 {loading ? (
                     <div className="grid gap-4">
                         {[1, 2].map((i) => (
@@ -495,6 +551,12 @@ export default function UserOrders() {
                                                                         <p className="text-sm font-mono font-semibold" style={{ color: "#072a1c" }}>{order.pharmacyMulticaixaExpress}</p>
                                                                     </div>
                                                                 )}
+                                                                {order.pharmacyAccountName && (
+                                                                    <div className="mt-2">
+                                                                        <p className="text-xs" style={{ color: "#607369" }}>Titular da Conta</p>
+                                                                        <p className="text-sm font-semibold" style={{ color: "#072a1c" }}>{order.pharmacyAccountName}</p>
+                                                                    </div>
+                                                                )}
                                                                 <p className="text-xs mt-3" style={{ color: "#607369" }}>
                                                                     Utilize os dados acima para fazer o pagamento. Após confirmar o pagamento, clique em "Confirmar Pagamento".
                                                                 </p>
@@ -558,6 +620,17 @@ export default function UserOrders() {
                                                                 Aguardando confirmação da farmácia para habilitar o pagamento
                                                             </div>
                                                         ) : null}
+
+                                                        {/* NEW: Mark as Read Button */}
+                                                        {!order.isRead && (
+                                                            <Button
+                                                                onClick={() => markOrderAsRead(order.id)}
+                                                                className="w-full mt-2 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+                                                            >
+                                                                <CheckCircle2 size={20} />
+                                                                Marcar como Lido
+                                                            </Button>
+                                                        )}
                                                     </div>
                                                 </div>
 
@@ -690,6 +763,12 @@ export default function UserOrders() {
                                 <div className="border rounded-xl p-4" style={{ backgroundColor: "#f7faf5", borderColor: "#dce4d7" }}>
                                     <p className="text-[10px] font-bold uppercase mb-1 tracking-widest" style={{ color: "#607369" }}>Número Multicaixa Express</p>
                                     <p className="text-sm font-mono font-semibold" style={{ color: "#072a1c" }}>{selectedOrderForProof.pharmacyMulticaixaExpress}</p>
+                                </div>
+                            )}
+                            {selectedOrderForProof.pharmacyAccountName && (
+                                <div className="border rounded-xl p-4" style={{ backgroundColor: "#f7faf5", borderColor: "#dce4d7" }}>
+                                    <p className="text-[10px] font-bold uppercase mb-1 tracking-widest" style={{ color: "#607369" }}>Titular da Conta</p>
+                                    <p className="text-sm font-semibold" style={{ color: "#072a1c" }}>{selectedOrderForProof.pharmacyAccountName}</p>
                                 </div>
                             )}
 

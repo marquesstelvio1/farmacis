@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import {
   MessageSquareText, Search, Camera, X, Send, Loader2, User, Bot,
-  Sparkles, Pill, FileImage
+  Sparkles, Pill
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PrescriptionOCR } from "./PrescriptionOCR";
@@ -810,7 +810,7 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
                                 'bg-slate-50 text-slate-600 group-hover:bg-slate-800 group-hover:text-white'
                           }`}
                         >
-                          <Icon size={22} strokeWidth={2} className="transition-colors sm:size-24" />
+                          <Icon size={20} strokeWidth={2} className="transition-colors w-5 h-5 sm:w-6 sm:h-6" />
                         </div>
                         <p className="font-bold text-[9px] sm:text-xs text-slate-700 whitespace-nowrap">
                           {section.title}
@@ -822,28 +822,6 @@ export function SplitSearch({ onSearch, onChatOpen, className = "" }: SplitSearc
               );
             })}
           </div>
-        </motion.div>
-
-        {/* Quick Actions Hints */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex items-center justify-center gap-3 sm:gap-6 mt-3 sm:mt-4 text-[10px] sm:text-xs text-slate-400"
-        >
-          <span className="flex items-center gap-1">
-            <Sparkles size={10} className="sm:size-12" />
-            <span className="hidden sm:inline">IA</span>
-          </span>
-          <span className="w-1 h-1 bg-slate-300 rounded-full" />
-          <span className="flex items-center gap-1">
-            <Pill size={10} className="sm:size-12" />
-            <span className="hidden sm:inline">Medicamentos</span>
-          </span>
-          <span className="w-1 h-1 bg-slate-300 rounded-full" />
-          <span className="flex items-center gap-1">
-            <FileImage size={10} className="sm:size-12" />
-            <span className="hidden sm:inline">Receitas</span>
-          </span>
         </motion.div>
 
         <input

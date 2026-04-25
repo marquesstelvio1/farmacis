@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../stores/authStore'
 import { toast } from 'sonner'
-import { Loader2, Store, Eye, EyeOff } from 'lucide-react'
+import { Loader2, Mail, Lock, Eye, EyeOff, Store } from 'lucide-react'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -18,134 +18,188 @@ export default function Login() {
     try {
       const success = await login(email, password)
       if (success) {
-        toast.success('Login realizado com sucesso!')
+        toast.success('Login realizado com sucesso! Bem-vindo ao painel da farmácia.')
       } else {
-        toast.error('Email ou senha incorretos')
+        toast.error('Credenciais inválidas. Verifique seu e-mail e senha.')
       }
     } catch (error) {
-      toast.error('Erro ao fazer login')
+      toast.error('Erro de conexão. Tente novamente em instantes.')
       console.error('Login error:', error);
-      toast.error('Não foi possível conectar ao servidor. Verifique se o backend está ativo.');
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ backgroundColor: '#f7f7f7' }}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="w-full max-w-md"
-      >
-        {/* Logo + Título */}
-        <div className="text-center mb-12">
-          <div className="flex items-center justify-center gap-2 mb-8">
-            <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
-              <Store className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-xl font-bold text-slate-900">Farmácia - Portal Admin</span>
-          </div>
+    <div className="min-h-screen flex bg-slate-50 overflow-hidden font-sans">
+      {/* Left Decoration Side */}
+      <div className="hidden lg:flex lg:w-1/2 relative bg-emerald-700 overflow-hidden">
+        {/* Animated Background Elements */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.1 }}
+          transition={{ duration: 2 }}
+          className="absolute inset-0"
+        >
+          <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-white rounded-full blur-[100px]" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-emerald-400 rounded-full blur-[120px]" />
+        </motion.div>
+
+        {/* Content */}
+        <div className="relative z-10 w-full flex flex-col items-center justify-center p-12 text-white text-center">
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="mb-8"
+          >
+            <img
+              src="/logo.png"
+              alt="Logo"
+              className="w-48 h-auto object-contain drop-shadow-2xl brightness-110 grayscale-0 p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          </motion.div>
+
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="max-w-md"
+          >
+            <h1 className="text-4xl font-extrabold tracking-tight mb-4 leading-tight">
+              Brócolis - Saúde Vitalícia
+            </h1>
+            <div className="h-1.5 w-20 bg-emerald-400 mx-auto mb-6 rounded-full" />
+            <p className="text-emerald-100 text-lg font-medium opacity-90 leading-relaxed shadow-sm">
+              Gerencie sua farmácia com eficiência e proporcione a melhor experiência aos seus clientes.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.5 }}
+            transition={{ delay: 0.8 }}
+            className="absolute bottom-12 flex items-center gap-2 text-sm text-emerald-200"
+          >
+            <Store className="w-5 h-5" />
+            <span className="font-semibold tracking-wide uppercase italic">Portal Parceiro Oficial</span>
+          </motion.div>
         </div>
 
-        {/* Login Form Card */}
-        <div className="rounded-3xl p-8 shadow-lg border border-slate-100 bg-white">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email Field */}
-            <div className="space-y-3">
-              <label htmlFor="email" className="block text-sm font-semibold text-slate-600">
-                E-mail
-              </label>
-              <input
-                id="email"
-                type="email"
-                placeholder="ex: farmacia@exemplo.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-12 px-4 border border-slate-200 rounded-2xl focus:border-green-500 focus:ring-2 focus:ring-green-500/20 placeholder:text-slate-400 text-slate-900 outline-none transition-all"
-                required
-              />
+        {/* Subtle Overlay Grid Pattern */}
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#fff 2px, transparent 2px)', backgroundSize: '32px 32px' }} />
+      </div>
+
+      {/* Right Login Form Side */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 md:p-12 overflow-y-auto bg-white lg:bg-transparent">
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="w-full max-w-md py-12 lg:py-0"
+        >
+          {/* Mobile Logo Branding */}
+          <div className="lg:hidden flex flex-col items-center mb-12 text-center">
+            <div className="p-3 bg-emerald-50 rounded-2xl mb-4">
+              <img src="/logo.png" alt="Logo" className="h-14 sm:h-16 object-contain" />
+            </div>
+            <div>
+              <h1 className="text-xl font-black text-emerald-700 tracking-[0.2em] uppercase">Brócolis</h1>
+              <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase mt-1">Saúde Vitalícia • Painel Parceiro</p>
+            </div>
+          </div>
+
+          <div className="mb-10 text-center lg:text-left">
+            <div className="hidden lg:inline-block px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-xs font-black tracking-widest uppercase mb-4">
+              Partner Access
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mb-2 tracking-tight">Autenticação</h2>
+            <p className="text-slate-500 font-semibold italic text-sm">Insira seus dados para gerenciar sua unidade de saúde.</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
+            <div className="space-y-2">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail Corporativo</label>
+              <div className="relative group">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-600 transition-colors duration-300">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="pharmacy@partner.co.ao"
+                  className="w-full h-14 pl-12 pr-4 rounded-2xl border-2 border-slate-100 focus:border-emerald-600 focus:ring-0 transition-all outline-none bg-slate-50/50 text-slate-900 font-medium placeholder:text-slate-300 text-sm sm:text-base"
+                  required
+                />
+              </div>
             </div>
 
-            {/* Password Field */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label htmlFor="password" className="block text-sm font-semibold text-slate-600">
-                  Senha
-                </label>
-                <button
-                  type="button"
-                  onClick={() => {}}
-                  className="text-sm text-green-600 hover:text-green-700 font-medium transition-colors"
-                >
-                  Esqueceu a senha?
-                </button>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center ml-1">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Palavra-passe</label>
+                <button type="button" className="text-[10px] sm:text-[11px] text-emerald-600 font-black tracking-tighter hover:text-emerald-800 transition-colors">RECUPERAR SENHA</button>
               </div>
-              <div className="relative">
+              <div className="relative group">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-600 transition-colors duration-300">
+                  <Lock className="w-5 h-5" />
+                </div>
                 <input
-                  id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-12 px-4 border border-slate-200 rounded-2xl focus:border-green-500 focus:ring-2 focus:ring-green-500/20 placeholder:text-slate-400 text-slate-900 outline-none transition-all pr-10"
+                  placeholder="••••••••••••"
+                  className="w-full h-14 pl-12 pr-12 rounded-2xl border-2 border-slate-100 focus:border-emerald-600 focus:ring-0 transition-all outline-none bg-slate-50/50 text-slate-900 font-medium placeholder:text-slate-300 text-sm sm:text-base"
                   required
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600 transition-colors p-1"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
             </div>
 
-            {/* Submit Button */}
+            <div className="flex items-center gap-3 py-2">
+              <div className="relative flex items-center h-5">
+                <input
+                  type="checkbox"
+                  id="remember"
+                  className="w-5 h-5 rounded-lg border-2 border-slate-200 text-emerald-600 focus:ring-emerald-600/20 cursor-pointer transition-colors"
+                />
+              </div>
+              <label htmlFor="remember" className="text-[10px] sm:text-xs text-slate-500 font-bold cursor-pointer select-none">MANTENHA-ME CONECTADO</label>
+            </div>
+
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full h-12 text-white font-bold rounded-full transition-all hover:shadow-lg"
-              style={{ backgroundColor: '#072a1c' }}
+              className="group relative w-full h-14 sm:h-16 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-2xl shadow-emerald-600/20 transform hover:-translate-y-1 active:translate-y-0 transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden"
             >
-              {isLoading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Entrando...
-                </span>
-              ) : (
-                'Entrar'
-              )}
+              <div className="relative z-10 flex items-center justify-center gap-3 tracking-widest text-xs sm:text-sm">
+                {isLoading ? (
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                ) : (
+                  <span>ACESSAR DASHBOARD</span>
+                )}
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 via-transparent to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
             </button>
-          </form>
 
-          {/* Info Section */}
-          <div className="mt-8 text-center space-y-3 pt-6 border-t border-slate-100">
-            <p className="text-sm text-slate-500">
-              Acesso exclusivo para farmácias parceiras
-            </p>
-            <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
-              <Store className="w-4 h-4" />
-              <span>Gerencie seus produtos e pedidos</span>
+            <div className="pt-8 border-t-2 border-slate-50 text-center">
+              <p className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] leading-loose">
+                Brócolis - Saúde Vitalícia • Secure Operations <br className="hidden sm:block" />
+                © 2026 • Gestão de Farmácias Integrada
+              </p>
             </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="mt-12 text-center space-y-4">
-          <div className="flex items-center justify-center gap-4 text-xs text-slate-500">
-            <button className="hover:text-slate-700 transition-colors font-medium">SUPORTE</button>
-            <span>•</span>
-            <button className="hover:text-slate-700 transition-colors font-medium">PRIVACIDADE</button>
-            <span>•</span>
-            <button className="hover:text-slate-700 transition-colors font-medium">TERMOS</button>
-          </div>
-          <p className="text-[10px] text-slate-400">
-            © 2026 Farmácia Admin Portal. Todos os direitos reservados.
-          </p>
-        </div>
-      </motion.div>
+          </form>
+        </motion.div>
+      </div>
     </div>
   )
 }

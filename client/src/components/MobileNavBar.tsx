@@ -1,8 +1,9 @@
 import { House, LayoutGrid, Store, ShoppingCart, Settings } from "lucide-react";
 import { Link } from "wouter";
-import { useState, useEffect } from "react";
+import { useUser } from "@/UserContext";
+import { getUserInitials } from "@/lib/userInitials";
 
-interface NavItem {
+interface NavItem { // Mantém a interface NavItem
   href: string;
   icon: React.ElementType;
   label: string;
@@ -23,23 +24,7 @@ interface MobileNavBarProps {
 }
 
 export function MobileNavBar({ activePath = "/" }: MobileNavBarProps) {
-  const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      try {
-        setUser(JSON.parse(userData));
-      } catch (e) {
-        setUser(null);
-      }
-    }
-  }, []);
-
-  const getInitials = (name: string) => {
-    if (!name) return "U";
-    return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
-  };
+  const { user } = useUser(); // Usa o user do contexto
 
   const renderNavItem = (item: NavItem) => {
     const Icon = item.icon;
@@ -65,7 +50,9 @@ export function MobileNavBar({ activePath = "/" }: MobileNavBarProps) {
         }`}
       >
         {item.href === "/menu-de-configuracoes" ? (
-          <div className={`w-11 h-11 rounded-full bg-gradient-to-br from-green-500 to-teal-500 flex items-center justify-center text-white font-bold text-sm shadow-lg border-2 transition-all ${isActive ? 'border-green-500' : 'border-white'}`}>SM</div>
+          <div className={`w-11 h-11 rounded-full bg-gradient-to-br from-green-500 to-teal-500 flex items-center justify-center text-white font-bold text-sm shadow-lg border-2 transition-all ${isActive ? 'border-green-500' : 'border-white'}`}>
+            {getUserInitials(user as any)}
+          </div>
         ) : (
           <>
             <Icon size={isCenter ? 28 : 20} strokeWidth={2} />

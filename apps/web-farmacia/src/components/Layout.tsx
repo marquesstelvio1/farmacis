@@ -99,12 +99,52 @@ export default function Layout({ children }: LayoutProps) {
       }
     }
 
+    const fetchNotifications = async () => {
+      try {
+        if (!user?.pharmacyId) return;
+        const apiUrl = import.meta.env.VITE_API_URL || '';
+        const response = await fetch(`${apiUrl}/api/pharmacy/notifications?pharmacyId=${user.pharmacyId}`)
+        if (response.ok) {
+          const data = await response.json()
+          const orderNotifs: Notification[] = data.orders.map((order: any) => ({
+            id: order.id,
+            type: 'order',
+            title: 'Novo Pedido!',
+            message: `Pedido #${order.id} de ${order.customerName}`,
+            timestamp: order.createdAt,
+            read: false,
+            data: order
+          }))
+
+          const prescNotifs: Notification[] = data.prescriptions.map((presc: any) => ({
+            id: presc.id + 1000000, // Offset to avoid collision with order IDs
+            type: 'prescription',
+            title: 'Receita Pendente',
+            message: `Verificar receita do Pedido #${presc.orderId}`,
+            timestamp: presc.createdAt, // This might be missing in schema, check it
+            read: false,
+            data: presc
+          }))
+
+          // Merge and sort by timestamp
+          const allNotifs = [...orderNotifs, ...prescNotifs].sort((a, b) =>
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          )
+          setNotifications(allNotifs)
+        }
+      } catch (error) {
+        console.error('Error fetching notifications:', error)
+      }
+    }
+
     if (user?.pharmacyId) {
       fetchPendingCount()
       fetchPendingPrescriptions()
+      fetchNotifications()
       const interval = setInterval(() => {
         fetchPendingCount()
         fetchPendingPrescriptions()
+        fetchNotifications()
       }, 30000)
       return () => clearInterval(interval)
     }

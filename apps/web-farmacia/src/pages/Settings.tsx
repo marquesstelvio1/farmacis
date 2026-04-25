@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useAuthStore } from '../stores/authStore'
-import { Store, MapPin, Phone, Mail, Save, CheckCircle, CreditCard, Building2, User, Search, Upload, X, ImageIcon } from 'lucide-react'
+import { Store, MapPin, Phone, Mail, Save, CheckCircle, Building2, Search, Upload, X, CreditCard } from 'lucide-react'
+
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
@@ -33,34 +34,11 @@ function formatIBAN(value: string): string {
   return groups ? groups.join(' ') : limited
 }
 
-function formatPhoneNumber(value: string): string {
-  // Remove all non-digit characters
-  const digits = value.replace(/\D/g, '')
-  
-  // Format as +244 XXX XXX XXX or 9XX XXX XXX
-  if (digits.startsWith('244')) {
-    const parts = []
-    if (digits.length > 0) parts.push('+' + digits.slice(0, 3))
-    if (digits.length > 3) parts.push(digits.slice(3, 6))
-    if (digits.length > 6) parts.push(digits.slice(6, 9))
-    if (digits.length > 9) parts.push(digits.slice(9, 12))
-    return parts.join(' ')
-  } else if (digits.startsWith('9')) {
-    const parts = []
-    if (digits.length > 0) parts.push(digits.slice(0, 3))
-    if (digits.length > 3) parts.push(digits.slice(3, 6))
-    if (digits.length > 6) parts.push(digits.slice(6, 9))
-    return parts.join(' ')
-  }
-  
-  return digits
-}
-
-function LocationMarker({ 
-  position, 
+function LocationMarker({
+  position,
   onChange,
   onReverseGeocode
-}: { 
+}: {
   position: [number, number] | null;
   onChange: (lat: number, lng: number) => void;
   onReverseGeocode?: (lat: number, lng: number) => void;
@@ -80,7 +58,7 @@ export default function Settings() {
   const [isLoading, setIsLoading] = useState(false)
   const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<Array<{display_name: string, lat: string, lon: string}>>([])
+  const [searchResults, setSearchResults] = useState<Array<{ display_name: string, lat: string, lon: string }>>([])
   const [isSearching, setIsSearching] = useState(false)
   const [reverseGeocodedAddress, setReverseGeocodedAddress] = useState('')
   const [formData, setFormData] = useState({
@@ -89,10 +67,10 @@ export default function Settings() {
     phone: '',
     address: '',
     description: '',
+    logoUrl: '',
     iban: '',
     multicaixaExpress: '',
     accountName: '',
-    logoUrl: '',
   })
 
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
@@ -122,12 +100,12 @@ export default function Settings() {
     mutationFn: async (file: File) => {
       const formData = new FormData()
       formData.append('image', file)
-      
+
       const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/upload/pharmacy-logo`, {
         method: 'POST',
         body: formData,
       })
-      
+
       if (!response.ok) throw new Error('Failed to upload image')
       return response.json()
     },
@@ -157,19 +135,20 @@ export default function Settings() {
           if (data.description) {
             setFormData(prev => ({ ...prev, description: data.description }))
           }
+          if (data.logoUrl) {
+            setFormData(prev => ({ ...prev, logoUrl: data.logoUrl }))
+          }
           if (data.iban) {
-            setFormData(prev => ({ ...prev, iban: data.iban }))
+            setFormData(prev => ({ ...prev, iban: data.iban.replace('AO06', '').replace(/\s/g, '') }))
           }
           if (data.multicaixaExpress) {
-            setFormData(prev => ({ ...prev, multicaixaExpress: data.multicaixaExpress }))
+            setFormData(prev => ({ ...prev, multicaixaExpress: data.multicaixaExpress.replace('+244', '').replace(/\s/g, '') }))
           }
           if (data.accountName) {
             setFormData(prev => ({ ...prev, accountName: data.accountName }))
           }
-          if (data.logoUrl) {
-            setFormData(prev => ({ ...prev, logoUrl: data.logoUrl }))
-          }
         })
+
         .catch(console.error)
     }
   }, [user?.pharmacyId])
@@ -180,7 +159,7 @@ export default function Settings() {
       setSearchResults([])
       return
     }
-    
+
     setIsSearching(true)
     try {
       const response = await fetch(
@@ -234,8 +213,11 @@ export default function Settings() {
           pharmacyId: user?.pharmacyId,
           lat: markerPosition?.[0],
           lng: markerPosition?.[1],
+          iban: formData.iban ? `AO06 ${formData.iban}` : null,
+          multicaixaExpress: formData.multicaixaExpress ? `+244 ${formData.multicaixaExpress}` : null,
         }),
       })
+
 
       if (response.ok) {
         toast.success('Configurações salvas com sucesso!')
@@ -368,7 +350,7 @@ export default function Settings() {
               accept="image/*"
               className="hidden"
             />
-            
+
             {imagePreview || formData.logoUrl ? (
               <div className="relative w-full max-w-xs aspect-square rounded-lg overflow-hidden border border-gray-200">
                 <img
@@ -400,7 +382,7 @@ export default function Settings() {
                 <span className="text-xs text-gray-400">Máx. 5MB</span>
               </button>
             )}
-            
+
             <p className="text-xs text-gray-500 mt-2">
               Esta imagem será exibida no aplicativo do cliente
             </p>
@@ -408,71 +390,79 @@ export default function Settings() {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Dados de Pagamento (Para Transferências)</h2>
-          <p className="text-sm text-gray-500 mb-4">
-            Estes dados serão mostrados aos clientes para efectuarem pagamentos via transferência bancária ou Multicaixa Express
-          </p>
+          <div className="flex items-center gap-2 mb-6">
+            <CreditCard className="w-5 h-5 text-green-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Dados de Pagamento</h2>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                IBAN da Farmácia
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                IBAN (17 dígitos após AO06)
               </label>
-              <div className="flex">
-                <span className="inline-flex items-center px-3 py-2 border border-r-0 border-gray-300 bg-gray-100 text-gray-600 rounded-l-lg text-sm font-mono">
+              <div className="flex items-center">
+                <span className="px-3 py-2 bg-gray-100 border border-r-0 border-gray-300 rounded-l-lg text-sm font-mono text-gray-500">
                   AO06
                 </span>
                 <input
                   type="text"
+                  maxLength={17}
                   value={formData.iban}
-                  onChange={(e) => setFormData({ ...formData, iban: formatIBAN(e.target.value) })}
-                  className="flex-1 pl-3 pr-4 py-2 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none font-mono"
-                  placeholder="0040 0000 1234 5678 901"
-                  maxLength={25}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 17)
+                    setFormData({ ...formData, iban: val })
+                  }}
+                  placeholder="0000 0000 0000 0000 0"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none font-mono"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">21 dígitos após AO06</p>
+              <p className="text-[10px] text-gray-400">Insira apenas os 17 algarismos que seguem o prefixo AO06</p>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Número Multicaixa Express
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Multicaixa Express (9 dígitos)
               </label>
-              <div className="relative">
-                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="tel"
-                  value={formData.multicaixaExpress}
-                  onChange={(e) => setFormData({ ...formData, multicaixaExpress: formatPhoneNumber(e.target.value) })}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                  placeholder="+244 9XX XXX XXX"
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-1">Número de telefone associado ao Multicaixa Express</p>
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nome Associado à Conta Bancária
-              </label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <div className="flex items-center">
+                <span className="px-3 py-2 bg-gray-100 border border-r-0 border-gray-300 rounded-l-lg text-sm font-mono text-gray-500">
+                  +244
+                </span>
                 <input
                   type="text"
-                  value={formData.accountName}
-                  onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                  placeholder="Nome da farmácia ou titular da conta"
+                  maxLength={9}
+                  value={formData.multicaixaExpress}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 9)
+                    setFormData({ ...formData, multicaixaExpress: val })
+                  }}
+                  placeholder="9XX XXX XXX"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none font-mono"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">Nome que aparece associado ao IBAN (para o cliente confirmar)</p>
+            </div>
+
+            <div className="md:col-span-2 space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Nome do Titular da Conta (IBAN)
+              </label>
+              <input
+                type="text"
+                value={formData.accountName}
+                onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
+                placeholder="Nome completo do titular da conta bancária"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+              />
             </div>
           </div>
         </div>
+
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Localização no Mapa</h2>
           <p className="text-sm text-gray-500 mb-4">
             Clique no mapa para marcar a localização da sua farmácia
           </p>
-          
+
           <div className="rounded-lg overflow-hidden border border-gray-200 h-[300px]">
             <MapContainer
               center={markerPosition || [-8.8387, 13.2344]}
@@ -483,8 +473,8 @@ export default function Settings() {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
-              <LocationMarker 
-                position={markerPosition} 
+              <LocationMarker
+                position={markerPosition}
                 onChange={(lat, lng) => setMarkerPosition([lat, lng])}
                 onReverseGeocode={reverseGeocode}
               />

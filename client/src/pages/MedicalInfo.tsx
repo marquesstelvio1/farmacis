@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
-import { ArrowLeft, Heart, Phone, AlertCircle, Droplets, Save, User, Shield, Activity, UserCheck, Loader2, Plus, Trash2, Clock, Pill } from "lucide-react";
+import { ArrowLeft, Heart, Phone, AlertCircle, Droplets, Save, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@/UserContext";
 
 interface EmergencyContact {
   name: string;
@@ -43,9 +44,7 @@ export default function MedicalInfo() {
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
   const { toast } = useToast();
-  
-  const userString = localStorage.getItem("user");
-  const user = userString ? JSON.parse(userString) : null;
+  const { user } = useUser(); // Usa o user do contexto
 
   useEffect(() => {
     const fetchMedicalInfo = async () => {

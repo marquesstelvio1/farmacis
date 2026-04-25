@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft, Check, Calendar, Clock, Truck,
+  ArrowLeft, Check, Calendar, Truck,
   Loader2, MapPin, AlertCircle, CheckCircle2, Phone, ClipboardList,
   Store, User, ShoppingBag,
-  Wallet, CreditCard, Building2, Navigation, Loader,
-  Upload, X, FileText
+  Wallet, CreditCard, Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,9 +17,9 @@ import { normalizeError } from "@/lib/errorHandler";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { DeliveryLocationPicker } from "@/components/DeliveryLocationPicker";
 import { DeliveryToggle } from "@/components/DeliveryToggle";
+import { useUser } from "@/UserContext";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
 function validateAngolanPhone(raw: string): boolean {
   const normalised = raw.replace(/[\s\-]/g, "");
   return /^\+2449\d{8}$/.test(normalised) || /^9\d{8}$/.test(normalised);
@@ -54,18 +53,18 @@ export default function Checkout() {
   const { items, totalPrice, clearCart, prescriptions } = useCart();
   const { settings, fetchSettings } = useSystemSettings();
 
-  // User session
-  const [user, setUser] = useState<any>({});
+  const { user, setUser: setGlobalUser } = useUser(); // Usa o user e setUser do contexto
 
   // Delivery info
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [phoneError, setPhoneError] = useState("");
   const [phoneStatus, setPhoneStatus] = useState<"idle" | "valid" | "invalid">("idle");
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerLat, setCustomerLat] = useState<string | null>(null);
   const [customerLng, setCustomerLng] = useState<string | null>(null);
-  
+  const [phoneError, setPhoneError] = useState("");
+  const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+
   // Agrupamento por Farmácia
   const itemsByPharmacy = items.reduce((acc: any, item: any) => {
     const pId = item.product.pharmacyId;
@@ -89,24 +88,23 @@ export default function Checkout() {
 
   const [scheduledTime, setScheduledTime] = useState("");
   const [additionalNotes, setAdditionalNotes] = useState("");
-  const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
   // Cálculos Totais
   const cartTotal = totalPrice();
   const minOrderAmount = settings ? parseFloat(settings.min_order_amount) : 500;
   const baseDeliveryFee = settings ? parseFloat(settings.delivery_fee) : 0;
-  
+
   // Frete total é a soma dos fretes das farmácias que têm entrega selecionada
-  const totalDeliveryFee = Object.keys(pharmacyMethods).reduce((sum, pId) => 
+  const totalDeliveryFee = Object.keys(pharmacyMethods).reduce((sum, pId) =>
     pharmacyMethods[Number(pId)] === "delivery" ? sum + baseDeliveryFee : sum, 0
   );
 
   const grandTotal = cartTotal + totalDeliveryFee;
   const meetsMinimum = cartTotal >= minOrderAmount;
 
-  
+
   // Geolocation (used for distance calculation in delivery)
-  const { calculateDistance, formatDistance } = useGeolocation();
+  // const { calculateDistance } = useGeolocation();
 
   // Payment Selection
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("cash");
@@ -127,18 +125,16 @@ export default function Checkout() {
 
   // ─── Load user session, phone, address & map-selected location ──────────
   useEffect(() => {
-    const stored = localStorage.getItem("user");
-    if (stored) {
-      const u = JSON.parse(stored);
-      setUser(u);
-      if (u.name) setCustomerName(u.name);
-      if (u.phone) {
-        const formatted = formatAngolanPhone(u.phone);
+    if (user) { // Usa o user do contexto
+      if (user.name) setCustomerName(user.name);
+      if (user.phone) {
+        // Garante que o telefone é uma string antes de formatar
+        const formatted = formatAngolanPhone(user.phone);
         setCustomerPhone(formatted);
         setPhoneStatus("valid");
       }
-      if (u.address) {
-        setCustomerAddress(u.address);
+      if (user.address) {
+        setCustomerAddress(user.address);
       }
     }
 
@@ -150,7 +146,6 @@ export default function Checkout() {
         setCustomerLat(loc.lat);
         setCustomerLng(loc.lng);
         if (loc.address) setCustomerAddress(loc.address);
-        setLocationStatus("success");
       } catch { }
     }
   }, []);
@@ -160,12 +155,12 @@ export default function Checkout() {
     const digits = value.replace(/\D/g, "");
     const subNumber = digits.startsWith("244") ? digits.slice(3) : digits;
     const limited = subNumber.slice(0, 9);
-    
+
     const parts = [];
     if (limited.length > 0) parts.push(limited.slice(0, 3));
     if (limited.length > 3) parts.push(limited.slice(3, 6));
     if (limited.length > 6) parts.push(limited.slice(6, 9));
-    
+
     const formatted = limited.length > 0 ? "+244 " + parts.join(" ") : "";
     setCustomerPhone(formatted);
 
@@ -195,8 +190,7 @@ export default function Checkout() {
       if (res.ok) {
         const data = await res.json();
         const updatedUser = { ...user, ...data.user };
-        localStorage.setItem("user", JSON.stringify(updatedUser));
-        setUser(updatedUser);
+        setGlobalUser(updatedUser);
       }
     } catch (e) {
       console.error("Failed to update profile:", e);
@@ -242,7 +236,7 @@ export default function Checkout() {
 
       // Criar múltiplos pedidos (um para cada farmácia)
       const createdOrderIds: string[] = [];
-      
+
       for (const pId of Object.keys(itemsByPharmacy)) {
         const pharmacyId = Number(pId);
         const pharmacyItems = itemsByPharmacy[pharmacyId].items;
@@ -255,7 +249,7 @@ export default function Checkout() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             pharmacyId,
-            userId: user.id || null,
+            userId: user?.id || null,
             customerName: customerName.trim(),
             customerPhone: normPhone,
             customerAddress: method === "delivery" ? customerAddress.trim() : "Levantamento na Loja",
@@ -290,7 +284,7 @@ export default function Checkout() {
       }
 
       console.log(`✅ ${createdOrderIds.length} pedidos criados com sucesso`);
-      
+
       // Clean up
       sessionStorage.removeItem("deliveryLocation");
       setIsComplete(true);
@@ -317,8 +311,8 @@ export default function Checkout() {
             {pharmacyIds.length > 1 ? "Pedidos Criados!" : "Pedido Criado!"}
           </h2>
           <p className="text-slate-300">
-            {pharmacyIds.length > 1 
-              ? "As farmácias foram notificadas. O pagamento será habilitado individualmente conforme aceitação." 
+            {pharmacyIds.length > 1
+              ? "As farmácias foram notificadas. O pagamento será habilitado individualmente conforme aceitação."
               : "O pagamento será habilitado após a farmácia confirmar seu pedido."}
           </p>
           <p className="text-slate-400 text-sm mt-4 italic">A redirigir para meus pedidos...</p>
@@ -391,7 +385,7 @@ export default function Checkout() {
                   <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl flex items-start gap-2">
                     <AlertCircle size={14} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
                     <p className="text-[10px] text-blue-700 dark:text-blue-300 leading-tight">
-                      Nota: Como a sua encomenda inclui produtos de <strong>{pharmacyIds.length} farmácias</strong>, 
+                      Nota: Como a sua encomenda inclui produtos de <strong>{pharmacyIds.length} farmácias</strong>,
                       o valor do frete corresponde à soma das taxas de entrega individuais de cada estabelecimento.
                     </p>
                   </div>
@@ -483,9 +477,9 @@ export default function Checkout() {
                           </div>
                         </div>
                       </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => setShowMapPicker(true)} // Open as modal
                         className="mt-3 w-full dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700"
                       >
@@ -493,9 +487,9 @@ export default function Checkout() {
                       </Button>
                     </div>
                   ) : (
-                    <Button 
-                      type="button" 
-                      variant="outline" 
+                    <Button
+                      type="button"
+                      variant="outline"
                       className="w-full h-20 border-dashed border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex flex-col gap-1 hover:bg-blue-100 dark:hover:bg-blue-900/30"
                       onClick={() => setShowMapPicker(true)}
                     >
@@ -537,16 +531,15 @@ export default function Checkout() {
                 {/* Payment Methods */}
                 <div className="space-y-3" id="payment-section">
                   <Label className="flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-300"><Wallet className="w-4 h-4 text-blue-600 dark:text-blue-400" />Método de Pagamento *</Label>
-                  
+
                   {/* Cash Option */}
                   <button
                     type="button"
                     onClick={() => setSelectedPaymentMethod('cash')}
-                    className={`w-full p-4 text-left rounded-xl border-2 transition-all flex items-center gap-4 ${
-                      selectedPaymentMethod === 'cash' 
-                        ? 'border-green-500 bg-green-50 dark:bg-green-900/20' 
+                    className={`w-full p-4 text-left rounded-xl border-2 transition-all flex items-center gap-4 ${selectedPaymentMethod === 'cash'
+                        ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
                         : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-green-300 dark:hover:border-green-700'
-                    }`}
+                      }`}
                   >
                     <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center flex-shrink-0">
                       <Wallet size={24} className="text-white" />
@@ -562,11 +555,10 @@ export default function Checkout() {
                   <button
                     type="button"
                     onClick={() => setSelectedPaymentMethod('multicaixa_express')}
-                    className={`w-full p-4 text-left rounded-xl border-2 transition-all flex items-center gap-4 ${
-                      selectedPaymentMethod === 'multicaixa_express' 
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                    className={`w-full p-4 text-left rounded-xl border-2 transition-all flex items-center gap-4 ${selectedPaymentMethod === 'multicaixa_express'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                         : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-700'
-                    }`}
+                      }`}
                   >
                     <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
                       <CreditCard size={24} className="text-white" />
@@ -582,11 +574,10 @@ export default function Checkout() {
                   <button
                     type="button"
                     onClick={() => setSelectedPaymentMethod('transferencia')}
-                    className={`w-full p-4 text-left rounded-xl border-2 transition-all flex items-center gap-4 ${
-                      selectedPaymentMethod === 'transferencia' 
-                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' 
+                    className={`w-full p-4 text-left rounded-xl border-2 transition-all flex items-center gap-4 ${selectedPaymentMethod === 'transferencia'
+                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
                         : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-purple-300 dark:hover:border-purple-700'
-                    }`}
+                      }`}
                   >
                     <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center flex-shrink-0">
                       <Building2 size={24} className="text-white" />

@@ -191,6 +191,7 @@ export const orders = pgTable("orders", {
   scheduledTime: timestamp("scheduled_time"),
   pharmacyIban: text("pharmacy_iban"), // IBAN for payment
   pharmacyMulticaixaExpress: text("pharmacy_multicaixa_express"), // Multicaixa Express number
+  pharmacyAccountName: text("pharmacy_account_name"), // Account name
   // Client payment details (for verification)
   clientIban: text("client_iban"), // Client's IBAN used for transfer
   clientMulticaixaExpress: text("client_multicaixa_express"), // Client's MCX number used
@@ -198,9 +199,31 @@ export const orders = pgTable("orders", {
   reviewRating: integer("review_rating"), // 0-5 stars
   reviewComment: text("review_comment"),
   reviewedAt: timestamp("reviewed_at"),
+  settlementId: integer("settlement_id"), // link to pharmacy_settlements
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// Pharmacy Settlements - track payments made to pharmacies
+export const pharmacySettlements = pgTable("pharmacy_settlements", {
+  id: serial("id").primaryKey(),
+  pharmacyId: integer("pharmacy_id").notNull().references(() => pharmacies.id),
+  amount: numeric("amount").notNull(), // amount paid to pharmacy
+  platformProfit: numeric("platform_profit").notNull(), // commission kept by platform
+  totalRevenue: numeric("total_revenue").notNull(), // gross total
+  proofUrl: text("proof_url"), // URL/path to payment proof image
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPharmacySettlementSchema = createInsertSchema(pharmacySettlements).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type PharmacySettlement = typeof pharmacySettlements.$inferSelect;
+export type InsertPharmacySettlement = z.infer<typeof insertPharmacySettlementSchema>;
+
 
 // Order Items - individual items in an order
 export const orderItems = pgTable("order_items", {

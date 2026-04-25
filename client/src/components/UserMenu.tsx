@@ -1,16 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Link, useLocation } from "wouter";
-import { LogOut, Settings, Package, Heart, AlertCircle } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useLocation } from "wouter";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +8,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useUser } from "@/UserContext";
 
 interface UserData {
   id: number;
@@ -35,30 +27,20 @@ const WARNING_BEFORE_LOGOUT = 30 * 1000; // 30 seconds
 
 export function UserMenu({ onLogout }: UserMenuProps) {
   const [, setLocation] = useLocation();
-  const [user, setUser] = useState<UserData | null>(null);
+  const { user, setUser } = useUser();
   const [showLogoutWarning, setShowLogoutWarning] = useState(false);
   const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      try {
-        setUser(JSON.parse(userData));
-      } catch {
-        setUser(null);
-      }
-    }
-  }, []);
 
   const handleLogout = useCallback(() => {
     if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
     if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("user");
+    setUser(null);
     onLogout();
     setLocation("/login");
-  }, [onLogout, setLocation]);
+  }, [onLogout, setLocation, setUser]);
 
   const resetInactivityTimer = useCallback(() => {
     if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);

@@ -33,6 +33,10 @@ export default defineConfig({
           res.end(JSON.stringify({ error: 'Backend server is not running' }));
         },
       },
+      '/uploads': {
+        target: process.env.VITE_API_URL || 'http://localhost:5001',
+        changeOrigin: true,
+      },
       '/pharmacies': {
         target: process.env.VITE_API_URL || 'http://localhost:5001',
         changeOrigin: true,

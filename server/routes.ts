@@ -25,7 +25,8 @@ import { registerAIRoutes } from "./routes/ai";
 import { registerOCRRoutes } from "./routes/ocr";
 import { registerVanessaVisionRoutes } from "./routes/vanessaVision";
 import { registerPrescriptionSearchRoutes } from "./routes/prescriptionSearch";
-import { ensureProductColumns, ensureOrderColumns, ensurePharmacyColumns, ensureProductDiscountTable, ensurePrescriptionsTable, ensureSystemSettingsTable } from "./utils/databaseUtils";
+import { ensureProductColumns, ensureOrderColumns, ensurePharmacyColumns, ensureProductDiscountTable, ensurePrescriptionsTable, ensureSystemSettingsTable, ensureSettlementTables } from "./utils/databaseUtils";
+
 
 // Socket.IO instance
 let io: SocketIOServer;
@@ -576,7 +577,9 @@ async function seedDatabase() {
     await ensureProductDiscountTable();
     await ensurePrescriptionsTable();
     await ensureSystemSettingsTable();
+    await ensureSettlementTables();
     console.log("Database columns ensured successfully");
+
   } catch (error) {
     console.error("Error ensuring database columns:", error);
     // Continue anyway - the columns might already exist

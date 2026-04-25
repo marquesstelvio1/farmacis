@@ -109,7 +109,7 @@ export default function Pharmacies() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="rounded-2xl overflow-hidden flex flex-col transition-all hover:shadow-lg"
+                  className="rounded-2xl overflow-hidden flex flex-col transition-all hover:shadow-lg hover:-translate-y-1"
                   style={{ background: "#ffffff", border: "1px solid #dce4d7" }}
                 >
                   {/* Pharmacy Image Placeholder */}
@@ -127,16 +127,16 @@ export default function Pharmacies() {
                   
                   <div className="p-6 space-y-4 flex-1">
                     {/* Header */}
-                    <div>
-                      <h3 className="text-xl font-bold" style={{ color: "#000000" }}>{pharmacy.name}</h3>
-                      {pharmacy.rating && (
-                        <div className="flex items-center gap-1 mt-2">
-                          <Star className="w-4 h-4 fill-yellow-400" style={{ color: "#fbbf24" }} />
-                          <span className="font-semibold text-sm" style={{ color: "#fbbf24" }}>
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-xl font-bold leading-tight" style={{ color: "#000000" }}>{pharmacy.name}</h3>
+                      {pharmacy.rating ? (
+                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 border border-amber-100">
+                          <Star className="w-3.5 h-3.5 fill-yellow-400" style={{ color: "#fbbf24" }} />
+                          <span className="font-semibold text-xs" style={{ color: "#d97706" }}>
                             {pharmacy.rating.toFixed(1)}
                           </span>
                         </div>
-                      )}
+                      ) : null}
                     </div>
 
                     {/* Details */}
@@ -170,46 +170,47 @@ export default function Pharmacies() {
                     </div>
 
                     {/* Badge */}
-                    <div className="pt-2">
+                    <div className="pt-1">
                       <span className="inline-block text-xs font-bold px-3 py-1 rounded-full bg-green-100" style={{ color: "#8bc14a" }}>
                         ✓ Verificada
                       </span>
                     </div>
                   </div>
 
-                  {/* CTA */}
-                  <div className="flex gap-2 mt-4 pt-4" style={{ borderTop: "1px solid #dce4d7" }}>
+                  {/* Footer actions */}
+                  <div className="px-6 pb-5 pt-4 border-t" style={{ borderColor: "#dce4d7" }}>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 hover:scale-[1.02] transition"
+                        style={{ borderColor: "#8bc14a", color: "#8bc14a" }}
+                        onClick={() => window.location.href = `tel:${pharmacy.phone}`}
+                      >
+                        <Phone className="w-3 h-3 mr-1" />
+                        Ligar
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="flex-1 hover:scale-[1.02] transition text-white"
+                        style={{ background: "#072a1c" }}
+                        onClick={() => setLocation(`/catalogo?farmacia=${pharmacy.id}`)}
+                      >
+                        Ver Catálogo
+                      </Button>
+                    </div>
+
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
-                      className="flex-1 hover:scale-105 transition"
-                      style={{ borderColor: "#8bc14a", color: "#8bc14a" }}
-                      onClick={() => window.location.href = `tel:${pharmacy.phone}`}
+                      className="w-full mt-2 transition hover:bg-slate-50"
+                      style={{ color: "#607369" }}
+                      onClick={() => setLocation(`/farmacia/${pharmacy.id}/comentarios`)}
                     >
-                      <Phone className="w-3 h-3 mr-1" />
-                      Ligar
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="flex-1 hover:scale-105 transition text-white"
-                      style={{ background: "#072a1c" }}
-                      onClick={() => setLocation(`/catalogo?farmacia=${pharmacy.id}`)}
-                    >
-                      Ver Catálogo
+                      <MessageCircle className="w-4 h-4 mr-2" />
+                      Ver Comentários
                     </Button>
                   </div>
-                  
-                  {/* Comments Button */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full mt-2 hover:scale-105 transition"
-                    style={{ color: "#607369" }}
-                    onClick={() => setLocation(`/farmacia/${pharmacy.id}/comentarios`)}
-                  >
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    Ver Comentários
-                  </Button>
                 </motion.div>
               ))}
             </div>

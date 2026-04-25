@@ -1,7 +1,7 @@
 import { Express, Request, Response } from "express";
 import { db } from "../db";
-import { pharmacies, orders, orderItems, products, pharmacyAdmins } from "@shared/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { pharmacies, orders, orderItems, products, pharmacyAdmins, systemSettings, prescriptions } from "@shared/schema";
+import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 // Middleware to check if user is pharmacy admin
@@ -156,10 +156,72 @@ export function registerPharmacyRoutes(app: Express) {
     }
   });
 
+  // Get recent notifications (orders and prescriptions)
+  app.get("/api/pharmacy/notifications", async (req: Request, res: Response) => {
+    try {
+      const pharmacyIdParam = req.query.pharmacyId;
+      const pharmacyId = typeof pharmacyIdParam === 'string' ? parseInt(pharmacyIdParam) : NaN;
+
+      if (!pharmacyId) {
+        return res.status(400).json({ message: "Pharmacy ID required" });
+      }
+
+      // Fetch last 10 pending orders
+      const recentOrders = await db
+        .select({
+          id: orders.id,
+          customerName: orders.customerName,
+          total: orders.total,
+          status: orders.status,
+          createdAt: orders.createdAt,
+        })
+        .from(orders)
+        .where(
+          and(
+            eq(orders.pharmacyId, pharmacyId),
+            eq(orders.status, 'pending')
+          )
+        )
+        .orderBy(desc(orders.createdAt))
+        .limit(10);
+
+      // Fetch last 10 pending prescriptions
+      const pharmacyOrders = await db
+        .select({ id: orders.id })
+        .from(orders)
+        .where(eq(orders.pharmacyId, pharmacyId));
+
+      const orderIds = pharmacyOrders.map(o => o.id);
+
+      let recentPrescriptions: any[] = [];
+      if (orderIds.length > 0) {
+        recentPrescriptions = await db
+          .select()
+          .from(prescriptions)
+          .where(
+            and(
+              inArray(prescriptions.orderId, orderIds),
+              eq(prescriptions.status, 'pending')
+            )
+          )
+          .orderBy(desc(prescriptions.createdAt))
+          .limit(10);
+      }
+
+      res.json({
+        orders: recentOrders,
+        prescriptions: recentPrescriptions
+      });
+    } catch (error) {
+      console.error("Notifications fetch error:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
   // Get all pharmacy admins for debugging
   app.get("/api/pharmacy/admins", async (req: Request, res: Response) => {
     try {
-      const pharmacyAdmins = await db
+      const adminsList = await db
         .select({
           id: pharmacyAdmins.id,
           email: pharmacyAdmins.email,
@@ -169,8 +231,8 @@ export function registerPharmacyRoutes(app: Express) {
         })
         .from(pharmacyAdmins);
 
-      console.log('All pharmacy admins:', pharmacyAdmins);
-      res.json(pharmacyAdmins);
+      console.log('All pharmacy admins:', adminsList);
+      res.json(adminsList);
     } catch (error) {
       console.error("Fetch pharmacy admins error:", error);
       res.status(500).json({ message: "Failed to fetch pharmacy admins" });
@@ -365,18 +427,41 @@ export function registerPharmacyRoutes(app: Express) {
         LOCKABLE_PAYMENT_METHODS.includes(existingOrder.paymentMethod)
       );
 
+      const globalIbanResult = await db
+        .select({ value: systemSettings.value })
+        .from(systemSettings)
+        .where(sql`key = 'platform_global_iban'`)
+        .limit(1);
+      const globalMulticaixaResult = await db
+        .select({ value: systemSettings.value })
+        .from(systemSettings)
+        .where(sql`key = 'platform_global_multicaixa_express'`)
+        .limit(1);
+      const globalAccountNameResult = await db
+        .select({ value: systemSettings.value })
+        .from(systemSettings)
+        .where(sql`key = 'platform_global_account_name'`)
+        .limit(1);
+
+      const globalIban = globalIbanResult[0]?.value?.trim();
+      const globalMulticaixa = globalMulticaixaResult[0]?.value?.trim();
+      const globalAccountName = globalAccountNameResult[0]?.value?.trim();
+
       await db
         .update(orders)
         .set({
           status,
           updatedAt: new Date(),
           ...(shouldLockOrder && { isLocked: true }),
-          ...(iban && { pharmacyIban: iban }),
-          ...(multicaixaExpress && { pharmacyMulticaixaExpress: multicaixaExpress }),
+          // Always prioritize platform bank details if they exist in system settings
+          pharmacyIban: globalIban || iban || null,
+          pharmacyMulticaixaExpress: globalMulticaixa || multicaixaExpress || null,
+          pharmacyAccountName: globalAccountName || null,
           ...(paymentProof && { paymentProof: paymentProof }),
           ...(paymentStatus && { paymentStatus: paymentStatus })
         })
         .where(eq(orders.id, orderId));
+
 
       res.json({
         message: "Status updated successfully",

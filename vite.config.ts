@@ -8,15 +8,15 @@ export default defineConfig({
     react(),
     runtimeErrorOverlay(),
     ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
+      process.env.REPL_ID !== undefined
       ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer(),
-          ),
-          await import("@replit/vite-plugin-dev-banner").then((m) =>
-            m.devBanner(),
-          ),
-        ]
+        await import("@replit/vite-plugin-cartographer").then((m) =>
+          m.cartographer(),
+        ),
+        await import("@replit/vite-plugin-dev-banner").then((m) =>
+          m.devBanner(),
+        ),
+      ]
       : []),
   ],
   resolve: {
@@ -40,8 +40,19 @@ export default defineConfig({
       deny: ["**/.*"],
     },
     proxy: {
-      "/api": {
-        target: "http://localhost:5001",
+      '/api': {
+        target: process.env.VITE_API_URL || 'http://localhost:5001',
+        changeOrigin: true,
+        ws: true,
+        timeout: 30000,
+        proxyTimeout: 30000,
+        onError: (err, req, res) => {
+          res.writeHead(503, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Backend server is not running' }));
+        },
+      },
+      '/uploads': {
+        target: process.env.VITE_API_URL || 'http://localhost:5001',
         changeOrigin: true,
       },
     },

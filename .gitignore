@@ -23,9 +23,17 @@ build/
 .nuxt
 dist
 
-# Gatsby files
+# Gatsby files (removed public ignore to allow Vite assets)
 .cache/
-public
+
+# Assets tracking
+!**/public/*.png
+!**/public/*.jpg
+!**/public/*.jpeg
+!**/public/*.svg
+!**/public/*.ico
+!**/public/logo.png
+!**/public/favicon.png
 
 # Storybook build outputs
 .out

@@ -8,7 +8,6 @@ import NotFound from "@/pages/not-found";
 
 import { Layout } from "@/components/Layout";
 import LandingPage from "@/pages/LandingPage";
-import Home from "@/pages/Home";
 import ExploreMap from "@/pages/ExploreMap";
 import Catalog from "@/pages/Catalog";
 import Pharmacies from "@/pages/Pharmacies";
@@ -31,6 +30,7 @@ import EmergencyContacts from "@/pages/EmergencyContacts";
 import MenuConfiguracoes from "@/pages/MenuConfiguracoes";
 import Suporte from "@/pages/Suporte";
 import { PharmacyComments } from "@/pages/PharmacyComments";
+import { UserProvider } from "./UserContext";
 import PharmacyConfig from "@/pages/PharmacyConfig";
 
 interface RouterProps {
@@ -38,7 +38,7 @@ interface RouterProps {
 }
 
 function Router({ onLogout: _onLogout }: RouterProps) {
-  return (
+  return ( // Mantém o Layout aqui, pois o App.tsx é o ponto de entrada principal
     <Layout>
       <Switch>
         <Route path="/" component={LandingPage} />
@@ -64,7 +64,7 @@ function Router({ onLogout: _onLogout }: RouterProps) {
         <Route path="/emergencia" component={EmergencyContacts} />
         <Route path="/info-medica" component={MedicalInfo} />
         <Route path="/suporte" component={Suporte} />
-        <Route path="/login" component={Home} />
+        <Route path="/login" component={LandingPage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
@@ -77,18 +77,35 @@ function App() {
     return saved === "true";
   });
   const [showRegister, setShowRegister] = React.useState(false);
+
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      setTimeout(() => {
+        window.dispatchEvent(new Event("storage"));
+        window.dispatchEvent(new Event("user-updated"));
+      }, 100);
+    }
+  }, [isAuthenticated]);
+
   // Mova chamadas de hooks que dependem de contexto para dentro dos componentes filhos (como Router)
   // ou garanta que o Provider esteja no main.tsx
 
-  const handleLogin = () => {
+  const handleLogin = (userData?: any) => {
     setIsAuthenticated(true);
     localStorage.setItem("isAuthenticated", "true");
+    if (userData) {
+      localStorage.setItem("user", JSON.stringify(userData));
+      window.dispatchEvent(new Event("storage"));
+      window.dispatchEvent(new Event("user-updated"));
+    }
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("user");
+    window.dispatchEvent(new Event("storage"));
+    window.dispatchEvent(new Event("user-updated"));
   };
 
   const handleShowRegister = () => {
@@ -101,18 +118,20 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        {isAuthenticated ? (
-          <Router
-            onLogout={handleLogout}
-          />
-        ) : showRegister ? (
-          <Register onRegister={handleShowLogin} />
-        ) : (
-          <Login onLogin={handleLogin} onShowRegister={handleShowRegister} />
-        )}
-        <Toaster />
-      </TooltipProvider>
+      <UserProvider> {/* Envolve toda a aplicação com o UserProvider */}
+        <TooltipProvider>
+          {isAuthenticated ? (
+            <Router
+              onLogout={handleLogout}
+            />
+          ) : showRegister ? (
+            <Register onRegister={handleShowLogin} />
+          ) : (
+            <Login onLogin={handleLogin} onShowRegister={handleShowRegister} />
+          )}
+          <Toaster />
+        </TooltipProvider>
+      </UserProvider>
     </QueryClientProvider>
   );
 }

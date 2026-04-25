@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { normalizeError } from "@/lib/errorHandler";
 
 interface LoginProps {
-  onLogin: () => void;
+  onLogin: (userData?: any) => void;
   onShowRegister: () => void;
 }
 
@@ -44,11 +44,8 @@ export default function Login({ onLogin, onShowRegister }: LoginProps) {
 
       const data = await response.json();
 
-      if (data?.user) {
-        localStorage.setItem("user", JSON.stringify(data.user));
-      }
-
-      onLogin();
+      const userData = data?.user || data?.data || data;
+      onLogin(userData);
     } catch (err: any) {
       setError(normalizeError(err));
     } finally {

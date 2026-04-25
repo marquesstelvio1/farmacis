@@ -86,7 +86,7 @@ export function ProductCard({ product, variants = [], index = 0, distance }: Pro
   const activeDiscount = currentVariant.activeDiscount || (product as any).activeDiscount;
 
   // Get quantity of current item in cart (after currentVariant is defined)
-  const cartItem = items.find(item => item.id === currentVariant.id);
+  const cartItem = items.find(item => item.product.id === currentVariant.id);
   const quantity = cartItem?.quantity || 0;
 
   // Cálculo do preço com desconto apenas para exibição (sem alterar o valor base)
@@ -180,7 +180,7 @@ export function ProductCard({ product, variants = [], index = 0, distance }: Pro
             </div>
           )}
 
-           <h3 className="text-base font-bold text-slate-800 mb-2 line-clamp-1 sm:text-lg">{product.name}</h3>
+          <h3 className="text-base font-bold text-slate-800 mb-2 line-clamp-1 sm:text-lg">{product.name}</h3>
 
           {/* Dosage & Origin Row */}
           <div className="flex items-center gap-2 mb-3 flex-wrap">
@@ -283,83 +283,82 @@ export function ProductCard({ product, variants = [], index = 0, distance }: Pro
 
             {/* Buy Button */}
             <div className="flex gap-2">
-                {quantity > 0 ? (
-                  <div className="flex items-center gap-2 w-full">
-                    <div className="flex items-center gap-1 bg-green-500 rounded-xl px-2 py-2 shadow-md flex-1 justify-center">
-                      <button
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeItem(currentVariant.id); }}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/20 text-white hover:bg-white/30 transition-all"
-                      >
-                        {quantity === 1 ? <Trash2 size={16} /> : <Minus size={16} />}
-                      </button>
-                      <span className="w-8 text-center text-base font-bold text-white">{quantity}</span>
-                      <button
-                        onClick={(e) => { 
-                          e.preventDefault(); 
-                          e.stopPropagation(); 
-                          currentVariant.stock > 0 && addItem({
-                            ...product,
-                            id: currentVariant.id,
-                            price: finalPrice.toString(),
-                            origin: currentVariant.origin,
-                            dosage: currentVariant.dosage
-                          });
-                        }}
-                        disabled={currentVariant.stock <= 0}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/20 text-white hover:bg-white/30 transition-all disabled:opacity-50"
-                      >
-                        <Plus size={16} />
-                      </button>
-                    </div>
-                    <Link href="/checkout">
-                      <Button 
-                        className="h-12 px-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Ver
-                      </Button>
-                    </Link>
-                  </div>
-                ) : (
-                  <Button
-                    onClick={(e) => { 
-                      e.preventDefault(); 
-                      e.stopPropagation();
-                      if (currentVariant.stock > 0) {
-                        addItem({
+              {quantity > 0 ? (
+                <div className="flex items-center gap-2 w-full">
+                  <div className="flex items-center gap-1 bg-green-500 rounded-xl px-2 py-2 shadow-md flex-1 justify-center">
+                    <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeItem(currentVariant.id); }}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/20 text-white hover:bg-white/30 transition-all"
+                    >
+                      {quantity === 1 ? <Trash2 size={16} /> : <Minus size={16} />}
+                    </button>
+                    <span className="w-8 text-center text-base font-bold text-white">{quantity}</span>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        currentVariant.stock > 0 && addItem({
                           ...product,
                           id: currentVariant.id,
                           price: finalPrice.toString(),
                           origin: currentVariant.origin,
                           dosage: currentVariant.dosage
                         });
-                      }
-                    }}
-                    disabled={currentVariant.stock <= 0}
-                    className={`w-full h-12 rounded-xl font-bold text-base transition-all duration-200 shadow-md active:scale-95 ${
-                      currentVariant.stock > 0
-                        ? "bg-green-600 hover:bg-green-700 text-white hover:shadow-lg"
-                        : "bg-gray-300 text-slate-500 cursor-not-allowed"
+                      }}
+                      disabled={currentVariant.stock <= 0}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/20 text-white hover:bg-white/30 transition-all disabled:opacity-50"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
+                  <Link href="/checkout">
+                    <Button
+                      className="h-12 px-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Ver
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <Button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (currentVariant.stock > 0) {
+                      addItem({
+                        ...product,
+                        id: currentVariant.id,
+                        price: finalPrice.toString(),
+                        origin: currentVariant.origin,
+                        dosage: currentVariant.dosage
+                      });
+                    }
+                  }}
+                  disabled={currentVariant.stock <= 0}
+                  className={`w-full h-12 rounded-xl font-bold text-base transition-all duration-200 shadow-md active:scale-95 ${currentVariant.stock > 0
+                      ? "bg-green-600 hover:bg-green-700 text-white hover:shadow-lg"
+                      : "bg-gray-300 text-slate-500 cursor-not-allowed"
                     }`}
-                  >
-                    <ShoppingCart className="w-5 h-5 mr-2" />
-                    {currentVariant.stock > 0 ? "Comprar" : "Esgotado"}
-                  </Button>
-                )}
-              </div>
-
-              {/* View Details Link */}
-              <Link href={`/produto/${product.id}`}>
-                <button
-                  className="w-full mt-2 py-2 text-sm text-slate-500 hover:text-green-600 flex items-center justify-center gap-1 transition-colors"
-                  onClick={(e) => e.stopPropagation()}
                 >
-                  <Eye className="w-4 h-4" />
-                  Ver detalhes do produto
-                </button>
-              </Link>
+                  <ShoppingCart className="w-5 h-5 mr-2" />
+                  {currentVariant.stock > 0 ? "Comprar" : "Esgotado"}
+                </Button>
+              )}
             </div>
+
+            {/* View Details Link */}
+            <Link href={`/produto/${product.id}`}>
+              <button
+                className="w-full mt-2 py-2 text-sm text-slate-500 hover:text-green-600 flex items-center justify-center gap-1 transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Eye className="w-4 h-4" />
+                Ver detalhes do produto
+              </button>
+            </Link>
           </div>
+        </div>
       </motion.div>
     </>
   );

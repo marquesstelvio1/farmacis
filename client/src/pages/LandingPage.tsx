@@ -33,7 +33,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white border-b border-slate-200">
+      <header className="sticky top-0 z-50 bg-white border-b border-slate-200 md:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
              <div className="flex items-center gap-2">
@@ -45,7 +45,7 @@ export default function LandingPage() {
       </header>
 
         {/* Hero Section with SplitSearch */}
-        <section className="relative pt-12 pb-8 sm:pt-20 sm:pb-12 px-4 sm:px-6 lg:px-8 min-h-[384px]">
+        <section className="relative pt-8 pb-4 sm:pt-20 sm:pb-12 px-4 sm:px-6 lg:px-8 min-h-[300px] sm:min-h-[384px]">
          {/* Background Image Carousel */}
          <div className="absolute inset-0 overflow-hidden">
            <AnimatePresence mode="wait">
@@ -69,14 +69,14 @@ export default function LandingPage() {
            <div className="absolute top-40 left-20 w-80 h-80 bg-teal-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000" />
          </div>
 
-         <div className="absolute bottom-[56.69px] left-1/2 -translate-x-1/2 max-w-4xl w-full text-center px-4 sm:px-6 lg:px-8">
+         <div className="relative sm:absolute sm:bottom-[56.69px] left-1/2 -translate-x-1/2 max-w-4xl w-full text-center px-0 sm:px-6 lg:px-8 mt-32 sm:mt-0">
            {/* Split Search Component */}
            <motion.div
              initial={{ opacity: 0, y: 20 }}
              animate={{ opacity: 1, y: 0 }}
              transition={{ duration: 0.6, delay: 0.3 }}
            >
-             <SplitSearch onSearch={handleSearch} className="mb-8" />
+             <SplitSearch onSearch={handleSearch} className="mb-2 sm:mb-8" />
            </motion.div>
          </div>
        </section>

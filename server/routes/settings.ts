@@ -63,11 +63,18 @@ export function registerSettingsRoutes(app: express.Application) {
         .where(sql`key = ${key}`)
         .returning();
 
-      if (result.length === 0) {
-        return res.status(404).json({ message: "Configuração não encontrada" });
+      let setting = result[0];
+      if (!setting) {
+        const inserted = await db
+          .insert(systemSettings)
+          .values({
+            key,
+            value: String(value),
+            description: `Configuração ${key}`,
+          })
+          .returning();
+        setting = inserted[0];
       }
-
-      const setting = result[0];
 
       res.json({ message: "Configuração atualizada", setting });
     } catch (error) {

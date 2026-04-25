@@ -15,6 +15,8 @@ import {
   MapPin
 } from "lucide-react";
 import { CartDrawer } from "./CartDrawer";
+import { useUser } from "@/UserContext";
+import { getUserInitials } from "@/lib/userInitials";
 
 interface LayoutProps {
   children: ReactNode;
@@ -23,6 +25,7 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user } = useUser();
 
   const navLinks = [
     { href: "/catalogo", label: "Catálogo", icon: LayoutGrid },
@@ -152,6 +155,43 @@ export function Layout({ children }: LayoutProps) {
       </AnimatePresence>
 
 
+      {/* Desktop Top Navigation */}
+      <nav className="hidden md:block border-b border-slate-200 bg-white/95 backdrop-blur">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <img src="/logo.png" alt="Brócolis" className="w-10 h-10 object-contain" />
+            <span className="font-bold text-slate-800">Brócolis</span>
+          </Link>
+          <div className="flex items-center gap-2 border border-slate-200 rounded-2xl shadow-sm px-2 py-2 bg-white">
+          {navLinks.map((link) => {
+            const isActive = location === link.href;
+            return (
+              <Link
+                key={`desktop-${link.href}`}
+                href={link.href}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition ${
+                  isActive
+                    ? link.href === "/menu-de-configuracoes"
+                      ? "bg-transparent text-slate-800"
+                      : "bg-[#22c55e] text-white"
+                    : "text-[#607369] hover:bg-green-50"
+                }`}
+              >
+                {link.href === "/menu-de-configuracoes" ? (
+                  <div className={`w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-teal-500 flex items-center justify-center text-white font-bold text-xs shadow border-2 ${isActive ? "border-green-500" : "border-white"}`}>
+                    {getUserInitials(user as any)}
+                  </div>
+                ) : (
+                  <link.icon size={16} />
+                )}
+                <span>{link.label}</span>
+              </Link>
+            );
+          })}
+          </div>
+        </div>
+      </nav>
+
       <main className="flex-1 w-full pb-20 md:pb-0">
         {children}
       </main>
@@ -174,7 +214,9 @@ export function Layout({ children }: LayoutProps) {
     }`}
   >
     {link.href === "/menu-de-configuracoes" ? (
-      <div className={`w-11 h-11 rounded-full bg-gradient-to-br from-green-500 to-teal-500 flex items-center justify-center text-white font-bold text-sm shadow-lg border-2 transition-all ${isActive ? 'border-green-500' : 'border-white'}`}>SM</div>
+      <div className={`w-11 h-11 rounded-full bg-gradient-to-br from-green-500 to-teal-500 flex items-center justify-center text-white font-bold text-sm shadow-lg border-2 transition-all ${isActive ? 'border-green-500' : 'border-white'}`}>
+        {getUserInitials(user as any)}
+      </div>
     ) : (
       <>
         <link.icon size={20} />

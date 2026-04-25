@@ -64,12 +64,46 @@ export async function ensureOrderColumns() {
     `);
     console.log('Index idx_orders_review_rating created/verified');
 
+    await db.execute(sql`
+      ALTER TABLE orders 
+      ADD COLUMN IF NOT EXISTS settlement_id INTEGER
+    `);
+    console.log('Column settlement_id ensured in orders table');
+
     console.log('Order columns and indexes ensured successfully');
   } catch (error) {
     console.error('Error ensuring order columns:', error);
     // Don't throw - allow app to continue even if column exists
   }
 }
+
+// ... existing functions ...
+
+export async function ensureSettlementTables() {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "pharmacy_settlements" (
+        "id" SERIAL PRIMARY KEY,
+        "pharmacy_id" INTEGER NOT NULL,
+        "amount" NUMERIC NOT NULL,
+        "platform_profit" NUMERIC NOT NULL,
+        "total_revenue" NUMERIC NOT NULL,
+        "proof_url" TEXT,
+        "notes" TEXT,
+        "created_at" TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+    console.log('Table pharmacy_settlements ensured');
+
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_settlements_pharmacy_id ON pharmacy_settlements(pharmacy_id)
+    `);
+    console.log('Index idx_settlements_pharmacy_id created/verified');
+  } catch (error) {
+    console.error('Error ensuring settlement tables:', error);
+  }
+}
+
 
 export async function ensureProductColumns() {
   try {

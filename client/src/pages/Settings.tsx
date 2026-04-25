@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft,
   User, 
-  Bell, 
   Pill, 
   Clock, 
   Plus, 
@@ -12,7 +11,6 @@ import {
   Loader2, 
   Calendar,
   CheckCircle2,
-  AlertCircle,
   UserRound
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@/UserContext";
 import AuthOneHealth from "./AuthOneHealth";
 
 interface MedicationReminder {
@@ -75,12 +74,11 @@ export default function AccountSettings() {
   const [newHour, setNewHour] = useState("");
   const [tempHours, setNewTempHours] = useState<string[]>([]);
 
-  const userString = localStorage.getItem("user");
-  const user = userString ? JSON.parse(userString) : null;
+  const { user, setUser: setGlobalUser } = useUser(); // Usa o user e setUser do contexto
 
   useEffect(() => {
-    setProfileName(user?.name || "");
-    setProfileAddress(user?.address || "");
+    setProfileName(user?.name || ""); // Usa o user do contexto
+    setProfileAddress(user?.address || ""); // Usa o user do contexto
   }, [user?.name, user?.address]);
 
   useEffect(() => {
@@ -214,7 +212,7 @@ export default function AccountSettings() {
       }
 
       const data = await res.json();
-      localStorage.setItem("user", JSON.stringify(data.user));
+      setGlobalUser(data.user); // Atualiza o user no contexto
 
       setProfileName(data.user?.name || "");
       setProfileAddress(data.user?.address || composedAddress);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useUser } from "@/UserContext";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import {
@@ -18,13 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-
-interface UserData {
-  id: number;
-  name: string;
-  email: string;
-  phone?: string;
-}
+import { getUserDisplayName, getUserEmail, getUserInitials } from "@/lib/userInitials";
 
 const menuItems = [
   {
@@ -112,22 +106,11 @@ const quickActions = [
 
 export default function MenuConfiguracoes() {
   const { toast } = useToast();
-  const [user, setUser] = useState<UserData | null>(null);
-
-  useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      try {
-        setUser(JSON.parse(userData));
-      } catch {
-        setUser(null);
-      }
-    }
-  }, []);
+  const { user, setUser } = useUser(); // Usa o user e setUser do contexto
 
   const handleLogout = () => {
     localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("user");
+    setUser(null); // Usa o setUser do contexto para limpar o utilizador
     toast({
       title: "Sessão terminada",
       description: "Você saiu da sua conta."
@@ -135,14 +118,8 @@ export default function MenuConfiguracoes() {
     window.location.href = "/login";
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
+  const displayName = getUserDisplayName(user as any) || "Utilizador";
+  const displayEmail = getUserEmail(user as any) || "Sem e-mail";
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
@@ -152,11 +129,11 @@ export default function MenuConfiguracoes() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-teal-500 flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                {user?.name ? getInitials(user.name) : "U"}
+                {getUserInitials(user as any)}
               </div>
               <div>
-                <h1 className="font-bold text-slate-900">{user?.name || "Utilizador"}</h1>
-                <p className="text-sm text-slate-500">{user?.email || "usuario@email.com"}</p>
+                <h1 className="font-bold text-slate-900">{displayName}</h1>
+                <p className="text-sm text-slate-500">{displayEmail}</p>
               </div>
             </div>
             <Link href="/configuracoes">

@@ -69,7 +69,7 @@ export function ProductCard({ product, index = 0, compact = false }: ProductCard
         </p>
 
         <div className="flex flex-wrap gap-1 mb-4">
-          {(product.diseases ?? []).slice(0, 2).map((disease) => (
+          {(product.diseases ?? []).slice(0, 2).map((disease: string) => (
             <span key={disease} className="text-xs px-2 py-1 bg-slate-100 text-slate-600 rounded-md">
               {disease}
             </span>

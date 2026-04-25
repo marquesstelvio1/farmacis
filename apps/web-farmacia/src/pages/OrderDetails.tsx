@@ -183,6 +183,7 @@ export default function OrderDetails() {
   })
 
   const handleAcceptOrder = () => {
+    if (!order) return;
     // If payment method is not cash and no payment info is set, show modal
     if (order.paymentMethod !== 'cash') {
       if (paymentInfoData?.hasIban || paymentInfoData?.hasMulticaixaExpress) {
@@ -200,6 +201,7 @@ export default function OrderDetails() {
   }
 
   const handleConfirmAccept = () => {
+    if (!order) return;
     // If electronic payment, status is "awaiting_proof", otherwise "accepted"
     const newStatus = order.paymentMethod !== 'cash' ? 'awaiting_proof' : 'accepted'
     updateStatusMutation.mutate({
@@ -235,14 +237,14 @@ export default function OrderDetails() {
 
   const action = statusActions[order.status]
   const canReject = order.status === 'pending' && !order.isLocked
-  
+
   // Bloquear avanço se pagamento não for "cash" e status for awaiting_proof ou proof_submitted
   const isElectronicPayment = order.paymentMethod !== 'cash'
   const isPendingProof = isElectronicPayment && (order.status === 'awaiting_proof' || order.status === 'proof_submitted')
-  
+
   // Só pode avançar para "preparing" se não for pagamento pendente de comprovativo
   const canProceed = !isPendingProof
-  
+
   // Pedido está bloqueado - não permite cancelamento ou edição
   const isOrderLocked = order.isLocked || false
   // Métodos de pagamento que bloqueiam o pedido
@@ -365,7 +367,7 @@ export default function OrderDetails() {
               </div>
             </div>
           )}
-          
+
           {/* Locked Order Warning */}
           {isOrderLocked && (
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -376,14 +378,14 @@ export default function OrderDetails() {
                     <span>🔒 Transação Garantida - MCX</span>
                   </p>
                   <p className="text-sm text-green-700 mt-1">
-                    Este pedido foi bloqueado porque o pagamento foi processado via {order.paymentMethod === 'multicaixa_express' ? 'Multicaixa Express' : order.paymentMethod === 'transferencia' ? 'Transferência Bancária' : 'ATM'}. 
+                    Este pedido foi bloqueado porque o pagamento foi processado via {order.paymentMethod === 'multicaixa_express' ? 'Multicaixa Express' : order.paymentMethod === 'transferencia' ? 'Transferência Bancária' : 'ATM'}.
                     O pedido não pode ser cancelado ou modificado para proteger o saldo do cliente.
                   </p>
                 </div>
               </div>
             </div>
           )}
-          
+
           {/* Proof Verification Actions */}
           {order.status === 'proof_submitted' && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
@@ -391,7 +393,7 @@ export default function OrderDetails() {
               <div className="space-y-3">
                 <button
                   onClick={() => {
-                    updateStatusMutation.mutate({ 
+                    updateStatusMutation.mutate({
                       status: 'preparing',
                       paymentData: { paymentStatus: 'paid' }
                     })
@@ -412,7 +414,7 @@ export default function OrderDetails() {
               </div>
             </div>
           )}
-          
+
           {/* Actions */}
           <div className={`bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-500 ${isOrderLocked ? 'opacity-60' : ''}`}>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Ações</h2>
@@ -486,10 +488,10 @@ export default function OrderDetails() {
               <div className="flex items-center gap-3">
                 <CreditCard className="w-5 h-5 text-gray-400" />
                 <span className="text-gray-900 capitalize">
-                  {order.paymentMethod === 'cash' ? 'Pagamento na Entrega' : 
-                   order.paymentMethod === 'multicaixa_express' ? 'Multicaixa Express' : 
-                   order.paymentMethod === 'transferencia' ? 'Transferência Bancária' : 
-                   order.paymentMethod}
+                  {order.paymentMethod === 'cash' ? 'Pagamento na Entrega' :
+                    order.paymentMethod === 'multicaixa_express' ? 'Multicaixa Express' :
+                      order.paymentMethod === 'transferencia' ? 'Transferência Bancária' :
+                        order.paymentMethod}
                 </span>
               </div>
               <div className="flex items-center gap-3">
@@ -498,7 +500,7 @@ export default function OrderDetails() {
                   {new Date(order.createdAt).toLocaleString('pt-BR')}
                 </span>
               </div>
-              
+
               {/* Comprovativo: Express / Transferência / ATM — aguardar envio; depois pode ver */}
               <div className="mt-4 pt-4 border-t border-gray-100">
                 {requiresProofFromClient ? (

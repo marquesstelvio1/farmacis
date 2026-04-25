@@ -70,6 +70,7 @@ export default function Catalog() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [isVariantModalOpen, setIsVariantModalOpen] = useState(false)
   const [selectedProductForVariant, setSelectedProductForVariant] = useState<Product | null>(null)
+  const [viewingProduct, setViewingProduct] = useState<Product | null>(null)
 
   const queryClient = useQueryClient()
 

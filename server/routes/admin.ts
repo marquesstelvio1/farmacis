@@ -1,7 +1,7 @@
 import { Express, Request, Response } from "express";
 import { db } from "../db";
-import { pharmacies, orders, orderItems, users, pharmacyAdmins, adminUsers, systemSettings } from "@shared/schema";
-import { eq, and, desc, or, sql } from "drizzle-orm";
+import { pharmacies, orders, orderItems, users, pharmacyAdmins, adminUsers, systemSettings, pharmacySettlements } from "@shared/schema";
+import { eq, and, desc, or, sql, isNull } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 // Middleware to check if user is admin
@@ -373,27 +373,43 @@ export function registerAdminRoutes(app: Express) {
   app.get("/api/admin/pharmacies/:id/payment-info", async (req: Request, res: Response) => {
     try {
       const pharmacyId = parseInt(req.params.id as string);
-
       const pharmacyResult = await db
-        .select({
-          id: pharmacies.id,
-          name: pharmacies.name,
-          iban: pharmacies.iban,
-          multicaixaExpress: pharmacies.multicaixaExpress,
-        })
+        .select({ id: pharmacies.id, name: pharmacies.name })
         .from(pharmacies)
         .where(eq(pharmacies.id, pharmacyId))
         .limit(1);
       if (pharmacyResult.length === 0) {
         return res.status(404).json({ message: "Pharmacy not found" });
       }
+
+      const ibanSetting = await db
+        .select({ value: systemSettings.value })
+        .from(systemSettings)
+        .where(sql`key = 'platform_global_iban'`)
+        .limit(1);
+
+      const mcxSetting = await db
+        .select({ value: systemSettings.value })
+        .from(systemSettings)
+        .where(sql`key = 'platform_global_multicaixa_express'`)
+        .limit(1);
+      const accountNameSetting = await db
+        .select({ value: systemSettings.value })
+        .from(systemSettings)
+        .where(sql`key = 'platform_global_account_name'`)
+        .limit(1);
+
+      const globalIban = ibanSetting[0]?.value || null;
+      const globalMulticaixa = mcxSetting[0]?.value || null;
+      const globalAccountName = accountNameSetting[0]?.value || null;
       const pharmacy = pharmacyResult[0];
 
       res.json({
-        hasIban: !!pharmacy.iban,
-        hasMulticaixaExpress: !!pharmacy.multicaixaExpress,
-        iban: pharmacy.iban,
-        multicaixaExpress: pharmacy.multicaixaExpress,
+        hasIban: !!globalIban,
+        hasMulticaixaExpress: !!globalMulticaixa,
+        iban: globalIban,
+        multicaixaExpress: globalMulticaixa,
+        accountName: globalAccountName,
         pharmacyName: pharmacy.name,
       });
     } catch (error) {
@@ -406,22 +422,60 @@ export function registerAdminRoutes(app: Express) {
   app.patch("/api/admin/pharmacies/:id/payment-info", async (req: Request, res: Response) => {
     try {
       const pharmacyId = parseInt(req.params.id as string);
-      const { iban, multicaixaExpress } = req.body;
+      const { iban, multicaixaExpress, accountName } = req.body;
 
       const pharmacyResult = await db
-        .update(pharmacies)
-        .set({
-          iban: iban || null,
-          multicaixaExpress: multicaixaExpress || null,
-        })
+        .select({ id: pharmacies.id })
+        .from(pharmacies)
         .where(eq(pharmacies.id, pharmacyId))
-        .returning();
+        .limit(1);
       if (pharmacyResult.length === 0) {
         return res.status(404).json({ message: "Pharmacy not found" });
       }
-      const pharmacy = pharmacyResult[0];
 
-      res.json({ message: "Dados de pagamento atualizados", pharmacy });
+      await db
+        .insert(systemSettings)
+        .values({
+          key: "platform_global_iban",
+          value: iban || "",
+          description: "IBAN único para pagamentos de todas as farmácias",
+        })
+        .onConflictDoUpdate({
+          target: systemSettings.key,
+          set: { value: iban || "", updatedAt: new Date() },
+        });
+
+      await db
+        .insert(systemSettings)
+        .values({
+          key: "platform_global_multicaixa_express",
+          value: multicaixaExpress || "",
+          description: "Multicaixa Express global para pagamentos",
+        })
+        .onConflictDoUpdate({
+          target: systemSettings.key,
+          set: { value: multicaixaExpress || "", updatedAt: new Date() },
+        });
+      await db
+        .insert(systemSettings)
+        .values({
+          key: "platform_global_account_name",
+          value: accountName || "",
+          description: "Titular global da conta para pagamentos",
+        })
+        .onConflictDoUpdate({
+          target: systemSettings.key,
+          set: { value: accountName || "", updatedAt: new Date() },
+        });
+
+      res.json({
+        message: "Dados de pagamento globais atualizados",
+        paymentInfo: {
+          iban: iban || null,
+          multicaixaExpress: multicaixaExpress || null,
+          accountName: accountName || null,
+        },
+      });
     } catch (error) {
       console.error("Update payment info error:", error);
       res.status(500).json({ message: "Failed to update payment info" });
@@ -497,7 +551,7 @@ export function registerAdminRoutes(app: Express) {
   app.get("/api/admin/users", async (req: Request, res: Response) => {
     try {
       const { role } = req.query;
-      
+
       let query = db
         .select({
           id: users.id,
@@ -508,12 +562,12 @@ export function registerAdminRoutes(app: Express) {
           createdAt: users.createdAt,
         })
         .from(users);
-      
+
       // Filter by role if provided
       if (role) {
         query = query.where(eq(users.role, String(role)));
       }
-      
+
       const allUsers = await query.orderBy(desc(users.createdAt));
 
       // Get order count for each user
@@ -715,10 +769,6 @@ export function registerAdminRoutes(app: Express) {
   // Get system revenue (admin balance)
   app.get("/api/admin/balance", async (req: Request, res: Response) => {
     try {
-      const days = parseInt(req.query.days as string) || 30;
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - days);
-
       // Fetch platform fee from settings
       const feeSettingResult = await db
         .select()
@@ -728,7 +778,7 @@ export function registerAdminRoutes(app: Express) {
       const feeSetting = feeSettingResult.length > 0 ? feeSettingResult[0] : null;
       const feePercent = feeSetting ? parseFloat(feeSetting.value) / 100 : 0.10;
 
-      // Total system revenue
+      // Pending system revenue (orders that haven't been settled yet)
       const systemRevenueResult = await db
         .select({
           total: sql<string>`coalesce(sum(${orders.total}), '0')`,
@@ -736,23 +786,52 @@ export function registerAdminRoutes(app: Express) {
           completed: sql<number>`count(case when ${orders.status} = 'delivered' then 1 end)`,
         })
         .from(orders)
-        .where(sql`${orders.createdAt} >= ${startDate}`);
+        .where(isNull(orders.settlementId));
+
       if (systemRevenueResult.length === 0) throw new Error("Failed to fetch system revenue");
       const systemRevenue = systemRevenueResult[0];
 
-      // Revenue breakdown by pharmacy
+      // Revenue breakdown by pharmacy (only for unpaid/unsettled orders)
       const pharmacyBreakdown = await db
         .select({
           pharmacyId: orders.pharmacyId,
           pharmacyName: pharmacies.name,
-          revenue: sql<string>`coalesce(sum(${orders.total}), '0')`,
+          // Total amount for orders paid to the platform (electronic)
+          platformRevenue: sql<string>`coalesce(sum(case when ${orders.paymentMethod} IN ('multicaixa_express', 'transferencia', 'atm') then ${orders.total} else '0' end), '0')`,
+          // Total amount for orders paid directly to the pharmacy (cash)
+          directRevenue: sql<string>`coalesce(sum(case when ${orders.paymentMethod} = 'cash' then ${orders.total} else '0' end), '0')`,
           ordersCount: sql<number>`count(*)`,
           completedOrders: sql<number>`count(case when ${orders.status} = 'delivered' then 1 end)`,
         })
         .from(orders)
         .leftJoin(pharmacies, eq(orders.pharmacyId, pharmacies.id))
-        .where(sql`${orders.createdAt} >= ${startDate}`)
+        .where(isNull(orders.settlementId))
         .groupBy(orders.pharmacyId, pharmacies.name);
+
+      const formattedBreakdown = pharmacyBreakdown.map(pb => {
+        const platRev = parseFloat(pb.platformRevenue || '0');
+        const dirRev = parseFloat(pb.directRevenue || '0');
+        const totalRev = platRev + dirRev;
+
+        // Platform's 10% on EVERYTHING
+        const totalProfit = totalRev * feePercent;
+
+        // What we owe the pharmacy for electronic sales (90%) 
+        // MINUS what they owe us for cash sales (10%)
+        const payable = (platRev * (1 - feePercent)) - (dirRev * feePercent);
+
+        return {
+          pharmacyId: pb.pharmacyId,
+          pharmacyName: pb.pharmacyName || 'Unknown',
+          revenue: totalRev.toFixed(2),
+          platformRevenue: platRev.toFixed(2),
+          directRevenue: dirRev.toFixed(2),
+          profit: totalProfit.toFixed(2),
+          payableToPharmacy: payable.toFixed(2),
+          ordersCount: pb.ordersCount || 0,
+          completedOrders: pb.completedOrders || 0,
+        };
+      });
 
       res.json({
         totalSystemRevenue: systemRevenue.total || '0',
@@ -760,18 +839,120 @@ export function registerAdminRoutes(app: Express) {
         totalSystemOrders: systemRevenue.count || 0,
         totalSystemCompleted: systemRevenue.completed || 0,
         platformFeePercent: feeSetting ? feeSetting.value : '10',
-        pharmacyBreakdown: pharmacyBreakdown.map(pb => ({
-          pharmacyId: pb.pharmacyId,
-          pharmacyName: pb.pharmacyName || 'Unknown',
-          revenue: pb.revenue || '0',
-          profit: (parseFloat(pb.revenue || '0') * feePercent).toFixed(2),
-          ordersCount: pb.ordersCount || 0,
-          completedOrders: pb.completedOrders || 0,
-        })),
+        pharmacyBreakdown: formattedBreakdown,
       });
+
     } catch (error) {
       console.error("Admin balance error:", error);
       res.status(500).json({ message: "Failed to fetch balance data" });
+    }
+  });
+
+  // Create a new settlement for a pharmacy
+  app.post("/api/admin/pharmacies/:id/settle", async (req: Request, res: Response) => {
+    try {
+      const pharmacyId = parseInt(req.params.id);
+      const { amount, platformProfit, totalRevenue, proofUrl, notes } = req.body;
+
+      if (!pharmacyId || !amount) {
+        return res.status(400).json({ message: "Pharmacy ID and amount are required" });
+      }
+
+      // 1. Create the settlement record
+      const settlementResult = await db
+        .insert(pharmacySettlements)
+        .values({
+          pharmacyId,
+          amount: String(amount),
+          platformProfit: String(platformProfit || 0),
+          totalRevenue: String(totalRevenue || amount),
+          proofUrl: proofUrl || null,
+          notes: notes || null,
+        })
+        .returning();
+
+      if (settlementResult.length === 0) throw new Error("Failed to create settlement");
+      const settlement = settlementResult[0];
+
+      // 2. Mark all currently delivered and unsettled orders for this pharmacy as settled
+      await db
+        .update(orders)
+        .set({ settlementId: settlement.id })
+        .where(
+          and(
+            eq(orders.pharmacyId, pharmacyId),
+            eq(orders.status, 'delivered'),
+            isNull(orders.settlementId)
+          )
+        );
+
+      res.status(201).json(settlement);
+    } catch (error) {
+      console.error("Create settlement error:", error);
+      res.status(500).json({ message: "Failed to process settlement" });
+    }
+  });
+
+  // Get settlement history for a pharmacy
+  app.get("/api/admin/pharmacies/:id/settlements", async (req: Request, res: Response) => {
+    try {
+      const pharmacyId = parseInt(req.params.id);
+      const history = await db
+        .select()
+        .from(pharmacySettlements)
+        .where(eq(pharmacySettlements.pharmacyId, pharmacyId))
+        .orderBy(desc(pharmacySettlements.createdAt));
+
+      res.json(history);
+    } catch (error) {
+      console.error("Fetch settlements error:", error);
+      res.status(500).json({ message: "Failed to fetch settlement history" });
+    }
+  });
+
+  // Get all settlements history
+  app.get("/api/admin/settlements", async (req: Request, res: Response) => {
+    try {
+      const history = await db
+        .select({
+          id: pharmacySettlements.id,
+          pharmacyId: pharmacySettlements.pharmacyId,
+          pharmacyName: pharmacies.name,
+          amount: pharmacySettlements.amount,
+          platformProfit: pharmacySettlements.platformProfit,
+          totalRevenue: pharmacySettlements.totalRevenue,
+          proofUrl: pharmacySettlements.proofUrl,
+          createdAt: pharmacySettlements.createdAt,
+        })
+        .from(pharmacySettlements)
+        .leftJoin(pharmacies, eq(pharmacySettlements.pharmacyId, pharmacies.id))
+        .orderBy(desc(pharmacySettlements.createdAt));
+
+      res.json(history);
+    } catch (error) {
+      console.error("Fetch all settlements error:", error);
+      res.status(500).json({ message: "Failed to fetch settlement history" });
+    }
+  });
+
+  // Get generic pharmacy details for admin
+  app.get("/api/admin/pharmacies/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const result = await db
+        .select()
+        .from(pharmacies)
+        .where(eq(pharmacies.id, id))
+        .limit(1);
+
+      if (result.length === 0) {
+        return res.status(404).json({ message: "Pharmacy not found" });
+      }
+
+      res.json(result[0]);
+    } catch (error) {
+      console.error("Get pharmacy error:", error);
+      res.status(500).json({ message: "Failed to fetch pharmacy details" });
     }
   });
 }

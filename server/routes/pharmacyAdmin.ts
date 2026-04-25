@@ -1,6 +1,6 @@
 import { Express, Request, Response } from "express";
 import { db } from "../db";
-import { orders, orderStatusHistory, pharmacies, pharmacyAdmins, payments, orderItems, products } from "@shared/schema";
+import { orders, orderStatusHistory, pharmacies, pharmacyAdmins, payments, orderItems, products, systemSettings } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
@@ -275,13 +275,26 @@ export function registerPharmacyAdminRoutes(app: Express) {
         return res.status(400).json({ message: "Status inválido" });
       }
 
+      const globalIbanResult = await db
+        .select({ value: systemSettings.value })
+        .from(systemSettings)
+        .where(sql`key = 'platform_global_iban'`)
+        .limit(1);
+      const globalMulticaixaResult = await db
+        .select({ value: systemSettings.value })
+        .from(systemSettings)
+        .where(sql`key = 'platform_global_multicaixa_express'`)
+        .limit(1);
+      const globalIban = globalIbanResult[0]?.value?.trim();
+      const globalMulticaixa = globalMulticaixaResult[0]?.value?.trim();
+
       // Update order status with optional payment info
       const orderResult = await db
         .update(orders)
         .set({ 
           status,
-          ...(iban && { pharmacyIban: iban }),
-          ...(multicaixaExpress && { pharmacyMulticaixaExpress: multicaixaExpress }),
+          ...((globalIban || iban) && { pharmacyIban: globalIban || iban }),
+          ...((globalMulticaixa || multicaixaExpress) && { pharmacyMulticaixaExpress: globalMulticaixa || multicaixaExpress }),
           ...(paymentProof && { paymentProof: paymentProof }),
           ...(paymentStatus && { paymentStatus: paymentStatus })
         })
