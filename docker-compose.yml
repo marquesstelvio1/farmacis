@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "5001:5001"
+    environment:
+      - NODE_ENV=production
+      - PORT=5001
+      - HOST=0.0.0.0
+      - DATABASE_URL=postgresql://farmacis:farmacis@db:5432/farmacis
+      # Adicione outras variáveis de ambiente aqui
+    depends_on:
+      - db
+    volumes:
+      - uploads:/app/uploads
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=farmacis
+      - POSTGRES_USER=farmacis
+      - POSTGRES_PASSWORD=farmacis
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  uploads:

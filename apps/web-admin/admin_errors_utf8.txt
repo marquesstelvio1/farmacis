@@ -1,0 +1,5 @@
+﻿src/pages/Dashboard.tsx(5,3): error TS6133: 'Users' is declared but its value is never read.
+src/pages/Dashboard.tsx(6,3): error TS6133: 'TrendingUp' is declared but its value is never read.
+src/pages/Dashboard.tsx(7,3): error TS6133: 'Clock' is declared but its value is never read.
+src/pages/Dashboard.tsx(9,3): error TS6133: 'XCircle' is declared but its value is never read.
+src/pages/PharmacyDetails.tsx(5,3): error TS6133: 'Store' is declared but its value is never read.

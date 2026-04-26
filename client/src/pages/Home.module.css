@@ -1,0 +1,39 @@
+/* Pharmacy Map Styles */
+
+.mapContainer {
+  width: 100%;
+  height: 100%;
+}
+
+/* Pharmacy Popup Styles */
+.pharmacyPopup :global(.leaflet-popup-content) {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+.pharmacyPopup :global(.leaflet-popup-content-wrapper) {
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  padding: 12px !important;
+}
+
+.pharmacyPopup :global(.leaflet-popup-tip) {
+  background: #ffffff !important;
+  border: none !important;
+}
+
+/* Pharmacy markers */
+:global(.leaflet-marker-icon.pharmacy-marker) {
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.2));
+}
+
+/* Map container adjustments */
+:global(.leaflet-container) {
+  font-family: inherit;
+}
+
+:global(.leaflet-popup) {
+  margin-bottom: 0 !important;
+}

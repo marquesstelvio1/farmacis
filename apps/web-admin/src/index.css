@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 15%;
+    --primary: 120 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 120 100% 35%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 120 100% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 96%;
+    --ring: 120 100% 50%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+.glass-effect {
+  @apply backdrop-blur-md bg-opacity-70;
+}
+
+.dark .glass-effect {
+  @apply bg-card/60 border-border/50 shadow-xl;
+}
+
+/* sidebar and header refinements */
+.dark aside,
+.dark header {
+  @apply backdrop-blur-lg bg-card/80;
+}

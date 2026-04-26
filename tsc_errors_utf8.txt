@@ -1,0 +1,28 @@
+﻿client/src/pages/Identify.tsx(91,20): error TS2322: Type '{ children: Element[]; className: string; refKey?: string | undefined; defaultChecked?: boolean | undefined; defaultValue?: string | number | readonly string[] | undefined; suppressContentEditableWarning?: boolean | undefined; ... 262 more ...; exit: { ...; }; }' is not assignable to type 'Omit<HTMLMotionProps<"div">, "ref">'.
+  Types of property 'onDrag' are incompatible.
+    Type 'DragEventHandler<HTMLElement> | undefined' is not assignable to type '((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => void) | undefined'.
+      Type 'DragEventHandler<HTMLElement>' is not assignable to type '(event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => void'.
+        Types of parameters 'event' and 'event' are incompatible.
+          Type 'MouseEvent | TouchEvent | PointerEvent' is not assignable to type 'DragEvent<HTMLElement>'.
+            Type 'MouseEvent' is missing the following properties from type 'DragEvent<HTMLElement>': dataTransfer, nativeEvent, isDefaultPrevented, isPropagationStopped, persist
+server/replit_integrations/audio/routes.ts(23,27): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+server/replit_integrations/audio/routes.ts(51,27): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+server/replit_integrations/audio/routes.ts(65,39): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+server/replit_integrations/batch/utils.ts(110,30): error TS2339: Property 'AbortError' does not exist on type '<T>(input: (attemptNumber: number) => T | PromiseLike<T>, options?: Options | undefined) => Promise<T>'.
+server/replit_integrations/batch/utils.ts(159,32): error TS2339: Property 'AbortError' does not exist on type '<T>(input: (attemptNumber: number) => T | PromiseLike<T>, options?: Options | undefined) => Promise<T>'.
+server/replit_integrations/chat/routes.ts(25,27): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+server/replit_integrations/chat/routes.ts(53,27): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+server/replit_integrations/chat/routes.ts(65,39): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+server/replit_integrations/chat/storage.ts(2,10): error TS2305: Module '"@shared/schema"' has no exported member 'conversations'.
+server/replit_integrations/chat/storage.ts(2,25): error TS2305: Module '"@shared/schema"' has no exported member 'messages'.
+server/replit_integrations/image/client.ts(23,18): error TS18048: 'response.data' is possibly 'undefined'.
+server/replit_integrations/image/client.ts(50,23): error TS18048: 'response.data' is possibly 'undefined'.
+server/replit_integrations/image/routes.ts(20,25): error TS18048: 'response.data' is possibly 'undefined'.
+server/routes/payment.ts(136,34): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
