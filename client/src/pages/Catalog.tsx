@@ -638,7 +638,7 @@ export default function Catalog() {
              animate={{ opacity: 1 }}
              transition={{ delay: 0.2 }}
              className={viewMode === 'grid'
-               ? "grid grid-cols-2 gap-3 sm:gap-4 md:gap-6 md:grid-cols-3 lg:grid-cols-4"
+               ? "grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6 md:grid-cols-3 lg:grid-cols-4"
                : "space-y-4"
              }
            >
