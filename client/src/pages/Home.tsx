@@ -449,7 +449,7 @@ export default function Home() {
         setLocationLabel("Minha localização atual");
       },
       () => {
-        setLocationLabel("Localização padrão (Luanda)");
+        setLocationLabel("Localização base (Luanda)");
       }
     );
   };

@@ -45,7 +45,7 @@ export function registerAIRoutes(app: Express) {
             console.log("[AI Proxy] Node version:", process.version);
             console.log("[AI Proxy] Native fetch available:", hasNativeFetch);
 
-            const SYSTEM_PROMPT = `És um assistente de saúde profissional e empático para uma plataforma de farmácia digital chamada Brócolis. Ajuda os utilizadores com: Informações sobre medicamentos e dosagens; Identificação de sintomas (sem diagnosticar); Orientação sobre consultas médicas; Análise de receitas médicas (quando enviadas por imagem); Recomendações de produtos do catálogo.
+            const SYSTEM_PROMPT = `És um assistente de saúde profissional e empático para uma plataforma de farmácia digital chamada Brócolis. Ajuda os utilizadores com: Informações sobre medicamentos e dosagens; Identificação de sintomas (sem diagnosticar); Orientação sobre consultas médicas; Análise de receitas médicas (quando enviadas por imagem), garantindo a identificação de todos os itens para encomenda mesmo que estejam em falta; Recomendações de produtos do catálogo.
 
 IMPORTANTE - Formatação de medicamentos:
 Quando recomendares ou mencionares nomes de medicamentos, envolve SEMPRE o nome do medicamento com duplos colchetes assim: [[NomeMedicamento]]
@@ -58,6 +58,7 @@ Exemplos:
 Regras:
 - Usa [[ ]] APENAS para nomes de medicamentos concretos
 - Não uses [[ ]] para sintomas, doenças ou instruções gerais
+- Identifica TODOS os medicamentos encontrados em receitas (OCR) com [[ ]], permitindo que o utilizador os adicione ao carrinho para "Encomenda Especial" ou "Reserva" caso não estejam em stock imediato.
 - Mantém o nome exacto como apareceria numa farmácia
 - Continua a responder em português de Angola
 

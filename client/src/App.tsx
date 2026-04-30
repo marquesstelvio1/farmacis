@@ -1,5 +1,5 @@
-import React from "react";
-import { Switch, Route } from "wouter";
+import { useState, useEffect } from "react";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -34,10 +34,23 @@ import { UserProvider } from "./UserContext";
 import PharmacyConfig from "@/pages/PharmacyConfig";
 
 interface RouterProps {
-  onLogout: () => void;
+  handleLogin: (userData?: any) => void;
+  handleShowRegister: () => void;
+  handleShowLogin: () => void;
 }
 
-function Router({ onLogout: _onLogout }: RouterProps) {
+function Router({ handleLogin, handleShowRegister, handleShowLogin }: RouterProps) {
+  const [, setLocation] = useLocation();
+
+  // Check for redirect to checkout flag on mount
+  useEffect(() => {
+    const shouldRedirect = localStorage.getItem("redirectToCheckoutAfterLogin");
+    if (shouldRedirect === "true") {
+      localStorage.removeItem("redirectToCheckoutAfterLogin");
+      setLocation("/checkout");
+    }
+  }, [setLocation]);
+
   return ( // Mantém o Layout aqui, pois o App.tsx é o ponto de entrada principal
     <Layout>
       <Switch>
@@ -59,12 +72,19 @@ function Router({ onLogout: _onLogout }: RouterProps) {
         <Route path="/checkout" component={Checkout} />
         <Route path="/pedidos" component={UserOrders} />
         <Route path="/configuracoes" component={AccountSettings} />
-        <Route path="/menu-de-configuracoes" component={MenuConfiguracoes} />
+        <Route path="/menu-de-configuracoes">
+          <MenuConfiguracoes />
+        </Route>
         <Route path="/farmacia/config" component={PharmacyConfig} />
         <Route path="/emergencia" component={EmergencyContacts} />
         <Route path="/info-medica" component={MedicalInfo} />
         <Route path="/suporte" component={Suporte} />
-        <Route path="/login" component={LandingPage} />
+        <Route path="/login">
+          <Login onLogin={handleLogin} onShowRegister={handleShowRegister} />
+        </Route>
+        <Route path="/register">
+          <Register onRegister={handleShowLogin} />
+        </Route>
         <Route component={NotFound} />
       </Switch>
     </Layout>
@@ -72,63 +92,42 @@ function Router({ onLogout: _onLogout }: RouterProps) {
 }
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = React.useState(() => {
-    const saved = typeof window !== 'undefined' ? localStorage.getItem("isAuthenticated") : null;
-    return saved === "true";
-  });
-  const [showRegister, setShowRegister] = React.useState(false);
-
-  React.useEffect(() => {
-    if (isAuthenticated) {
-      setTimeout(() => {
-        window.dispatchEvent(new Event("storage"));
-        window.dispatchEvent(new Event("user-updated"));
-      }, 100);
-    }
-  }, [isAuthenticated]);
-
-  // Mova chamadas de hooks que dependem de contexto para dentro dos componentes filhos (como Router)
-  // ou garanta que o Provider esteja no main.tsx
+  const [, setLocation] = useLocation();
 
   const handleLogin = (userData?: any) => {
-    setIsAuthenticated(true);
     localStorage.setItem("isAuthenticated", "true");
     if (userData) {
       localStorage.setItem("user", JSON.stringify(userData));
       window.dispatchEvent(new Event("storage"));
       window.dispatchEvent(new Event("user-updated"));
     }
-  };
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("user");
-    window.dispatchEvent(new Event("storage"));
-    window.dispatchEvent(new Event("user-updated"));
+    const shouldRedirect = localStorage.getItem("redirectToCheckoutAfterLogin");
+    if (shouldRedirect === "true") {
+      localStorage.removeItem("redirectToCheckoutAfterLogin");
+      setLocation("/checkout");
+    } else {
+      setLocation("/");
+    }
   };
 
   const handleShowRegister = () => {
-    setShowRegister(true);
+    setLocation("/register");
   };
 
   const handleShowLogin = () => {
-    setShowRegister(false);
+    setLocation("/login");
   };
 
   return (
     <QueryClientProvider client={queryClient}>
       <UserProvider> {/* Envolve toda a aplicação com o UserProvider */}
         <TooltipProvider>
-          {isAuthenticated ? (
-            <Router
-              onLogout={handleLogout}
-            />
-          ) : showRegister ? (
-            <Register onRegister={handleShowLogin} />
-          ) : (
-            <Login onLogin={handleLogin} onShowRegister={handleShowRegister} />
-          )}
+          <Router
+            handleLogin={handleLogin}
+            handleShowRegister={handleShowRegister}
+            handleShowLogin={handleShowLogin}
+          />
           <Toaster />
         </TooltipProvider>
       </UserProvider>

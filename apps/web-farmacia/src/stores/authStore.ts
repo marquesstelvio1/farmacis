@@ -1,7 +1,9 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-const API_URL = import.meta.env.VITE_API_URL || ''
+// Using relative paths allows the Vite proxy (configured in vite.config.ts) 
+// to handle requests, which avoids connection errors and CORS issues in development.
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 interface PharmacyUser {
   id: number
@@ -26,7 +28,8 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       login: async (email: string, password: string) => {
         try {
-          const response = await fetch(`${API_URL}/api/pharmacy/admin/login`, {
+          // Use relative path to leverage the Vite proxy
+          const response = await fetch(`/api/pharmacy/admin/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password }),

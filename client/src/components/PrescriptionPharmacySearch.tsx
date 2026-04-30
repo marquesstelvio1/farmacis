@@ -20,7 +20,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useCart } from "@/hooks/use-cart";
 import { Input } from "@/components/ui/input";
+import type { ProductResponse } from "@shared/routes";
 
 interface Medication {
   nome: string;
@@ -35,6 +37,8 @@ interface PharmacyProduct {
   productId: number;
   productName: string;
   dosage: string;
+  precoPortugues?: number;
+  precoIndiano?: number;
   price: number;
   stock: number;
   quantity: number;
@@ -62,7 +66,7 @@ interface PharmacyResult {
 interface PrescriptionSearchProps {
   medications: Medication[];
   onBack: () => void;
-  onOrder: (selectedPharmacies: { pharmacyId: number; products: number[] }[]) => void;
+  onOrder: (selectedPharmacies: { pharmacyId: number; products: { productId: number; origin: string }[] }[]) => void;
 }
 
 export function PrescriptionPharmacySearch({ medications, onBack, onOrder }: PrescriptionSearchProps) {
@@ -73,7 +77,60 @@ export function PrescriptionPharmacySearch({ medications, onBack, onOrder }: Pre
   const [expandedPharmacies, setExpandedPharmacies] = useState<Set<number>>(new Set());
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [brandFilter, setBrandFilter] = useState<string>('');
+  const [selectedOrigins, setSelectedOrigins] = useState<Map<string, "portugues" | "indiano" | "default">>(new Map());
   const { toast } = useToast();
+  const addItem = useCart((state) => state.addItem);
+  const cartItems = useCart((state) => state.items);
+
+  const isProductInCart = (productId: number) => cartItems.some((item) => item.product.id === productId);
+
+  const buildCartProduct = (
+    pharmacy: PharmacyResult,
+    product: PharmacyProduct,
+    origin: "default" | "portugues" | "indiano"
+  ): ProductResponse => {
+    const priceValue = origin === 'portugues'
+      ? product.precoPortugues ?? product.price
+      : origin === 'indiano'
+        ? product.precoIndiano ?? product.price
+        : product.price;
+
+    return {
+      id: product.productId,
+      name: product.productName,
+      description: product.productName,
+      price: String(priceValue),
+      precoPortugues: product.precoPortugues != null ? String(product.precoPortugues) : null,
+      precoIndiano: product.precoIndiano != null ? String(product.precoIndiano) : null,
+      imageUrl: '',
+      diseases: [],
+      activeIngredient: '',
+      category: 'medicamento',
+      brand: '',
+      dosage: product.dosage,
+      prescriptionRequired: false,
+      stock: product.stock,
+      pharmacyId: pharmacy.pharmacyId,
+      status: 'active',
+      origin: origin === 'default' ? null : origin,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      pharmacyName: pharmacy.pharmacyName,
+      pharmacyLogo: pharmacy.pharmacyLogo ?? null,
+    } as ProductResponse;
+  };
+
+  const handleAddProductToCart = (
+    pharmacy: PharmacyResult,
+    product: PharmacyProduct,
+    origin: "default" | "portugues" | "indiano"
+  ) => {
+    addItem(buildCartProduct(pharmacy, product, origin));
+    toast({
+      title: "Adicionado ao carrinho",
+      description: `${product.productName} adicionado ao carrinho.`,
+    });
+  };
 
   // Get user location
   useEffect(() => {
@@ -162,6 +219,37 @@ export function PrescriptionPharmacySearch({ medications, onBack, onOrder }: Pre
     });
   };
 
+  const toggleProductSelection = (pharmacyId: number, productId: number) => {
+    setSelectedPharmacies(prev => {
+      const next = new Map(prev);
+      const selected = next.get(pharmacyId) ?? [];
+      const productIndex = selected.indexOf(productId);
+      const updated = [...selected];
+
+      if (productIndex >= 0) {
+        updated.splice(productIndex, 1);
+      } else {
+        updated.push(productId);
+      }
+
+      if (updated.length === 0) {
+        next.delete(pharmacyId);
+      } else {
+        next.set(pharmacyId, updated);
+      }
+
+      return next;
+    });
+  };
+
+  const updateSelectedOrigin = (originKey: string, origin: "portugues" | "indiano" | "default") => {
+    setSelectedOrigins(prev => {
+      const next = new Map(prev);
+      next.set(originKey, origin);
+      return next;
+    });
+  };
+
   // Calculate grand total from selected pharmacies
   const calculateGrandTotal = () => {
     let total = 0;
@@ -213,11 +301,23 @@ export function PrescriptionPharmacySearch({ medications, onBack, onOrder }: Pre
   };
 
   const handleOrder = () => {
-    const orderData: { pharmacyId: number; products: number[] }[] = [];
+    const orderData: { pharmacyId: number; products: { productId: number; origin: string }[] }[] = [];
     selectedPharmacies.forEach((productIds, pharmacyId) => {
-      orderData.push({ pharmacyId, products: productIds });
+      const pharmacy = results.find(p => p.pharmacyId === pharmacyId);
+      if (pharmacy) {
+        const productsWithOrigin = pharmacy.products
+          .filter(p => productIds.includes(p.productId))
+          .map(p => ({
+            productId: p.productId,
+            origin: selectedOrigins.get(`${pharmacyId}-${p.productId}`) || "default"
+          }));
+        orderData.push({ pharmacyId, products: productsWithOrigin });
+      }
     });
-    onOrder(orderData);
+    
+    if (orderData.length > 0) {
+      onOrder(orderData);
+    }
   };
 
   const allMedicationsCovered = checkAllMedicationsCovered();
@@ -474,11 +574,25 @@ export function PrescriptionPharmacySearch({ medications, onBack, onOrder }: Pre
                           Produtos Disponíveis ({pharmacy.products.length})
                         </h4>
                         <div className="space-y-2">
-                          {pharmacy.products.map((product) => (
+                          {pharmacy.products.map((product) => {
+                            const hasDualOrigin = product.precoPortugues || product.precoIndiano;
+                            const originKey = `${pharmacy.pharmacyId}-${product.productId}`;
+                            const currentOrigin = selectedOrigins.get(originKey) || "default";
+                            const selectedProductIds = selectedPharmacies.get(pharmacy.pharmacyId) ?? [];
+                            const isProductSelected = selectedProductIds.includes(product.productId);
+                            
+                            return (
                             <div
                               key={product.productId}
-                              className="flex items-center justify-between p-3 bg-white rounded-lg border gap-3"
+                              className={`flex items-center justify-between p-3 rounded-lg border gap-3 transition cursor-pointer hover:shadow-sm ${isProductSelected ? 'bg-green-50 border-green-200' : 'bg-white border-slate-200'} ${isSelected ? 'opacity-100' : 'opacity-90'}`}
                             >
+                              <button
+                                type="button"
+                                onClick={() => toggleProductSelection(pharmacy.pharmacyId, product.productId)}
+                                className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${isProductSelected ? 'bg-green-500 border-green-500' : 'border-slate-300 hover:border-green-400'}`}
+                              >
+                                {isProductSelected && <Check className="w-4 h-4 text-white" />}
+                              </button>
                               <div className="flex-1 min-w-0">
                                 <p className="font-medium text-sm text-slate-800 truncate">
                                   {product.productName}
@@ -497,22 +611,63 @@ export function PrescriptionPharmacySearch({ medications, onBack, onOrder }: Pre
                                   )}
                                 </div>
                               </div>
-                              <div className="text-right flex-shrink-0">
-                                <p className="font-semibold text-slate-800">
-                                  {product.totalPrice.toLocaleString('pt-AO', {
-                                    style: 'currency',
-                                    currency: 'AOA'
-                                  })}
-                                </p>
-                                <p className="text-xs text-slate-500">
-                                  {product.price.toLocaleString('pt-AO', {
-                                    style: 'currency',
-                                    currency: 'AOA'
-                                  })} unit
-                                </p>
+                              <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                                {hasDualOrigin && isSelected && (
+                                  <div className="flex bg-slate-100 p-0.5 rounded-full border border-slate-200">
+                                    {product.precoPortugues && (
+                                      <button
+                                        onClick={() => updateSelectedOrigin(originKey, "portugues")}
+                                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-all ${currentOrigin === "portugues" ? "bg-blue-500 text-white shadow-sm" : "text-slate-500"}`}
+                                      >
+                                        🇵🇹 PT
+                                      </button>
+                                    )}
+                                    {product.precoIndiano && (
+                                      <button
+                                        onClick={() => updateSelectedOrigin(originKey, "indiano")}
+                                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-all ${currentOrigin === "indiano" ? "bg-orange-500 text-white shadow-sm" : "text-slate-500"}`}
+                                      >
+                                        🇮🇳 IN
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                                <div className="text-right">
+                                  <p className="font-bold text-slate-800 text-sm">
+                                    {(() => {
+                                      let price = product.price;
+                                      if (currentOrigin === "portugues") price = product.precoPortugues || price;
+                                      if (currentOrigin === "indiano") price = product.precoIndiano || price;
+                                      return (price * product.quantity).toLocaleString('pt-AO', {
+                                        style: 'currency',
+                                        currency: 'AOA'
+                                      });
+                                    })()}
+                                  </p>
+                                  <p className="text-[10px] text-slate-500">
+                                    {(() => {
+                                      let price = product.price;
+                                      if (currentOrigin === "portugues") price = product.precoPortugues || price;
+                                      if (currentOrigin === "indiano") price = product.precoIndiano || price;
+                                      return price.toLocaleString('pt-AO', {
+                                        style: 'currency',
+                                        currency: 'AOA'
+                                      });
+                                    })()} /un
+                                  </p>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant={isProductInCart(product.productId) ? 'outline' : 'default'}
+                                  onClick={() => handleAddProductToCart(pharmacy, product, currentOrigin)}
+                                  disabled={product.stock === 0}
+                                >
+                                  {isProductInCart(product.productId) ? 'No carrinho' : 'Adicionar'}
+                                </Button>
                               </div>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     </motion.div>
@@ -524,39 +679,6 @@ export function PrescriptionPharmacySearch({ medications, onBack, onOrder }: Pre
         </div>
       )}
 
-      {/* Bottom Action Bar */}
-      {selectedCount > 0 && (
-        <motion.div
-          initial={{ y: 100 }}
-          animate={{ y: 0 }}
-          className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t shadow-lg"
-        >
-          <div className="max-w-2xl mx-auto flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">
-                {selectedCount} farmácia(s) selecionada(s)
-              </p>
-              <p className="text-2xl font-bold text-slate-800">
-                {calculateGrandTotal().toLocaleString('pt-AO', {
-                  style: 'currency',
-                  currency: 'AOA'
-                })}
-              </p>
-            </div>
-            <Button
-              onClick={handleOrder}
-              disabled={!allMedicationsCovered}
-              className="bg-green-600 hover:bg-green-700 text-white px-6"
-            >
-              <ShoppingCart className="w-5 h-5 mr-2" />
-              {allMedicationsCovered ? 'Fazer Pedido' : 'Falta Medicamentos'}
-            </Button>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Spacer for bottom bar */}
-      {selectedCount > 0 && <div className="h-24" />}
     </div>
   );
 }

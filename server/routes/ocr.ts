@@ -29,10 +29,19 @@ export function registerOCRRoutes(app: express.Application) {
   // Upload image and extract medications
   app.post("/api/ocr/extract", upload.single("image"), async (req: Request, res: Response) => {
     try {
+      const apiKey = process.env.VITE_AI_API_KEY || process.env.VITE_SPLIT_SEARCH_AI_KEY || process.env.AI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ 
+          error: "AI API Key not configured on server. Please check your .env file." 
+        });
+      }
+
       if (!req.file) {
+        console.error("[OCR] No file received in request");
         return res.status(400).json({ error: "Nenhuma imagem enviada" });
       }
 
+      console.log(`[OCR] Processing image: ${req.file.filename}, size: ${req.file.size} bytes`);
       const result = await processImage(req.file.path);
 
       // Clean up uploaded file

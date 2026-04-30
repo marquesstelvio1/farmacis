@@ -48,6 +48,12 @@ interface Product {
   dosage?: string
   prescriptionRequired?: boolean
   origin?: string
+  precoCaixa?: string
+  precoCaixaTipo?: 'ind' | 'por'
+  precoLamina?: string
+  precoLaminaTipo?: 'ind' | 'por'
+  quantidadeComprimidos?: string
+  quantidadeLaminas?: string
 }
 
 export default function Products() {
@@ -67,11 +73,16 @@ export default function Products() {
     origin: 'default',
     diseasesInput: '',
     prescriptionRequired: false,
-    imageUrl: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=60'
+    imageUrl: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=60',
+    precoCaixa: '',
+    precoCaixaTipo: 'ind' as 'ind' | 'por',
+    precoLamina: '',
+    precoLaminaTipo: 'ind' as 'ind' | 'por',
+    quantidadeComprimidos: '',
+    quantidadeLaminas: '',
   }
 
   const [newProduct, setNewProduct] = useState(resetForm)
-  const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { user } = useAuthStore()
@@ -88,7 +99,6 @@ export default function Products() {
         toast.error('Apenas imagens são permitidas.')
         return
       }
-      setSelectedImage(file)
       const previewUrl = URL.createObjectURL(file)
       setImagePreview(previewUrl)
       // Upload automático
@@ -150,6 +160,12 @@ export default function Products() {
         precoIndiano: formData.priceIndian || null,
         origin: 'default',
         isMainVariant: true,
+        precoCaixa: formData.precoCaixa || null,
+        precoCaixaTipo: formData.precoCaixaTipo,
+        precoLamina: formData.precoLamina || null,
+        precoLaminaTipo: formData.precoLaminaTipo,
+        quantidadeComprimidos: formData.quantidadeComprimidos || null,
+        quantidadeLaminas: formData.quantidadeLaminas || null,
       };
 
       const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/pharmacy/${user?.pharmacyId}/products`, {
@@ -188,15 +204,30 @@ export default function Products() {
         throw new Error('Pelo menos um preço deve ser preenchido (Padrão, Português ou Indiano)');
       }
 
+      const quantidadeLaminas = data.formData.quantidadeLaminas;
+      const comprimidosPorLamina = data.formData.comprimidosPorLamina;
+      const totalComprimidos = data.formData.quantidadeComprimidos;
       const productData = {
         ...data.formData,
-        diseases: data.formData.diseasesInput.split(',').map((s: string) => s.trim()).filter(Boolean),
+        diseases: data.formData.diseasesInput.split(',').map((s) => s.trim()).filter(Boolean),
+        // ✅ price mantém o fallback correto antes de apagar os campos temporários
+        price: data.formData.price || data.formData.pricePortuguese || data.formData.priceIndian,
         precoBase: data.formData.price || null,
         precoPortugues: data.formData.pricePortuguese || null,
         precoIndiano: data.formData.priceIndian || null,
+        quantidadeLaminas: quantidadeLaminas || null,
+        comprimidosPorLamina: comprimidosPorLamina || null,
+        quantidadeComprimidos: totalComprimidos || null,
+        precoLamina: data.formData.precoLamina || null,
+        precoLaminaPortugues: data.formData.precoLaminaPortugues || null,
+        precoLaminaIndiano: data.formData.precoLaminaIndiano || null,
+        // stock: garantir envio (backend pode exigir)
+        stock: editingProduct?.stock ?? 100,
+        // origin: garantir envio correto
+        origin: (editingProduct?.origin ?? data.formData.origin) || 'default',
       };
+      // Apaga apenas os campos temporários do form (não o price!)
       delete productData.diseasesInput;
-      delete productData.price;
       delete productData.pricePortuguese;
       delete productData.priceIndian;
 
@@ -850,7 +881,13 @@ export default function Products() {
                       origin: (product as any).origin || 'default',
                       diseasesInput: (product.diseases || []).join(', '),
                       prescriptionRequired: (product as any).prescriptionRequired || false,
-                      imageUrl: product.imageUrl || ''
+                      imageUrl: product.imageUrl || '',
+                      precoCaixa: product.precoCaixa || '',
+                      precoCaixaTipo: product.precoCaixaTipo || 'individual',
+                      precoLamina: product.precoLamina || '',
+                      precoLaminaTipo: product.precoLaminaTipo || 'individual',
+                      quantidadeComprimidos: product.quantidadeComprimidos || '',
+                      quantidadeLaminas: product.quantidadeLaminas || '',
                     });
                   }}
                   className="flex-1 flex items-center justify-center gap-2 py-2 px-4 border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg transition-colors"

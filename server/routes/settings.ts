@@ -31,7 +31,7 @@ export function registerSettingsRoutes(app: express.Application) {
       const result = await db
         .select()
         .from(systemSettings)
-        .where(sql`key = ${key}`)
+        .where(eq(systemSettings.key, key))
         .limit(1);
       
       if (result.length === 0) {
@@ -60,7 +60,7 @@ export function registerSettingsRoutes(app: express.Application) {
       const result = await db
         .update(systemSettings)
         .set({ value: String(value), updatedAt: new Date() })
-        .where(sql`key = ${key}`)
+        .where(eq(systemSettings.key, key))
         .returning();
 
       let setting = result[0];
@@ -69,7 +69,7 @@ export function registerSettingsRoutes(app: express.Application) {
           .insert(systemSettings)
           .values({
             key,
-            value: String(value),
+            value: String(value || ""),
             description: `Configuração ${key}`,
           })
           .returning();
@@ -89,7 +89,7 @@ export function registerSettingsRoutes(app: express.Application) {
       const result = await db
         .select()
         .from(systemSettings)
-        .where(sql`key = 'platform_fee_percent'`)
+        .where(eq(systemSettings.key, 'platform_fee_percent'))
         .limit(1);
       
       const setting = result.length > 0 ? result[0] : null;

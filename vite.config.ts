@@ -28,6 +28,7 @@ export default defineConfig({
       "react": path.resolve(import.meta.dirname, "node_modules/react"),
       "react-dom": path.resolve(import.meta.dirname, "node_modules/react-dom"),
       "react/jsx-runtime": path.resolve(import.meta.dirname, "node_modules/react/jsx-runtime"),
+      "react/jsx-dev-runtime": path.resolve(import.meta.dirname, "node_modules/react/jsx-dev-runtime"),
     },
   },
   root: path.resolve(import.meta.dirname, "client"),
@@ -47,9 +48,11 @@ export default defineConfig({
         ws: true,
         timeout: 30000,
         proxyTimeout: 30000,
-        onError: (err, req, res) => {
-          res.writeHead(503, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Backend server is not running' }));
+        configure: (proxy) => {
+          proxy.on('error', (err: Error, _req: any, res: any) => {
+            res.writeHead?.(503, { 'Content-Type': 'application/json' });
+            res.end?.(JSON.stringify({ error: 'Backend server is not running', details: err.message }));
+          });
         },
       },
       '/uploads': {

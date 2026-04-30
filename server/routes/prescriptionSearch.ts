@@ -11,6 +11,12 @@ interface Medication {
   quantidade?: string;
   periodo_consumo?: string;
   frequencia?: string;
+  preco_caixa?: string;
+  preco_caixa_tipo?: 'individual' | 'por';
+  preco_lamina?: string;
+  preco_lamina_tipo?: 'individual' | 'por';
+  quantidade_comprimidos?: string;
+  quantidade_laminas?: string;
 }
 
 // Interface para resultado de busca
@@ -33,6 +39,12 @@ interface PharmacyProductResult {
   quantity: number; // quantidade necessária da receita
   totalPrice: number; // preço * quantidade
   distance?: number;
+  precoPortugues?: number;
+  precoIndiano?: number;
+  precoLamina?: number;
+  precoLaminaPortugues?: number;
+  precoLaminaIndiano?: number;
+  comprimidosPorLamina?: number;
 }
 
 // Interface para agrupamento por farmácia
@@ -59,6 +71,20 @@ function parseQuantity(quantidadeStr?: string): number {
   if (!quantidadeStr) return 1;
   const match = quantidadeStr.match(/(\d+)/);
   return match ? parseInt(match[1], 10) : 1;
+}
+
+function toNumber(value: unknown, fallback = 0): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+  return fallback;
+}
+
+function toNumberOrUndefined(value: unknown): number | undefined {
+  const parsed = toNumber(value, NaN);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 // Calculate distance between two coordinates (Haversine formula)
@@ -96,16 +122,25 @@ async function searchProductsInPharmacies(
     const quantityNeeded = parseQuantity(med.quantidade);
 
     // Build search query - busca por nome, dosagem e marca
+    const nameConditions: any[] = [ilike(products.name, `%${med.nome || ""}%`)];
+    if (med.marca && med.marca.trim() !== "") {
+      nameConditions.push(ilike(products.brand, `%${med.marca}%`));
+    }
+
+    // Ensure we don't pass an empty array or undefined to or()
+    const brandNameFilter = nameConditions.length > 1 
+      ? or(...nameConditions) 
+      : nameConditions[0];
+
+    const dosageFilter = or(
+      ilike(products.dosage, `%${med.dosagem || ""}%`),
+      sql`COALESCE(${products.dosage}, '') = ''`
+    );
+
     const searchConditions = [
-      or(
-        ilike(products.name, `%${med.nome}%`),
-        med.marca ? ilike(products.brand, `%${med.marca}%`) : undefined
-      ),
-      or(
-        ilike(products.dosage, `%${med.dosagem}%`),
-        sql`COALESCE(${products.dosage}, '') = ''`
-      )
-    ].filter(Boolean);
+      brandNameFilter,
+      dosageFilter
+    ];
 
     const productResults = await db
       .select({
@@ -123,6 +158,13 @@ async function searchProductsInPharmacies(
         pharmacyLogo: pharmacies.logoUrl,
         pharmacyIban: pharmacies.iban,
         pharmacyMulticaixa: pharmacies.multicaixaExpress,
+        precoPortugues: products.precoPortugues,
+        precoIndiano: products.precoIndiano,
+        origin: products.origin,
+        precoLamina: products.precoLamina,
+        precoLaminaPortugues: products.precoLaminaPortugues,
+        precoLaminaIndiano: products.precoLaminaIndiano,
+        comprimidosPorLamina: products.comprimidosPorLamina,
       })
       .from(products)
       .innerJoin(pharmacies, eq(products.pharmacyId, pharmacies.id))
@@ -147,15 +189,18 @@ async function searchProductsInPharmacies(
       const rating = Number(ratingResult[0]?.averageRating || 0);
       const ratingCount = Number(ratingResult[0]?.ratingCount || 0);
 
+      const pharmacyLat = toNumberOrUndefined(prod.pharmacyLat);
+      const pharmacyLng = toNumberOrUndefined(prod.pharmacyLng);
+
       // Calculate distance if user location provided
       let distance: number | undefined;
-      if (userLat && userLng && prod.pharmacyLat && prod.pharmacyLng) {
-        distance = calculateDistance(
-          userLat,
-          userLng,
-          Number(prod.pharmacyLat),
-          Number(prod.pharmacyLng)
-        );
+      if (
+        userLat != null &&
+        userLng != null &&
+        pharmacyLat != null &&
+        pharmacyLng != null
+      ) {
+        distance = calculateDistance(userLat, userLng, pharmacyLat, pharmacyLng);
       }
 
       // Build payment methods list
@@ -164,13 +209,28 @@ async function searchProductsInPharmacies(
       if (prod.pharmacyMulticaixa) paymentMethods.push('multicaixa_express');
       paymentMethods.push('cash'); // Always available
 
+      const rawPrice = toNumber(prod.price, 0);
+      const precoPortugues = toNumberOrUndefined(prod.precoPortugues);
+      const precoIndiano = toNumberOrUndefined(prod.precoIndiano);
+      const precoLamina = toNumberOrUndefined(prod.precoLamina);
+      const precoLaminaPortugues = toNumberOrUndefined(prod.precoLaminaPortugues);
+      const precoLaminaIndiano = toNumberOrUndefined(prod.precoLaminaIndiano);
+      const comprimidosPorLamina = toNumber(prod.comprimidosPorLamina, 1);
+
+      let productPrice = rawPrice;
+      if (prod.origin === 'portugues' && precoPortugues != null) {
+        productPrice = precoPortugues;
+      } else if (prod.origin === 'indiano' && precoIndiano != null) {
+        productPrice = precoIndiano;
+      }
+
       results.push({
         pharmacyId: prod.pharmacyId!,
         pharmacyName: prod.pharmacyName!,
         pharmacyAddress: prod.pharmacyAddress!,
         pharmacyPhone: prod.pharmacyPhone!,
-        pharmacyLat: Number(prod.pharmacyLat),
-        pharmacyLng: Number(prod.pharmacyLng),
+        pharmacyLat: pharmacyLat ?? 0,
+        pharmacyLng: pharmacyLng ?? 0,
         pharmacyLogo: prod.pharmacyLogo || undefined,
         rating,
         ratingCount,
@@ -178,11 +238,17 @@ async function searchProductsInPharmacies(
         productId: prod.productId,
         productName: prod.productName,
         dosage: prod.dosage || med.dosagem,
-        price: Number(prod.price) || 0,
+        price: productPrice,
         stock: prod.stock || 0,
         quantity: quantityNeeded,
-        totalPrice: (Number(prod.price) || 0) * quantityNeeded,
+        totalPrice: productPrice * quantityNeeded,
         distance,
+        precoPortugues,
+        precoIndiano,
+        precoLamina,
+        precoLaminaPortugues,
+        precoLaminaIndiano,
+        comprimidosPorLamina,
       });
     }
   }
@@ -216,28 +282,29 @@ async function searchProductsInPharmacies(
   }
 
   // Check which pharmacies have all products and calculate totals
-  const medicationNames = medications.map(m => `${m.nome} ${m.dosagem}`.toLowerCase());
+  const medicationNames = medications.map((m) => `${m.nome} ${m.dosagem}`.toLowerCase());
+  const pharmacyGroupsArray = Array.from(pharmacyMap.values());
 
-  for (const group of pharmacyMap.values()) {
-    const foundProductNames = group.products.map(p =>
+  for (const group of pharmacyGroupsArray) {
+    const foundProductNames = group.products.map((p: PharmacyProductResult) =>
       `${p.productName} ${p.dosage}`.toLowerCase()
     );
 
-    group.missingProducts = medicationNames.filter(medName =>
-      !foundProductNames.some(foundName =>
+    group.missingProducts = medicationNames.filter((medName: string) =>
+      !foundProductNames.some((foundName: string) =>
         foundName.includes(medName.split(' ')[0].toLowerCase())
       )
     );
 
     group.hasAllProducts = group.missingProducts.length === 0;
-    group.totalPrice = group.products.reduce((sum, p) => sum + p.totalPrice, 0);
+    group.totalPrice = group.products.reduce((sum: number, p: PharmacyProductResult) => sum + p.totalPrice, 0);
   }
 
   // Convert to array and apply filters
   let pharmacyGroups = Array.from(pharmacyMap.values());
 
   // Filter by max distance
-  if (filters?.maxDistance) {
+  if (filters?.maxDistance != null) {
     pharmacyGroups = pharmacyGroups.filter(p =>
       !p.distance || p.distance <= filters.maxDistance!
     );
@@ -278,15 +345,46 @@ export function registerPrescriptionSearchRoutes(app: express.Application) {
         paymentMethod
       } = req.body;
 
-      if (!medications || !Array.isArray(medications) || medications.length === 0) {
+      console.log("[Prescription Search] Request body:", JSON.stringify(req.body, null, 2));
+
+      if (!medications || !Array.isArray(medications)) {
         return res.status(400).json({ error: "Lista de medicamentos necessária" });
       }
 
+      const normalizedMedications = medications
+        .filter((med: any) => med && typeof med.nome === "string" && med.nome.trim().length > 0)
+        .map((med: any) => ({
+          nome: med.nome.trim(),
+          dosagem: typeof med.dosagem === "string" ? med.dosagem.trim() : "",
+          marca: typeof med.marca === "string" ? med.marca.trim() : undefined,
+          quantidade: typeof med.quantidade === "string" ? med.quantidade.trim() : undefined,
+          periodo_consumo: typeof med.periodo_consumo === "string" ? med.periodo_consumo.trim() : undefined,
+          frequencia: typeof med.frequencia === "string" ? med.frequencia.trim() : undefined,
+          preco_caixa: typeof med.preco_caixa === "string" ? med.preco_caixa.trim() : undefined,
+          preco_caixa_tipo: med.preco_caixa_tipo === "individual" || med.preco_caixa_tipo === "por" ? med.preco_caixa_tipo : undefined,
+          preco_lamina: typeof med.preco_lamina === "string" ? med.preco_lamina.trim() : undefined,
+          preco_lamina_tipo: med.preco_lamina_tipo === "individual" || med.preco_lamina_tipo === "por" ? med.preco_lamina_tipo : undefined,
+          quantidade_comprimidos: typeof med.quantidade_comprimidos === "string" ? med.quantidade_comprimidos.trim() : undefined,
+          quantidade_laminas: typeof med.quantidade_laminas === "string" ? med.quantidade_laminas.trim() : undefined,
+        }));
+
+      if (!normalizedMedications.length) {
+        return res.status(400).json({ error: "Lista de medicamentos inválida ou vazia" });
+      }
+
+      const parsedUserLat = toNumber(userLat, NaN);
+      const parsedUserLng = toNumber(userLng, NaN);
+      const parsedMaxDistance = maxDistance !== undefined ? toNumber(maxDistance, NaN) : undefined;
+
       const results = await searchProductsInPharmacies(
-        medications,
-        userLat,
-        userLng,
-        { sortBy, maxDistance, paymentMethod }
+        normalizedMedications,
+        Number.isFinite(parsedUserLat) ? parsedUserLat : undefined,
+        Number.isFinite(parsedUserLng) ? parsedUserLng : undefined,
+        {
+          sortBy,
+          maxDistance: Number.isFinite(parsedMaxDistance ?? NaN) ? parsedMaxDistance : undefined,
+          paymentMethod: typeof paymentMethod === "string" ? paymentMethod.trim() : undefined,
+        }
       );
 
       res.json({
@@ -296,12 +394,12 @@ export function registerPrescriptionSearchRoutes(app: express.Application) {
         summary: {
           totalPharmacies: results.length,
           pharmaciesWithAllProducts: results.filter(p => p.hasAllProducts).length,
-          bestPrice: results.length > 0 ? Math.min(...results.map(p => p.totalPrice)) : null,
-          bestRating: results.length > 0 ? Math.max(...results.map(p => p.rating)) : null,
+          bestPrice: results.length > 0 ? Math.min(...results.map(p => p.totalPrice || 0)) : null,
+          bestRating: results.length > 0 ? Math.max(...results.map(p => p.rating || 0)) : null,
         }
       });
     } catch (error: any) {
-      console.error("[Prescription Search] Error:", error);
+      console.error("[Prescription Search] FULL ERROR STACK:", error.stack);
       res.status(500).json({ error: error.message || "Erro na busca" });
     }
   });

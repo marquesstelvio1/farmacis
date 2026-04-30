@@ -6,6 +6,7 @@ import {
   X,
   Stethoscope,
   UserRound,
+  LogIn,
   ShieldCheck,
   BookOpen,
   Home,
@@ -32,7 +33,11 @@ export function Layout({ children }: LayoutProps) {
     { href: "/farmacias", label: "Farmácias", icon: Store },
     { href: "/", label: "Início", icon: Home },
     { href: "/explorar", label: "Explorar", icon: MapPin },
-    { href: "/menu-de-configuracoes", label: "Definições", icon: Settings },
+    {
+      href: user ? "/menu-de-configuracoes" : "/login",
+      label: user ? "Definições" : "Entrar",
+      icon: user ? Settings : LogIn,
+    },
   ];
 
   const quickServices = [
@@ -177,7 +182,7 @@ export function Layout({ children }: LayoutProps) {
                     : "text-[#607369] hover:bg-green-50"
                 }`}
               >
-                {link.href === "/menu-de-configuracoes" ? (
+                {link.href === "/menu-de-configuracoes" && user ? (
                   <div className={`w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-teal-500 flex items-center justify-center text-white font-bold text-xs shadow border-2 ${isActive ? "border-green-500" : "border-white"}`}>
                     {getUserInitials(user as any)}
                   </div>
@@ -213,7 +218,7 @@ export function Layout({ children }: LayoutProps) {
           : 'bg-transparent text-[#607369] hover:bg-green-50'
     }`}
   >
-    {link.href === "/menu-de-configuracoes" ? (
+    {link.href === "/menu-de-configuracoes" && user ? (
       <div className={`w-11 h-11 rounded-full bg-gradient-to-br from-green-500 to-teal-500 flex items-center justify-center text-white font-bold text-sm shadow-lg border-2 transition-all ${isActive ? 'border-green-500' : 'border-white'}`}>
         {getUserInitials(user as any)}
       </div>

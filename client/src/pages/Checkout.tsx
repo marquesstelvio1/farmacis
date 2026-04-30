@@ -86,7 +86,6 @@ export default function Checkout() {
     pharmacyIds.reduce((acc, id) => ({ ...acc, [Number(id)]: "delivery" }), {})
   );
 
-  const [scheduledTime, setScheduledTime] = useState("");
   const [additionalNotes, setAdditionalNotes] = useState("");
 
   // Cálculos Totais
@@ -114,6 +113,8 @@ export default function Checkout() {
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState("");
   const [showMapPicker, setShowMapPicker] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authTab, setAuthTab] = useState<"login" | "register">("login");
 
   // Check if selected method requires proof (info only, not required at checkout)
   const requiresPaymentProof = PAYMENT_METHODS_REQUIRING_PROOF.includes(selectedPaymentMethod);
@@ -202,6 +203,12 @@ export default function Checkout() {
     e.preventDefault();
     setError("");
 
+    // ⭐ NOVO: Verificar autenticação antes de prosseguir
+    if (!user?.id) {
+      setShowAuthModal(true);
+      return;
+    }
+
     if (!customerName.trim()) { setError("Nome do cliente é obrigatório"); return; }
     if (!customerPhone.trim() || !validateAngolanPhone(customerPhone)) {
       setError("Telefone de entrega inválido"); return;
@@ -256,7 +263,6 @@ export default function Checkout() {
             customerLat: customerLat ?? null,
             customerLng: customerLng ?? null,
             bookingType: method,
-            scheduledTime: scheduledTime ? new Date(scheduledTime).toISOString() : null,
             total: String(subtotal + fee),
             deliveryFee: String(fee),
             status: "pending",
@@ -315,6 +321,14 @@ export default function Checkout() {
               ? "As farmácias foram notificadas. O pagamento será habilitado individualmente conforme aceitação."
               : "O pagamento será habilitado após a farmácia confirmar seu pedido."}
           </p>
+          <div className="mt-4 text-left text-sm text-slate-200">
+            <p className="font-semibold">Pedidos enviados para:</p>
+            <ul className="list-disc list-inside space-y-1 mt-2 text-slate-200">
+              {Object.values(itemsByPharmacy).map((group: any) => (
+                <li key={group.id}>{group.name}</li>
+              ))}
+            </ul>
+          </div>
           <p className="text-slate-400 text-sm mt-4 italic">A redirigir para meus pedidos...</p>
         </motion.div>
       </div>
@@ -324,7 +338,7 @@ export default function Checkout() {
   return (
     <div className="min-h-screen bg-white p-4">
       <div className="max-w-4xl mx-auto py-8">
-        <Link href="/">
+        <Link href="/catalogo">
           <Button variant="ghost" className="text-slate-700 hover:bg-slate-100 mb-6">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
@@ -499,33 +513,18 @@ export default function Checkout() {
                   )}
                 </div>
 
-                {/* Agendamento e Notas */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                      <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      Agendamento (Opcional)
-                    </Label>
-                    <Input
-                      type="datetime-local"
-                      value={scheduledTime}
-                      onChange={(e) => setScheduledTime(e.target.value)}
-                      className="rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white focus:ring-blue-500/20"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                      <ClipboardList className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      Notas / Observações
-                    </Label>
-                    <Input
-                      placeholder="Ex: Tocar a campainha..."
-                      value={additionalNotes}
-                      onChange={(e) => setAdditionalNotes(e.target.value)}
-                      className="rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                    />
-                  </div>
+                {/* Notas / Observações */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                    <ClipboardList className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    Notas / Observações
+                  </Label>
+                  <Input
+                    placeholder="Ex: Tocar a campainha..."
+                    value={additionalNotes}
+                    onChange={(e) => setAdditionalNotes(e.target.value)}
+                    className="rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
                 </div>
 
                 {/* Payment Methods */}

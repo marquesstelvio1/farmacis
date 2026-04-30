@@ -122,6 +122,10 @@ export async function ensureProductColumns() {
       { name: 'origin', type: 'TEXT' },
       { name: 'parent_product_id', type: 'INTEGER' },
       { name: 'is_main_variant', type: 'BOOLEAN DEFAULT false' },
+      { name: 'preco_lamina', type: 'NUMERIC' },
+      { name: 'preco_lamina_portugues', type: 'NUMERIC' },
+      { name: 'preco_lamina_indiano', type: 'NUMERIC' },
+      { name: 'comprimidos_por_lamina', type: 'INTEGER' },
       { name: 'created_at', type: 'TIMESTAMP DEFAULT NOW()' },
       { name: 'updated_at', type: 'TIMESTAMP DEFAULT NOW()' }
     ];
@@ -188,6 +192,12 @@ export async function ensurePharmacyColumns() {
       ADD COLUMN IF NOT EXISTS account_name TEXT
     `);
     console.log('Column account_name ensured in pharmacies table');
+
+    await db.execute(sql`
+      ALTER TABLE pharmacies 
+      ADD COLUMN IF NOT EXISTS payment_methods TEXT[] DEFAULT '{}' NOT NULL
+    `);
+    console.log('Column payment_methods ensured in pharmacies table');
 
     console.log('Pharmacy columns ensured successfully');
   } catch (error) {

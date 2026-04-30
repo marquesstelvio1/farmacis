@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ interface LoginProps {
 }
 
 export default function Login({ onLogin, onShowRegister }: LoginProps) {
+  const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -156,6 +158,16 @@ export default function Login({ onLogin, onShowRegister }: LoginProps) {
               style={{ backgroundColor: '#b5f176', color: '#8bc14a' }}
             >
               Cadastre-se Agora!
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.removeItem("redirectToCheckoutAfterLogin");
+                setLocation("/checkout");
+              }}
+              className="w-full h-10 font-bold rounded-full border border-slate-200 bg-white text-slate-700 transition-all text-sm"
+            >
+              Continuar como visitante
             </button>
           </div>
         </div>

@@ -6,6 +6,16 @@ import { createServer } from "http";
 import session from "express-session";
 import passport from "passport";
 import MemoryStoreSession from "memorystore";
+import { 
+  ensureSystemSettingsTable, 
+  ensureProductColumns, 
+  ensurePharmacyColumns, 
+  ensureOrderColumns, 
+  ensureUserColumns,
+  ensurePrescriptionsTable,
+  ensureSettlementTables,
+  ensureProductDiscountTable
+} from "./utils/databaseUtils";
 
 const app = express();
 const httpServer = createServer(app);
@@ -106,6 +116,22 @@ app.use((req, res, next) => {
 });
 
 export const initPromise = (async () => {
+  // Initialize and verify database schema
+  try {
+    log("Initializing database schema...", "database");
+    await ensureSystemSettingsTable();
+    await ensureUserColumns();
+    await ensurePharmacyColumns();
+    await ensureProductColumns();
+    await ensureOrderColumns();
+    await ensurePrescriptionsTable();
+    await ensureSettlementTables();
+    await ensureProductDiscountTable();
+    log("Database schema verification completed", "database");
+  } catch (dbErr) {
+    console.error("Database initialization failed:", dbErr);
+  }
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {

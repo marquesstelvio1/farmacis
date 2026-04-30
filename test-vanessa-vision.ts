@@ -39,7 +39,7 @@ async function testVanessaVision() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         imageBase64,
-        prompt: "Identifica o que está nesta imagem médica ou farmacêutica."
+        prompt: "Identifica o que está nesta imagem médica ou farmacêutica. Se for uma receita, extrai todos os nomes de medicamentos usando a sintaxe [[Nome]] mesmo que pareçam estar em falta."
       }),
     });
 

@@ -4,17 +4,6 @@ import { pharmacies, orders, orderItems, users, pharmacyAdmins, adminUsers, syst
 import { eq, and, desc, or, sql, isNull } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
-// Middleware to check if user is admin
-function requireAdmin(req: Request, res: Response, next: Function) {
-  // In production, implement proper session/JWT validation
-  // For now, we'll check a custom header or session
-  const adminToken = req.headers['x-admin-token'];
-  if (!adminToken) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-  next();
-}
-
 export function registerAdminRoutes(app: Express) {
   console.log("[Admin] Registering Admin Routes...");
   // Admin login - checks admin_users table AND users table with role ADMIN/FARMACIA
@@ -943,27 +932,6 @@ export function registerAdminRoutes(app: Express) {
     } catch (error) {
       console.error("Fetch all settlements error:", error);
       res.status(500).json({ message: "Failed to fetch settlement history" });
-    }
-  });
-
-  // Get generic pharmacy details for admin
-  app.get("/api/admin/pharmacies/:id", async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      const result = await db
-        .select()
-        .from(pharmacies)
-        .where(eq(pharmacies.id, id))
-        .limit(1);
-
-      if (result.length === 0) {
-        return res.status(404).json({ message: "Pharmacy not found" });
-      }
-
-      res.json(result[0]);
-    } catch (error) {
-      console.error("Get pharmacy error:", error);
-      res.status(500).json({ message: "Failed to fetch pharmacy details" });
     }
   });
 }

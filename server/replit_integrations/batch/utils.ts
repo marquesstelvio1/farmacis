@@ -98,7 +98,8 @@ export async function batchProcess<T, R>(
     onProgress,
   } = options;
 
-  const AbortErrClass = (pRetry as any).AbortError || PRetryAbortError || CustomAbortError;
+  // @ts-ignore - Handle different p-retry versions where AbortError might be a property or a named export
+  const AbortErrClass = pRetry.AbortError || PRetryAbortError || CustomAbortError;
 
   const limit = pLimit(concurrency);
   let completed = 0;
@@ -163,8 +164,8 @@ export async function batchProcessWithSSE<T, R>(
           maxTimeout,
           factor: 2,
           onFailedAttempt: (error) => {
-            // @ts-ignore workaround for p-retry version differences in Replit
-            const AbortErr = (pRetry as any).AbortError || PRetryAbortError || CustomAbortError;
+            // @ts-ignore - Handle different p-retry versions where AbortError might be a property or a named export
+            const AbortErr = pRetry.AbortError || PRetryAbortError || CustomAbortError;
             if (!isRateLimitError(error)) {
               throw new AbortErr(error instanceof Error ? error : new Error(String(error)));
             }

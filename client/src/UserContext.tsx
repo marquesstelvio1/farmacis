@@ -11,9 +11,10 @@ interface User {
 interface UserContextType {
   user: User | null;
   setUser: (user: User | null) => void;
+  isLogged: () => boolean;
 }
 
-const UserContext = createContext<UserContextType>({ user: null, setUser: () => {} });
+const UserContext = createContext<UserContextType>({ user: null, setUser: () => {}, isLogged: () => false });
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<User | null>(() => {
@@ -31,6 +32,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("user");
     }
   };
+
+  const isLogged = () => user !== null;
 
   useEffect(() => {
     const syncUserFromStorage = () => {
@@ -52,7 +55,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <UserContext.Provider value={{ user, setUser }}>
+    <UserContext.Provider value={{ user, setUser, isLogged }}>
       {children}
     </UserContext.Provider>
   );

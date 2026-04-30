@@ -151,7 +151,7 @@ export function PrescriptionOCR() {
     setViewState('results');
   };
 
-  const handleOrder = (selectedPharmacies: { pharmacyId: number; products: number[] }[]) => {
+  const handleOrder = (selectedPharmacies: { pharmacyId: number; products: { productId: number; origin: string }[] }[]) => {
     // Navigate to checkout with selected pharmacies
     const orderData = {
       pharmacies: selectedPharmacies,

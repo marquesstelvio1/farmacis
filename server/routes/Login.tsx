@@ -20,7 +20,7 @@ export default function ProfessionalLogin() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/professionals/login", {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -29,6 +29,17 @@ export default function ProfessionalLogin() {
       const data = await response.json();
 
       if (response.ok) {
+        // Verifica se o usuário tem permissão para acessar o portal profissional
+        if (data.user.role === "CLIENTE") {
+          toast({
+            title: "Acesso Negado",
+            description: "Esta conta é de cliente. Use o portal adequado.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+
         localStorage.setItem("professionalSession", JSON.stringify(data.user));
         toast({
           title: "Bem-vindo!",

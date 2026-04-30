@@ -4,11 +4,13 @@ import { X, Trash2, ShoppingBag, Plus, Minus, FileText, CheckCircle2, Store, Upl
 import { useCart } from "@/hooks/use-cart";
 import { useSystemSettings } from "@/hooks/use-system-settings";
 import { useLocation } from "wouter";
+import { useUser } from "@/UserContext";
 
 export function CartDrawer() {
   const { isOpen, setIsOpen, items, removeItem, updateQuantity, totalPrice, totalItems, clearCart, getItemsRequiringPrescription, prescriptions, addPrescription, removePrescription, hasAllPrescriptions } = useCart();
   const { settings, fetchSettings } = useSystemSettings();
   const [, setLocation] = useLocation();
+  const { user, isLogged } = useUser();
   const [editingPrescriptionFor, setEditingPrescriptionFor] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -36,6 +38,18 @@ export function CartDrawer() {
       alert("Por favor, envie a receita médica para os produtos que a requerem.");
       return;
     }
+    
+    // Check if user is authenticated
+    if (!isLogged()) {
+      // Mark that user should be redirected to checkout after login
+      localStorage.setItem("redirectToCheckoutAfterLogin", "true");
+      setIsOpen(false);
+      setTimeout(() => {
+        setLocation("/login");
+      }, 200);
+      return;
+    }
+    
     setIsOpen(false);
     setTimeout(() => {
       setLocation("/checkout");

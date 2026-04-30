@@ -175,10 +175,11 @@ export function registerAuthRoutes(app: Express) {
       const isDevelopment = process.env.NODE_ENV === "development" || !process.env.EMAIL_USER;
 
       // Create user
+      const { confirmPassword, password, email: _, ...rest } = validatedData;
       const result = await db
         .insert(users)
         .values({
-          name: validatedData.name,
+          ...rest,
           email: normalizedEmail,
           password: hashedPassword,
           verificationToken: isDevelopment ? null : verificationToken,
@@ -292,6 +293,7 @@ export function registerAuthRoutes(app: Express) {
             .update(users)
             .set({ emailVerified: true })
             .where(eq(users.id, user.id));
+          user.emailVerified = true;
         } else {
           return res.status(401).json({
             message: "Por favor, verifique seu email antes de fazer login",
@@ -301,6 +303,9 @@ export function registerAuthRoutes(app: Express) {
 
       // Create session (in production, use JWT or session store)
       const { password, ...userWithoutPassword } = user;
+
+      // Se este for o login profissional, podemos validar o role aqui no backend também
+      // mas deixaremos a rota genérica e validamos no componente específico
 
       res.json({
         message: "Login realizado com sucesso",

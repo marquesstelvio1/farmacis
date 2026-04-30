@@ -47,8 +47,9 @@ export function registerCatalogRoutes(app: express.Application) {
       const status = req.query.status as string;
       const origin = req.query.origin as string;
       const brand = req.query.brand as string;
+      const discount = req.query.discount === 'true';
 
-      console.log('🔍 GET /api/products - Query params:', { search, pharmacyId, category, status, origin, brand });
+      console.log('🔍 GET /api/products - Query params:', { search, pharmacyId, category, status, origin, brand, discount });
 
       // Buscamos todos os produtos da farmácia (ou todos) e aplicamos o filtro manualmente
       // para garantir que a busca por doenças funcione corretamente.
@@ -158,6 +159,14 @@ export function registerCatalogRoutes(app: express.Application) {
         products = products.filter((p) => {
           const pBrand = (p.brand || '').toLowerCase();
           return pBrand === brand.toLowerCase() || pBrand.includes(brand.toLowerCase());
+        });
+      }
+
+      // Filter by discount (only products with active discounts)
+      if (discount) {
+        products = products.filter((p) => {
+          const pDiscount = discountMap.get(`${p.id}-${p.pharmacyId}`);
+          return pDiscount && pDiscount.isActive && pDiscount.discountPercentage > 0;
         });
       }
 

@@ -14,7 +14,7 @@ export const users = pgTable("users", {
   verificationToken: text("verification_token"),
   resetToken: text("reset_token"),
   resetTokenExpiry: timestamp("reset_token_expiry"),
-  role: text("role").notNull().default("CLIENTE"), // CLIENTE, ADMIN, FARMACIA
+  role: text("role").notNull().default("CLIENTE"), // CLIENTE, ADMIN, FARMACIA, ESPECIALISTA
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -41,10 +41,11 @@ export const registerSchema = insertUserSchema.extend({
   email: z.string()
     .trim()
     .toLowerCase()
-    .min(1, "Email é obrigatório")
-    .email("Formato de email inválido. Exemplo: nome@exemplo.com"),
+    .email("Formato de email inválido"),
   password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
   confirmPassword: z.string(),
+  phone: z.string().optional().transform(v => v ? v.replace(/\s/g, "") : v),
+  address: z.string().min(5, "Endereço muito curto").optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Senhas não coincidem",
   path: ["confirmPassword"],
@@ -97,6 +98,10 @@ export const products = pgTable("products", {
   status: text("status").notNull().default("active"), // active, inactive, discontinued
   // Origin variant support - for grouping Portuguese vs Indian medications
   origin: text("origin"), // "portugues", "indiano", or null for default
+  precoLamina: numeric("preco_lamina"),
+  precoLaminaPortugues: numeric("preco_lamina_portugues"),
+  precoLaminaIndiano: numeric("preco_lamina_indiano"),
+  comprimidosPorLamina: integer("comprimidos_por_lamina"),
   parentProductId: integer("parent_product_id").references((): any => products.id), // link to main product variant
   isMainVariant: boolean("is_main_variant").default(false).notNull(), // indicates if this is the primary product card
   // Discount fields - percentage based discount per pharmacy
@@ -163,6 +168,7 @@ export const pharmacies = pgTable("pharmacies", {
   iban: text("iban"), // IBAN for bank transfer
   multicaixaExpress: text("multicaixa_express"), // Multicaixa Express number
   accountName: text("account_name"), // Account name for bank transfer
+  paymentMethods: text("payment_methods").array().default([]).notNull(), // e.g., ['cash', 'multicaixa_express', 'transferencia']
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

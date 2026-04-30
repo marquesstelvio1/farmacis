@@ -4,23 +4,6 @@ import { orders, orderStatusHistory, pharmacies, pharmacyAdmins, payments, order
 import { eq, and, desc, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
-// Middleware to check pharmacy admin authentication
-async function authenticatePharmacyAdmin(req: Request, res: Response, next: Function) {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Não autorizado" });
-  }
-
-  // Simple token check - in production use JWT
-  const token = authHeader.substring(7);
-  if (token !== "pharmacy-admin-token") {
-    return res.status(401).json({ message: "Token inválido" });
-  }
-
-  next();
-}
-
 export function registerPharmacyAdminRoutes(app: Express) {
   // Pharmacy Admin Login
   app.post("/api/pharmacy/admin/login", async (req: Request, res: Response) => {

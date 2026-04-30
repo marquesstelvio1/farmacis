@@ -1,5 +1,5 @@
 import { useUser } from "@/UserContext";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
   Package,
@@ -107,6 +107,7 @@ const quickActions = [
 export default function MenuConfiguracoes() {
   const { toast } = useToast();
   const { user, setUser } = useUser(); // Usa o user e setUser do contexto
+  const [, setLocation] = useLocation();
 
   const handleLogout = () => {
     localStorage.removeItem("isAuthenticated");
@@ -115,11 +116,45 @@ export default function MenuConfiguracoes() {
       title: "Sessão terminada",
       description: "Você saiu da sua conta."
     });
-    window.location.href = "/login";
+    window.location.href = "/";
+  };
+
+  const handleContinueAsGuest = () => {
+    localStorage.removeItem("redirectToCheckoutAfterLogin");
+    setLocation("/checkout");
   };
 
   const displayName = getUserDisplayName(user as any) || "Utilizador";
   const displayEmail = getUserEmail(user as any) || "Sem e-mail";
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-slate-50 pb-24">
+        <div className="bg-white border-b border-slate-200 sticky top-0 z-30">
+          <div className="max-w-3xl mx-auto px-4 py-4">
+            <div className="flex flex-col gap-3">
+              <h1 className="text-2xl font-bold text-slate-900">Entrar antes de finalizar a compra</h1>
+              <p className="text-sm text-slate-600">
+                Acesse sua conta ou continue como visitante para seguir ao checkout.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
+          <Button onClick={() => setLocation("/login")} className="w-full h-14 rounded-xl">
+            Login
+          </Button>
+          <Button variant="outline" onClick={() => setLocation("/register")} className="w-full h-14 rounded-xl">
+            Criar conta
+          </Button>
+          <Button variant="ghost" onClick={handleContinueAsGuest} className="w-full h-14 rounded-xl border border-slate-200">
+            Continuar como visitante
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24">

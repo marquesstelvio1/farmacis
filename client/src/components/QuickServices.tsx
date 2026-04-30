@@ -76,10 +76,10 @@ export function QuickServices() {
       initial="hidden"
       whileInView="show"
       viewport={{ once: true }}
-      className="w-full max-w-4xl mx-auto px-2 sm:px-4 py-8 sm:py-12"
+      className="w-full max-w-4xl mx-auto px-2 sm:px-4 py-2 sm:py-6"
     >
-      <div className="mb-8">
-        <h2 className="text-2xl font-extrabold text-black flex items-center gap-2">
+      <div className="mb-2 sm:mb-4">
+        <h2 className="text-lg font-extrabold text-black flex items-center gap-2">
           <span className="w-2 h-8 bg-blue-600 rounded-full"></span>
           Serviços Rápidos
         </h2>
@@ -93,20 +93,20 @@ export function QuickServices() {
             variants={itemVariants}
             whileHover={{ y: -4 }}
             onClick={() => setLocation(service.path)}
-            className="group relative bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-xl transition-shadow duration-300 cursor-pointer overflow-hidden aspect-square md:aspect-auto md:p-5 sm:p-6"
+            className="group relative bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-xl transition-shadow duration-300 cursor-pointer overflow-hidden aspect-square md:aspect-auto p-2 sm:p-3"
           >
-            <div className="flex flex-col items-center justify-center h-full p-3 md:items-start md:p-0">
-              <div className={`p-2 md:p-3 rounded-xl bg-gray-50 group-hover:bg-green-50 transition-colors duration-300 mb-2 md:mb-4`}>
+            <div className="flex flex-col items-center justify-center h-full md:items-start">
+              <div className={`p-1 md:p-1.5 rounded-xl bg-gray-50 group-hover:bg-green-50 transition-colors duration-300 mb-1 md:mb-2`}>
                 <service.icon
-                  size={24}
-                  className="text-green-500 group-hover:text-green-600 transition-colors duration-300 md:w-7 md:h-7"
+                  size={38}
+                  className="text-green-500 group-hover:text-green-600 transition-colors duration-300 md:w-12 md:h-12"
                 />
               </div>
 
-              <h3 className="font-bold text-black text-xs sm:text-lg mb-0.5 md:mb-1 text-center md:text-left transition-colors">
+              <h3 className="font-bold text-black text-[10px] sm:text-sm mb-0.5 md:mb-1 text-center md:text-left transition-colors">
                 {service.title}
               </h3>
-              <p className="text-gray-500 text-[10px] sm:text-sm md:text-gray-600 text-center md:text-left md:mb-4 leading-tight md:leading-relaxed hidden sm:block">
+              <p className="text-gray-500 text-[8px] sm:text-[11px] md:text-gray-600 text-center md:text-left md:mb-2 leading-tight md:leading-relaxed hidden sm:block">
                 {service.subtitle}
               </p>
 

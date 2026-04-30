@@ -40,7 +40,7 @@ export function ProductCard({ product, variants = [], index = 0, distance }: Pro
     origin: product.origin ?? 'default',
     dosage: product.dosage ?? null,
     price: String(product.price),
-    precoBase: product.precoBase ? String(product.precoBase) : String(product.price),
+    precoBase: product.precoBase ? String(product.precoBase) : null,
     stock: product.stock,
     pharmacyId: product.pharmacyId ?? null,
     pharmacyName: product.pharmacyName ?? null,
@@ -58,7 +58,7 @@ export function ProductCard({ product, variants = [], index = 0, distance }: Pro
         id: product.id,
         origin: 'portugues',
         price: String(product.precoPortugues),
-        precoBase: String(product.precoPortugues),
+        precoBase: null,
       });
     }
 
@@ -68,15 +68,16 @@ export function ProductCard({ product, variants = [], index = 0, distance }: Pro
         id: product.id,
         origin: 'indiano',
         price: String(product.precoIndiano),
-        precoBase: String(product.precoIndiano),
+        precoBase: null,
       });
     }
 
-    return [
-      mainVariant,
-      ...virtual,
-      ...variants.filter(v => v.origin !== 'portugues' && v.origin !== 'indiano')
-    ];
+    const otherVariants = variants.filter(v => v.origin !== 'portugues' && v.origin !== 'indiano');
+    const hasExplicitOrigins = virtual.length > 0;
+
+    return hasExplicitOrigins
+      ? [...virtual, ...otherVariants]
+      : [mainVariant, ...virtual, ...otherVariants];
   }, [product, variants, distance]);
 
   // Get the currently selected variant or default to first
@@ -90,7 +91,7 @@ export function ProductCard({ product, variants = [], index = 0, distance }: Pro
   const quantity = cartItem?.quantity || 0;
 
   // Cálculo do preço com desconto apenas para exibição (sem alterar o valor base)
-  const basePriceValue = Number(currentVariant.price || currentVariant.precoBase);
+  const basePriceValue = Number(currentVariant.price);
   const discountPercent = activeDiscount ? parseFloat(activeDiscount.percentage) : 0;
   const finalPrice = discountPercent > 0 ? basePriceValue * (1 - discountPercent / 100) : basePriceValue;
   const hasDiscount = discountPercent > 0;
@@ -99,7 +100,7 @@ export function ProductCard({ product, variants = [], index = 0, distance }: Pro
     switch (origin) {
       case 'portugues': return 'Português';
       case 'indiano': return 'Indiano';
-      default: return 'Padrão';
+      default: return '';
     }
   };
 
@@ -107,7 +108,7 @@ export function ProductCard({ product, variants = [], index = 0, distance }: Pro
     switch (origin) {
       case 'portugues': return '🇵🇹';
       case 'indiano': return '🇮🇳';
-      default: return '🏥';
+      default: return '';
     }
   };
 
@@ -143,12 +144,10 @@ export function ProductCard({ product, variants = [], index = 0, distance }: Pro
             </div>
           )}
 
-          {currentVariant.origin && currentVariant.origin !== 'default' && (
+          {(currentVariant.origin === 'portugues' || currentVariant.origin === 'indiano') && (
             <div className={`absolute bottom-3 right-3 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-bold shadow-lg flex items-center gap-1.5 border-2 ${currentVariant.origin === 'portugues'
               ? 'bg-red-500/90 text-white border-red-300'
-              : currentVariant.origin === 'indiano'
-                ? 'bg-orange-500/90 text-white border-orange-300'
-                : 'bg-green-600/90 text-white border-green-300'
+              : 'bg-orange-500/90 text-white border-orange-300'
               }`}>
               <span className="text-sm leading-none">{getOriginFlag(currentVariant.origin)}</span>
               {getOriginLabel(currentVariant.origin)}
@@ -253,7 +252,7 @@ export function ProductCard({ product, variants = [], index = 0, distance }: Pro
               <span className="text-xl font-black text-green-600">
                 {finalPrice.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
               </span>
-              {(Number(currentVariant.precoBase) > finalPrice || hasDiscount) && (
+              {hasDiscount && (
                 <span className="text-xs text-slate-400 line-through">
                   {basePriceValue.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
                 </span>

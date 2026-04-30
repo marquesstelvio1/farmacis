@@ -12,6 +12,12 @@ export interface Medication {
   periodo_consumo?: string;
   frequencia?: string;
   instrucoes?: string;
+  preco_caixa?: string;
+  preco_caixa_tipo?: 'individual' | 'por';
+  preco_lamina?: string;
+  preco_lamina_tipo?: 'individual' | 'por';
+  quantidade_comprimidos?: string;
+  quantidade_laminas?: string;
 }
 
 export interface OCRResult {
@@ -50,7 +56,13 @@ async function processWithVanessa(base64: string, mime: string): Promise<OCRResu
       "quantidade": "30 comprimidos",
       "periodo_consumo": "30 dias",
       "frequencia": "1x ao dia",
-      "instrucoes": "Tomar após as refeições"
+      "instrucoes": "Tomar após as refeições",
+      "preco_caixa": "15.50",
+      "preco_caixa_tipo": "individual",
+      "preco_lamina": "0.52",
+      "preco_lamina_tipo": "por",
+      "quantidade_comprimidos": "30",
+      "quantidade_laminas": "10"
     }
   ]
 }
@@ -65,6 +77,14 @@ IMPORTANTE sobre quantidade:
 - Exemplo: "30 dias, 2x ao dia" = 60 unidades
 - Exemplo: "7 dias, 3x ao dia" = 21 unidades
 - Se não conseguires calcular, deixa "quantidade" vazio
+
+IMPORTANTE sobre preços e quantidades:
+- Extrai preço da caixa se visível (ex: "R$ 15,50")
+- Indica se o preço é "individual" (por unidade) ou "por" (por caixa)
+- Extrai preço por lâmina/comprimido se visível
+- Indica tipo para preço por lâmina: "individual" ou "por"
+- Extrai quantidade de comprimidos na caixa
+- Extrai quantidade de lâminas na caixa (se aplicável, ex: número de tiras)
 
 Se não encontrares medicamentos, retorna {"medicamentos": []}.`;
 
@@ -88,7 +108,9 @@ Se não encontrares medicamentos, retorna {"medicamentos": []}.`;
   });
 
   if (!response.ok) {
-    throw new Error(`Vanessa API error: ${response.status}`);
+    const errorText = await response.text();
+    console.error(`[Vanessa API] Status ${response.status}:`, errorText);
+    throw new Error(`Vanessa API error: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();

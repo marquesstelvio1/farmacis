@@ -4,16 +4,6 @@ import { pharmacies, orders, orderItems, products, pharmacyAdmins, systemSetting
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
-// Middleware to check if user is pharmacy admin
-async function requirePharmacyAdmin(req: Request, res: Response, next: Function) {
-  // In production, implement proper session/JWT validation
-  const pharmacyToken = req.headers['x-pharmacy-token'];
-  if (!pharmacyToken || Array.isArray(pharmacyToken)) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-  next();
-}
-
 export function registerPharmacyRoutes(app: Express) {
   // Pharmacy login
   app.post("/api/pharmacy/login", async (req: Request, res: Response) => {

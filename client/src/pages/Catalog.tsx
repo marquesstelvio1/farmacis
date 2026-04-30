@@ -24,7 +24,7 @@ const origins = [
   { id: 'all', name: 'Todas as Origens' },
   { id: 'portugues', name: 'Portuguesa' },
   { id: 'indiano', name: 'Indiana' },
-  { id: 'default', name: 'Nacional/Padrão' },
+  { id: 'default', name: 'Nacional' },
 ]
 
 const sortOptions = [
@@ -241,17 +241,17 @@ export default function Catalog() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-green-50/30 to-gray-100">
+    <div className="min-h-screen bg-transparent">
       {/* Unified Sticky Header with Glassmorphism */}
-      <header className="bg-slate-900/80 backdrop-blur-xl border-b border-white/10 sticky top-0 z-40 shadow-2xl">
+      <header className="bg-transparent backdrop-blur-xl border-b border-white/5 sticky top-0 z-40 shadow-none">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col py-3 gap-3">
+          <div className="flex items-center py-0 gap-3 h-14">
             {/* Row 1: Nav, Context & Actions */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-4">
                 <Link href={pharmacyId ? "/farmacias" : "/"}>
-                  <Button variant="ghost" size="icon" className="text-white hover:bg-white/10 rounded-full">
-                    <ArrowLeft className="w-5 h-5" />
+                  <Button variant="ghost" size="icon" className="text-white bg-white/10 hover:bg-white/20 rounded-full border border-white/20 shadow-sm transition">
+                    <ArrowLeft className="w-5 h-5 text-slate-300 transition-colors hover:text-slate-100" />
                   </Button>
                 </Link>
 
@@ -277,7 +277,7 @@ export default function Catalog() {
                   onFocus={() => setShowSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                 >
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 group-focus-within:text-green-400 transition-colors" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 group-focus-within:text-slate-500 transition-colors" />
                   <input
                     type="text"
                     placeholder={pharmacyInfo ? `Buscar em ${pharmacyInfo.name}...` : "O que você procura hoje?"}
@@ -288,7 +288,7 @@ export default function Catalog() {
                       const extra = pharmacyId ? `&farmacia=${pharmacyId}` : '';
                       window.history.replaceState(null, '', `/catalogo?search=${encodeURIComponent(e.target.value)}${extra}`);
                     }}
-                    className="w-full pl-10 pr-10 py-2 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-green-500/50 focus:border-green-500 text-white placeholder-slate-500 outline-none transition-all"
+                    className="w-full pl-10 pr-10 h-10 bg-white/15 border border-white/30 rounded-xl focus:ring-2 focus:ring-green-500/60 focus:border-green-400 text-slate-900 placeholder:text-slate-400 outline-none transition-all"
                   />
                   <button
                     type="button"
@@ -296,12 +296,12 @@ export default function Catalog() {
                       e.stopPropagation();
                       setShowFilters(!showFilters);
                     }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-green-500/20 text-green-400 hover:bg-green-500/40 rounded-lg transition-all"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center bg-green-500/25 text-white hover:bg-green-500 rounded-xl border border-green-400/40 shadow-sm transition-all"
                   >
                     <SlidersHorizontal className="w-4 h-4" />
                   </button>
                   {showSuggestions && suggestions.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-white/10 rounded-xl overflow-hidden z-50 shadow-2xl">
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl overflow-hidden z-50 shadow-2xl">
                       {suggestions.map((suggestion, idx) => (
                         <button
                           key={idx}
@@ -309,7 +309,54 @@ export default function Catalog() {
                             setSearch(suggestion);
                             setShowSuggestions(false);
                           }}
-                          className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-green-500/20 hover:text-green-300 transition-colors border-b border-white/5 last:border-0"
+                          className="w-full text-left px-4 py-2 text-sm text-slate-900 hover:bg-slate-100 transition-colors border-b border-slate-200 last:border-0"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Search (Mobile) */}
+              <div className="md:hidden flex-1 mx-2">
+                <div
+                  className="relative group"
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                >
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 group-focus-within:text-slate-500 transition-colors" />
+                  <input
+                    type="text"
+                    placeholder="Buscar..."
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setShowSuggestions(true);
+                    }}
+                    className="w-full pl-10 pr-10 h-10 bg-white/15 border border-white/30 rounded-xl text-slate-900 text-sm placeholder:text-slate-400 focus:ring-2 focus:ring-green-500/60 focus:border-green-400 outline-none transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowFilters(!showFilters);
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center bg-green-500/25 text-white hover:bg-green-500 rounded-xl border border-green-400/40 shadow-sm transition-all"
+                  >
+                    <SlidersHorizontal className="w-4 h-4" />
+                  </button>
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-white/15 rounded-xl overflow-hidden z-50 shadow-2xl">
+                      {suggestions.map((suggestion, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            setSearch(suggestion);
+                            setShowSuggestions(false);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-green-500/20 transition-colors border-b border-white/5"
                         >
                           {suggestion}
                         </button>
@@ -334,9 +381,9 @@ export default function Catalog() {
                   onClick={toggleCart}
                   variant="ghost"
                   size="icon"
-                  className="relative text-white hover:bg-white/10 group"
+                  className="relative text-white bg-white/10 hover:bg-white/20 rounded-full border border-white/20 shadow-sm transition-all"
                 >
-                  <ShoppingCart className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  <ShoppingCart className="w-5 h-5 text-slate-300 transition-colors hover:text-slate-100" />
                   {totalItems() > 0 && (
                     <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-green-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full shadow-lg ring-2 ring-slate-900">
                       {totalItems()}
@@ -346,100 +393,8 @@ export default function Catalog() {
               </div>
             </div>
 
-            {/* Row 2: Search (Mobile) & Location */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-t border-white/5 pt-2">
-              <div className="md:hidden w-full">
-                <div
-                  className="relative"
-                  onFocus={() => setShowSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                >
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                  <input
-                    type="text"
-                    placeholder="Buscar..."
-                    value={search}
-                    onChange={(e) => {
-                      setSearch(e.target.value);
-                      setShowSuggestions(true);
-                    }}
-                    className="w-full pl-10 pr-10 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowFilters(!showFilters);
-                    }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-green-500/20 text-green-400 hover:bg-green-500/40 rounded-lg transition-all"
-                  >
-                    <SlidersHorizontal className="w-4 h-4" />
-                  </button>
-                  {showSuggestions && suggestions.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-white/10 rounded-xl overflow-hidden z-50 shadow-2xl">
-                      {suggestions.map((suggestion, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => {
-                            setSearch(suggestion);
-                            setShowSuggestions(false);
-                          }}
-                          className="w-full text-left px-4 py-3 text-sm text-slate-200 hover:bg-green-500/20 transition-colors border-b border-white/5"
-                        >
-                          {suggestion}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <button
-                onClick={() => setShowLocationPicker(true)}
-                className="flex items-center gap-2 text-[11px] font-bold text-slate-400 hover:text-green-400 transition-colors truncate max-w-[70%]"
-              >
-                <MapPin size={14} className="text-green-500" />
-                <span className="truncate">
-                  {deliveryLocation ? `Entrega em: ${deliveryLocation.address}` : 'Definir local de entrega'}
-                </span>
-              </button>
-
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  {sortedProducts.length} Resultados
-                </span>
-                {deliveryLocation && (
-                  <Badge variant="outline" className="h-5 text-[9px] border-green-500/30 text-green-400 bg-green-500/5 px-1.5 uppercase tracking-tighter">
-                    <Navigation size={8} className="mr-1" /> Proximidade Ativa
-                  </Badge>
-                )}
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border transition ${showFilters
-                    ? "bg-green-500/20 border-green-500/40 text-green-300"
-                    : "border-white/10 text-slate-300 hover:bg-white/10"
-                  }`}
-              >
-                <SlidersHorizontal size={12} />
-                Filtros
-              </button>
-              {showFilters && categories.map((category) => (
-                <button
-                  key={category.id}
-                  onClick={() => setSelectedCategory(category.id)}
-                  className={`text-[11px] px-2.5 py-1.5 rounded-lg border transition ${selectedCategory === category.id
-                      ? "bg-green-500/20 border-green-500/40 text-green-300"
-                      : "border-white/10 text-slate-300 hover:bg-white/10"
-                    }`}
-                >
-                  {category.name}
-                </button>
-              ))}
-            </div>
+            {/* Row 2: Location & Results - Desktop only, Mobile has search in header only */}
+            {/* Removed - now using single header line */}
           </div>
         </div>
       </header>
@@ -683,7 +638,7 @@ export default function Catalog() {
              animate={{ opacity: 1 }}
              transition={{ delay: 0.2 }}
              className={viewMode === 'grid'
-               ? "grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+               ? "grid grid-cols-2 gap-3 sm:gap-4 md:gap-6 md:grid-cols-3 lg:grid-cols-4"
                : "space-y-4"
              }
            >
