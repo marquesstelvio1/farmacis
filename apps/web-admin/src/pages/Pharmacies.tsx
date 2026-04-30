@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -103,6 +103,9 @@ export default function Pharmacies() {
   const [pharmacyAdminsList, setPharmacyAdminsList] = useState<any[]>([])
   const [loadingCreds, setLoadingCreds] = useState(false)
   const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(null)
+  const [address, setAddress] = useState('')
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [isSearching, setIsSearching] = useState(false)
   const queryClient = useQueryClient()
 
   const { data: pharmacies, isLoading } = useQuery<Pharmacy[]>({
@@ -150,6 +153,7 @@ export default function Pharmacies() {
       queryClient.invalidateQueries({ queryKey: ['pharmacies'] })
       toast.success('Farmácia registrada com sucesso!')
       setShowRegisterModal(false)
+      setAddress('')
     },
     onError: (error: Error) => {
       toast.error(normalizeError(error))
@@ -197,27 +201,69 @@ export default function Pharmacies() {
     fetchCredsMutation.mutate(pharmacy.id)
   }
 
+  // Geocodificação reversa: Coordenadas -> Endereço
+  const reverseGeocode = useCallback(async (lat: number, lng: number) => {
+    setIsSearching(true)
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/geocode/reverse?lat=${lat}&lon=${lng}&accept-language=pt`
+      )
+      const data = await response.json()
+      if (data.display_name) {
+        setAddress(data.display_name)
+      }
+    } catch (error) {
+      console.error('Erro na geocodificação reversa:', error)
+    } finally {
+      setIsSearching(false)
+    }
+  }, [])
+
+  // Busca de localizações (Autocomplete): Texto -> Coordenadas
+  const searchLocations = useCallback(async (query: string) => {
+    if (!query || query.length < 3) {
+      setSearchResults([])
+      return
+    }
+    setIsSearching(true)
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/geocode/search?q=${encodeURIComponent(query)}&countrycodes=ao&limit=5&accept-language=pt`
+      )
+      const data = await response.json()
+      setSearchResults(data)
+    } catch (error) {
+      console.error('Erro ao buscar localizações:', error)
+    } finally {
+      setIsSearching(false)
+    }
+  }, [])
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
     toast.success('Copiado para a área de transferência')
   }
 
   const handleRegister = (e: React.FormEvent<HTMLFormElement>) => {
+    console.log('Salvar Farmácia: submit acionado');
     e.preventDefault()
+    if (!markerPosition) {
+      toast.error('Selecione a localização da farmácia no mapa antes de salvar!')
+      return
+    }
     const formData = new FormData(e.currentTarget)
     const data = {
       name: formData.get('name') as string,
       email: formData.get('email') as string,
       phone: formData.get('phone') as string,
-      address: markerPosition ? `${markerPosition[0]}, ${markerPosition[1]}` : 'Luanda, Angola',
-      lat: markerPosition ? markerPosition[0].toString() : '-8.8387',
-      lng: markerPosition ? markerPosition[1].toString() : '13.2344',
+      address: address, // Usa o estado sincronizado
+      lat: markerPosition[0].toString(),
+      lng: markerPosition[1].toString(),
       iban: formData.get('iban') as string || null,
       multicaixaExpress: formData.get('multicaixaExpress') as string || null,
       accountName: formData.get('accountName') as string || null,
     }
     registerMutation.mutate(data)
     setMarkerPosition(null)
+    setAddress('')
   }
 
   const filteredPharmacies = pharmacies?.filter((pharmacy) => {
@@ -444,14 +490,22 @@ export default function Pharmacies() {
                 <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
                   <h2 className="text-xl font-bold text-gray-900">Registrar Nova Farmácia</h2>
                   <button
-                    onClick={() => setShowRegisterModal(false)}
+                    onClick={() => {
+                      setShowRegisterModal(false)
+                      setAddress('')
+                      setMarkerPosition(null)
+                    }}
                     className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                <form onSubmit={handleRegister} className="p-6 space-y-4 overflow-y-auto flex-1">
+                <form 
+                  id="register-pharmacy-form" 
+                  onSubmit={handleRegister} 
+                  className="p-6 space-y-4 overflow-y-auto flex-1"
+                >
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-gray-700">Nome da Farmácia *</label>
                     <input
@@ -482,8 +536,68 @@ export default function Pharmacies() {
                         type="tel"
                         placeholder="+244 9XX XXX XXX"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                        onInput={e => {
+                          const input = e.target as HTMLInputElement;
+                          let value = input.value.replace(/\D/g, "");
+                          if (value.startsWith("244")) {
+                            let formatted = "+244 ";
+                            if (value.length > 3) formatted += value.slice(3, 6);
+                            if (value.length > 6) formatted += " " + value.slice(6, 9);
+                            if (value.length > 9) formatted += " " + value.slice(9, 12);
+                            input.value = formatted.trim();
+                          } else if (value.startsWith("9")) {
+                            let formatted = value.slice(0, 3);
+                            if (value.length > 3) formatted += " " + value.slice(3, 6);
+                            if (value.length > 6) formatted += " " + value.slice(6, 9);
+                            input.value = formatted.trim();
+                          }
+                        }}
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-2 relative">
+                    <label className="text-sm font-semibold text-gray-700">Endereço Completo *</label>
+                    <div className="relative">
+                      <input
+                        required
+                        name="address"
+                        type="text"
+                        value={address}
+                        onChange={(e) => {
+                          setAddress(e.target.value)
+                          searchLocations(e.target.value)
+                        }}
+                        placeholder="Pesquise o endereço ou clique no mapa..."
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                      />
+                      {isSearching && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full" />
+                        </div>
+                      )}
+                    </div>
+                    {searchResults.length > 0 && (
+                      <div className="absolute z-[60] w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-auto">
+                        {searchResults.map((result, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => {
+                              const lat = parseFloat(result.lat)
+                              const lon = parseFloat(result.lon)
+                              setMarkerPosition([lat, lon])
+                              setAddress(result.display_name)
+                              setSearchResults([])
+                            }}
+                            className="w-full text-left px-4 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-0 text-sm"
+                          >
+                            <Search className="inline w-3 h-3 mr-2 text-gray-400" />
+                            {result.display_name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-3">
@@ -507,7 +621,14 @@ export default function Pharmacies() {
                           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                         />
-                        <LocationMarker position={markerPosition} onChange={(lat, lng) => setMarkerPosition([lat, lng])} />
+                        <LocationMarker 
+                          position={markerPosition} 
+                          onChange={(lat, lng) => {
+                            setMarkerPosition([lat, lng])
+                            reverseGeocode(lat, lng)
+                            setSearchResults([])
+                          }} 
+                        />
                       </MapContainer>
                     </div>
 
@@ -546,6 +667,12 @@ export default function Pharmacies() {
                           type="text"
                           placeholder="AO06 0040 0000 1234 5678 9101 2"
                           className="w-full px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm"
+                          onInput={e => {
+                            const input = e.target as HTMLInputElement;
+                            let value = input.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                            let formatted = value.match(/.{1,4}/g)?.join(' ') || value;
+                            input.value = formatted;
+                          }}
                         />
                       </div>
                       <div className="space-y-2">
@@ -573,13 +700,14 @@ export default function Pharmacies() {
                 <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex gap-3 shrink-0">
                   <button
                     type="button"
-                    onClick={() => { setShowRegisterModal(false); setMarkerPosition(null); }}
+                    onClick={() => { setShowRegisterModal(false); setMarkerPosition(null); setAddress(''); }}
                     className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
+                    form="register-pharmacy-form"
                     disabled={registerMutation.isPending || !markerPosition}
                     className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                   >

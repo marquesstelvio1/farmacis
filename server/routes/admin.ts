@@ -934,4 +934,55 @@ export function registerAdminRoutes(app: Express) {
       res.status(500).json({ message: "Failed to fetch settlement history" });
     }
   });
+
+  // Proxy for Nominatim Geocoding Search
+  app.get("/api/admin/geocode/search", async (req: Request, res: Response) => {
+    try {
+      const { q, countrycodes, "accept-language": acceptLanguage } = req.query;
+
+      if (!q) {
+        return res.status(400).json({ message: "Query parameter 'q' is required." });
+      }
+
+      const params = new URLSearchParams({
+        format: "json",
+        q: String(q),
+        ...(countrycodes && { countrycodes: String(countrycodes) }),
+        ...(acceptLanguage && { "accept-language": String(acceptLanguage) }),
+        limit: "5", // Limit results to 5
+      });
+
+      const nominatimResponse = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
+      
+      if (!nominatimResponse.ok) {
+        const errorText = await nominatimResponse.text();
+        console.error("Nominatim search error:", nominatimResponse.status, errorText);
+        return res.status(nominatimResponse.status).json({ message: "Failed to fetch from Nominatim API", details: errorText });
+      }
+
+      const data = await nominatimResponse.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Geocode search proxy error:", error);
+      res.status(500).json({ message: "Internal server error during geocode search." });
+    }
+  });
+
+  // Proxy for Nominatim Reverse Geocoding
+  app.get("/api/admin/geocode/reverse", async (req: Request, res: Response) => {
+    try {
+      const { lat, lon, "accept-language": acceptLanguage } = req.query;
+
+      if (!lat || !lon) {
+        return res.status(400).json({ message: "Latitude and longitude parameters are required." });
+      }
+
+      const nominatimResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=${acceptLanguage || 'en'}`);
+      const data = await nominatimResponse.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Reverse geocode proxy error:", error);
+      res.status(500).json({ message: "Internal server error during reverse geocode." });
+    }
+  });
 }
